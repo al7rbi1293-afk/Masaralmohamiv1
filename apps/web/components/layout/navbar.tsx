@@ -18,7 +18,7 @@ export function Navbar() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link href="/start" className={buttonVariants('primary', 'sm')}>
+            <Link href="/signin" className={buttonVariants('primary', 'sm')}>
               جرّب مجانًا
             </Link>
           </div>

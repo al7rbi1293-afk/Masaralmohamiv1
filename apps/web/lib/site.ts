@@ -4,7 +4,7 @@ export const siteConfig = {
   tagline: 'إدارة مكتب المحاماة… على مسار واحد.',
   description:
     'منصة سحابية عربية لإدارة مكاتب المحاماة: عملاء، قضايا، مستندات، مهام، وفوترة بواجهة RTL احترافية.',
-  url: 'https://masar-al-muhami.com',
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
 };
 
 export const navLinks = [
@@ -13,7 +13,7 @@ export const navLinks = [
   { href: '/privacy', label: 'الخصوصية' },
   { href: '/terms', label: 'الشروط' },
   { href: '/contact', label: 'تواصل' },
-  { href: '/app/login', label: 'إدارة المكتب' },
+  { href: '/signin', label: 'إدارة المكتب' },
 ];
 
 export const footerLinks = [

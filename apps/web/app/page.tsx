@@ -153,11 +153,11 @@ export default function HomePage() {
               بواجهة بسيطة وصلاحيات وسجل تدقيق يحمي المكتب.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href="/start" className={buttonVariants('primary', 'lg')}>
+              <Link href="/signin" className={buttonVariants('primary', 'lg')}>
                 جرّب مجانًا 14 يوم
               </Link>
               <Link
-                href="/app/login"
+                href="/signin"
                 className={buttonVariants('outline', 'lg')}
               >
                 دخول الإدارة
@@ -301,10 +301,10 @@ export default function HomePage() {
             الأولى.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/start" className={buttonVariants('primary', 'md')}>
+            <Link href="/signin" className={buttonVariants('primary', 'md')}>
               جرّب مجانًا
             </Link>
-            <Link href="/app/login" className={buttonVariants('outline', 'md')}>
+            <Link href="/signin" className={buttonVariants('outline', 'md')}>
               دخول الإدارة
             </Link>
           </div>
@@ -321,10 +321,10 @@ export default function HomePage() {
             خلّ شغلك يمشي على مسار واحد
           </h2>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/start" className={buttonVariants('primary', 'lg')}>
+            <Link href="/signin" className={buttonVariants('primary', 'lg')}>
               جرّب مسار المحامي مجانًا
             </Link>
-            <Link href="/app/login" className={buttonVariants('outline', 'lg')}>
+            <Link href="/signin" className={buttonVariants('outline', 'lg')}>
               دخول الإدارة
             </Link>
           </div>

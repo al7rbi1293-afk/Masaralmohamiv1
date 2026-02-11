@@ -1,60 +1,64 @@
-# Masar Al-Muhami Web App
+# Masar Al-Muhami (Web)
 
-واجهة Next.js تشمل:
+Next.js App Router codebase for:
 
-- الموقع التسويقي
-- إنشاء حساب مكتب جديد (Signup)
-- بوابة إدارة المكتب (Portal)
+- Marketing pages: `/`, `/security`, `/privacy`, `/terms`, `/contact`
+- Trial platform pages under `/app` (protected)
 
-## Routes
+## Phase 2 deliverables in this repo
 
-### Marketing
-- `/`
-- `/security`
-- `/privacy`
-- `/terms`
-- `/contact`
-
-### Workspace
-- `/start`
-- `/app/login`
-- `/app/{tenantId}/dashboard`
-- `/app/{tenantId}/clients`
-- `/app/{tenantId}/matters`
-- `/app/{tenantId}/documents`
-- `/app/{tenantId}/tasks`
-- `/app/{tenantId}/billing`
-- `/app/{tenantId}/settings`
-- `/app/{tenantId}/users`
+- Supabase migration SQL:
+  - `supabase/migrations/0001_init.sql`
+- Strict RLS policies for:
+  - `leads`
+  - `organizations`
+  - `profiles`
+  - `memberships`
+  - `trial_subscriptions`
+- Auto profile creation trigger:
+  - `public.handle_new_user()` on `auth.users`
+- Server-side trial helper:
+  - `apps/web/lib/trial.ts`
+- Debug endpoint:
+  - `GET /app/api/trial-status`
 
 ## Local run
 
-From monorepo root:
+From repo root:
 
 ```bash
 npm install
 npm run dev --workspace @masar/web
 ```
 
-## Build
+Then open [http://localhost:3000](http://localhost:3000).
 
-```bash
-npm run build --workspace @masar/web
-npm run start --workspace @masar/web
-```
-
-## Environment
+## Required environment variables
 
 Create `apps/web/.env.local`:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-## Deploy to Vercel
+## Apply migrations
 
-1. Import repo in Vercel.
-2. Set root directory to `apps/web`.
-3. Add env var:
-   - `NEXT_PUBLIC_API_URL=https://YOUR_API_DOMAIN`
-4. Deploy.
+### Option 1: Supabase SQL Editor
+
+Copy/paste `supabase/migrations/0001_init.sql` into SQL Editor and run it.
+
+### Option 2: Supabase CLI
+
+```bash
+supabase db push
+```
+
+## Test trial-status endpoint
+
+1. Sign in at `/signin`
+2. Open `/app/api/trial-status`
+3. If no organization/trial exists yet, response should include:
+   - `status: "none"`

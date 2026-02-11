@@ -1,91 +1,73 @@
 # مسار المحامي | Masar Al-Muhami
 
-منصة SaaS لإدارة مكاتب المحاماة (واجهة عربية RTL + API متعددة المستأجرين).
+Next.js (App Router) + Supabase.
 
-## مكوّنات المونو-ريبو
+## Current scope (Phase 1 + Phase 2 foundation)
 
-- `apps/web`: Next.js (Landing + Signup + Office Portal)
-- `apps/api`: NestJS + Prisma + PostgreSQL + Redis + MinIO
-- `apps/worker`: BullMQ worker للتذكيرات
+- Marketing pages preserved:
+  - `/`
+  - `/security`
+  - `/privacy`
+  - `/terms`
+  - `/contact`
+- Protected app area:
+  - `/app`
+- Auth skeleton:
+  - `/signin`
+  - Sign out inside `/app`
+- Trial status debug endpoint:
+  - `/app/api/trial-status`
+- Supabase migration:
+  - `supabase/migrations/0001_init.sql`
 
-## المسارات الأساسية
-
-### الموقع العام
-- `/` الصفحة الرئيسية
-- `/security` الأمان والخصوصية
-- `/privacy` سياسة الخصوصية
-- `/terms` الشروط والأحكام
-- `/contact` تواصل معنا
-
-### تدفق المكتب
-- `/start` إنشاء مكتب جديد (Signup)
-- `/app/login` دخول الإدارة
-- `/app/{tenantId}/dashboard` لوحة المكتب
-- `/app/{tenantId}/clients`
-- `/app/{tenantId}/matters`
-- `/app/{tenantId}/documents`
-- `/app/{tenantId}/tasks`
-- `/app/{tenantId}/billing`
-- `/app/{tenantId}/settings`
-- `/app/{tenantId}/users`
-
-## تدفق التسجيل
-
-1. المستخدم يسجل من `/start`.
-2. API ينفذ `POST /auth/signup` ويُنشئ:
-   - Tenant جديد
-   - User بدور `PARTNER`
-3. يعاد JWT يتضمن `tenantId` + `workspaceUrl`.
-4. الواجهة تحفظ الجلسة وتحوّل المستخدم إلى:
-   - `/app/{tenantId}/dashboard`
-
-## تشغيل محلي (كل الخدمات)
-
-```bash
-docker compose up --build
-```
-
-الخدمات:
-- Web: [http://localhost:3000](http://localhost:3000)
-- API: [http://localhost:3001](http://localhost:3001)
-- Swagger: [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
-
-## تشغيل الويب فقط
+## Run locally
 
 ```bash
 npm install
 npm run dev --workspace @masar/web
 ```
 
-## النشر على Vercel (للواجهة)
+Open: [http://localhost:3000](http://localhost:3000)
 
-1. ارفع المستودع إلى GitHub.
-2. في Vercel: Import Project.
-3. `Root Directory` = `apps/web`.
-4. أضف Environment Variable:
-   - `NEXT_PUBLIC_API_URL=https://YOUR_API_DOMAIN`
-5. Deploy.
+## Required environment variables
 
-## إعداد API مع Supabase PostgreSQL
+Set in `apps/web/.env.local`:
 
-في بيئة API (Docker/Render/Railway/Fly):
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
 
-- `DATABASE_URL` = Connection String الخاص بالـ pooler
-- `DIRECT_URL` = Connection String المباشر (للـ Prisma migrations)
-- `REDIS_URL`
-- `JWT_ACCESS_SECRET`
-- `JWT_REFRESH_SECRET`
-- `WEB_BASE_URL` = رابط Vercel
-- `CORS_ORIGINS` = رابط Vercel (أو عدة روابط مفصولة بفاصلة)
+## Apply Supabase migration
 
-مهم: إذا كلمة المرور تحتوي `@` يجب ترميزها إلى `%40` داخل الرابط.
+### Option 1: SQL Editor (manual)
 
-أمثلة جاهزة:
-- `apps/api/.env.example`
-- `apps/web/.env.example`
+1. Open Supabase Dashboard -> SQL Editor.
+2. Copy contents of:
+   - `supabase/migrations/0001_init.sql`
+3. Run the query.
 
-## ملاحظات
+### Option 2: Supabase CLI
 
-- العزل متعدد المستأجرين مفروض عبر `tenantId` على مستوى الجدول والاستعلام.
-- كل JWT يتضمن `tenantId` ويُستخدم على الخادم لكل العمليات.
-- روابط المستندات مشاركة/تنزيل موقعة ومؤقتة.
+If Supabase CLI is installed and project is linked:
+
+```bash
+supabase db push
+```
+
+## Test trial status endpoint locally
+
+1. Sign in at:
+   - `http://localhost:3000/signin`
+2. Open:
+   - `http://localhost:3000/app/api/trial-status`
+3. Expected:
+   - Logged-in user with no org/trial yet -> `status: "none"`
+
+## Notes
+
+- `/app` redirects to `/signin` when unauthenticated.
+- `getTrialStatusForCurrentUser` is implemented in:
+  - `apps/web/lib/trial.ts`

@@ -1,12 +1,7 @@
-import { cookies } from 'next/headers';
 import {
-  ACCESS_COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
-} from '@/lib/supabase/constants';
-import {
-  createSupabaseServerAuthClient,
   createSupabaseServerClient,
 } from '@/lib/supabase/server';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 export type TrialStatus = {
   orgId: string | null;
@@ -35,8 +30,8 @@ const EMPTY_TRIAL_STATUS: TrialStatus = {
 };
 
 export async function getTrialStatusForCurrentUser(): Promise<TrialStatus> {
-  const userId = await resolveCurrentUserId();
-  if (!userId) {
+  const currentUser = await getCurrentAuthUser();
+  if (!currentUser) {
     return EMPTY_TRIAL_STATUS;
   }
 
@@ -45,7 +40,7 @@ export async function getTrialStatusForCurrentUser(): Promise<TrialStatus> {
   const { data: membershipData, error: membershipError } = await supabase
     .from('memberships')
     .select('org_id, created_at')
-    .eq('user_id', userId)
+    .eq('user_id', currentUser.id)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -97,45 +92,4 @@ export async function getTrialStatusForCurrentUser(): Promise<TrialStatus> {
     isExpired,
     status: isExpired ? 'expired' : 'active',
   };
-}
-
-async function resolveCurrentUserId(): Promise<string | null> {
-  const cookieStore = cookies();
-  const accessToken = cookieStore.get(ACCESS_COOKIE_NAME)?.value;
-  const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value;
-
-  if (!accessToken && !refreshToken) {
-    return null;
-  }
-
-  const authClient = createSupabaseServerAuthClient();
-
-  if (accessToken) {
-    const { data, error } = await authClient.auth.getUser(accessToken);
-    if (!error && data.user) {
-      return data.user.id;
-    }
-  }
-
-  if (!refreshToken) {
-    return null;
-  }
-
-  const { data: refreshed, error: refreshError } = await authClient.auth.refreshSession({
-    refresh_token: refreshToken,
-  });
-
-  if (refreshError || !refreshed.session) {
-    return null;
-  }
-
-  const { data: refreshedUser, error: refreshedUserError } = await authClient.auth.getUser(
-    refreshed.session.access_token,
-  );
-
-  if (refreshedUserError || !refreshedUser.user) {
-    return null;
-  }
-
-  return refreshedUser.user.id;
 }

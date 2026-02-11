@@ -22,7 +22,7 @@ export async function signInAction(formData: FormData) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error || !data.session) {
-      const message = encodeURIComponent(error?.message ?? 'تعذر تسجيل الدخول');
+      const message = encodeURIComponent(toArabicAuthError(error?.message));
       redirect(`/signin?error=${message}`);
     }
 
@@ -38,6 +38,24 @@ export async function signInAction(formData: FormData) {
 
     redirect('/app');
   } catch {
-    redirect('/signin?error=تهيئة_Supabase_غير_مكتملة');
+    redirect('/signin?error=تعذّر_الاتصال_بخدمة_المصادقة');
   }
+}
+
+function toArabicAuthError(message?: string) {
+  if (!message) {
+    return 'تعذر تسجيل الدخول. حاول مرة أخرى.';
+  }
+
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('invalid login credentials')) {
+    return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+  }
+
+  if (normalized.includes('email not confirmed')) {
+    return 'يرجى تأكيد البريد الإلكتروني أولًا.';
+  }
+
+  return 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.';
 }

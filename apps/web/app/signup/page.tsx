@@ -1,36 +1,36 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { signInAction } from './actions';
+import { signUpAction } from './actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
 
 export const metadata: Metadata = {
-  title: 'تسجيل الدخول',
-  description: 'تسجيل الدخول إلى منصة مسار المحامي.',
+  title: 'إنشاء حساب',
+  description: 'إنشاء حساب جديد في منصة مسار المحامي.',
   openGraph: {
-    title: 'تسجيل الدخول | مسار المحامي',
-    description: 'تسجيل الدخول إلى مساحة /app في مسار المحامي.',
-    url: '/signin',
+    title: 'إنشاء حساب | مسار المحامي',
+    description: 'إنشاء حساب وتجربة منصة مسار المحامي.',
+    url: '/signup',
   },
 };
 
-type SignInPageProps = {
+type SignUpPageProps = {
   searchParams?: {
     error?: string;
   };
 };
 
-export default function SignInPage({ searchParams }: SignInPageProps) {
+export default function SignUpPage({ searchParams }: SignUpPageProps) {
   const error = searchParams?.error ? decodeURIComponent(searchParams.error) : null;
 
   return (
     <Section className="py-16 sm:py-20">
       <Container className="max-w-xl">
         <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-          <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">تسجيل الدخول</h1>
+          <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">إنشاء حساب</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            أدخل البريد وكلمة المرور للوصول إلى منصة المكتب تحت <code>/app</code>.
+            أنشئ حسابك للدخول إلى منصة التجربة. تفعيل المنظمة والاشتراك سيتم في مرحلة لاحقة.
           </p>
 
           {error ? (
@@ -39,7 +39,17 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
             </p>
           ) : null}
 
-          <form action={signInAction} className="mt-6 space-y-4">
+          <form action={signUpAction} className="mt-6 space-y-4">
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">الاسم الكامل</span>
+              <input
+                required
+                name="full_name"
+                type="text"
+                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              />
+            </label>
+
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
               <input
@@ -54,20 +64,39 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
               <span className="font-medium text-slate-700 dark:text-slate-200">كلمة المرور</span>
               <input
                 required
+                minLength={8}
                 name="password"
                 type="password"
                 className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
               />
             </label>
 
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">رقم الجوال (اختياري)</span>
+              <input
+                name="phone"
+                type="text"
+                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">اسم المكتب (اختياري)</span>
+              <input
+                name="firm_name"
+                type="text"
+                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              />
+            </label>
+
             <button type="submit" className={buttonVariants('primary', 'md')}>
-              تسجيل الدخول
+              إنشاء الحساب
             </button>
           </form>
 
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <Link href="/signup" className="block text-brand-emerald hover:underline">
-              إنشاء حساب
+            <Link href="/signin" className="block text-brand-emerald hover:underline">
+              لدي حساب بالفعل
             </Link>
             <Link href="/" className="text-brand-emerald hover:underline">
               العودة للموقع

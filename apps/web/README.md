@@ -5,22 +5,20 @@ Next.js App Router codebase for:
 - Marketing pages: `/`, `/security`, `/privacy`, `/terms`, `/contact`
 - Trial platform pages under `/app` (protected)
 
-## Phase 2 deliverables in this repo
+## Trial platform routes (Phase 3)
 
-- Supabase migration SQL:
-  - `supabase/migrations/0001_init.sql`
-- Strict RLS policies for:
-  - `leads`
-  - `organizations`
-  - `profiles`
-  - `memberships`
-  - `trial_subscriptions`
-- Auto profile creation trigger:
-  - `public.handle_new_user()` on `auth.users`
-- Server-side trial helper:
-  - `apps/web/lib/trial.ts`
-- Debug endpoint:
-  - `GET /app/api/trial-status`
+- `/signin`
+- `/signup`
+- `/app` (Dashboard)
+- `/app/settings`
+- `/app/billing`
+- `/app/expired`
+- `GET /app/api/trial-status` (debug)
+
+## Trial gating behavior
+
+- If trial is expired, `/app`, `/app/settings`, `/app/billing` redirect to `/app/expired`.
+- If no org/trial exists, dashboard stays accessible and shows activation CTA.
 
 ## Local run
 

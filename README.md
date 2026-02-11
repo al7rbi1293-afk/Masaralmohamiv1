@@ -2,19 +2,22 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + Phase 2 foundation)
+## Current scope (Phase 1 + 2 + 3)
 
-- Marketing pages preserved:
+- Marketing pages:
   - `/`
   - `/security`
   - `/privacy`
   - `/terms`
   - `/contact`
-- Protected app area:
-  - `/app`
-- Auth skeleton:
+- Auth routes:
   - `/signin`
-  - Sign out inside `/app`
+  - `/signup`
+- Protected trial platform:
+  - `/app` (Dashboard)
+  - `/app/settings`
+  - `/app/billing`
+  - `/app/expired`
 - Trial status debug endpoint:
   - `/app/api/trial-status`
 - Supabase migration:
@@ -69,5 +72,6 @@ supabase db push
 ## Notes
 
 - `/app` redirects to `/signin` when unauthenticated.
+- Expired trials are redirected from `/app/*` to `/app/expired` (except `/app/expired` itself).
 - `getTrialStatusForCurrentUser` is implemented in:
   - `apps/web/lib/trial.ts`

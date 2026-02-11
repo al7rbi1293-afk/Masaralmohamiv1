@@ -70,12 +70,15 @@ npm run dev --workspace @masar/web
 
 في بيئة API (Docker/Render/Railway/Fly):
 
-- `DATABASE_URL` = Connection String من Supabase
+- `DATABASE_URL` = Connection String الخاص بالـ pooler
+- `DIRECT_URL` = Connection String المباشر (للـ Prisma migrations)
 - `REDIS_URL`
 - `JWT_ACCESS_SECRET`
 - `JWT_REFRESH_SECRET`
 - `WEB_BASE_URL` = رابط Vercel
 - `CORS_ORIGINS` = رابط Vercel (أو عدة روابط مفصولة بفاصلة)
+
+مهم: إذا كلمة المرور تحتوي `@` يجب ترميزها إلى `%40` داخل الرابط.
 
 أمثلة جاهزة:
 - `apps/api/.env.example`

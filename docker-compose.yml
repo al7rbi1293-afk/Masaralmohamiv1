@@ -75,6 +75,7 @@ services:
       NODE_ENV: development
       PORT: 3001
       DATABASE_URL: postgresql://sijil:sijil@postgres:5432/sijil?schema=public
+      DIRECT_URL: postgresql://sijil:sijil@postgres:5432/sijil?schema=public
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: access-secret-demo
       JWT_REFRESH_SECRET: refresh-secret-demo
@@ -106,6 +107,7 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://sijil:sijil@postgres:5432/sijil?schema=public
+      DIRECT_URL: postgresql://sijil:sijil@postgres:5432/sijil?schema=public
       REDIS_URL: redis://redis:6379
       APP_BASE_URL: http://api:3001
 

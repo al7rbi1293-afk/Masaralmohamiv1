@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-ibm-plex-arabic), var(--font-inter), sans-serif;
+  background: #f7f8fa;
+  color: #111827;
+}
+
+.dark body {
+  background: #020617;
+  color: #f8fafc;
+}
+
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand-navy focus:px-4 focus:py-2 focus:text-white;
+}
+
+::selection {
+  background: rgba(22, 163, 74, 0.2);
+}

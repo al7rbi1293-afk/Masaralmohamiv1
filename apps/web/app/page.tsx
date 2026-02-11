@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { FeatureCard } from '@/components/sections/feature-card';
 import { FAQAccordion } from '@/components/sections/faq-accordion';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { StartTrialForm } from '@/components/sections/start-trial-form';
+import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
 
@@ -153,7 +154,7 @@ export default function HomePage() {
               بواجهة بسيطة وصلاحيات وسجل تدقيق يحمي المكتب.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href="/signin" className={buttonVariants('primary', 'lg')}>
+              <Link href="#trial" className={buttonVariants('primary', 'lg')}>
                 جرّب مجانًا 14 يوم
               </Link>
               <Link
@@ -201,6 +202,15 @@ export default function HomePage() {
             ))}
           </div>
         </Container>
+      </Section>
+
+      <Section
+        id="trial"
+        title="ابدأ التجربة المجانية لمدة 14 يوم"
+        subtitle="سجّل بياناتك وسيتم نقلك مباشرة إلى المنصة التجريبية."
+        className="scroll-mt-28 bg-white dark:bg-slate-950"
+      >
+        <StartTrialForm />
       </Section>
 
       <Section className="bg-white dark:bg-slate-950">

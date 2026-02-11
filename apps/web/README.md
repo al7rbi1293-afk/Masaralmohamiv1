@@ -5,7 +5,7 @@ Next.js App Router codebase for:
 - Marketing pages: `/`, `/security`, `/privacy`, `/terms`, `/contact`
 - Trial platform pages under `/app` (protected)
 
-## Trial platform routes (Phase 3)
+## Trial platform routes (Phase 3 + 4)
 
 - `/signin`
 - `/signup`
@@ -14,11 +14,13 @@ Next.js App Router codebase for:
 - `/app/billing`
 - `/app/expired`
 - `GET /app/api/trial-status` (debug)
+- `POST /api/start-trial` (landing trial provisioning)
 
 ## Trial gating behavior
 
 - If trial is expired, `/app`, `/app/settings`, `/app/billing` redirect to `/app/expired`.
 - If no org/trial exists, dashboard stays accessible and shows activation CTA.
+- Trial is provisioned per organization and starts at 14 days.
 
 ## Local run
 
@@ -60,3 +62,14 @@ supabase db push
 2. Open `/app/api/trial-status`
 3. If no organization/trial exists yet, response should include:
    - `status: "none"`
+
+## Start-trial flow
+
+1. Open landing section `/#trial`.
+2. Submit form (name, email, password, optional phone/firm name).
+3. Server route `/api/start-trial`:
+   - Inserts `leads` row.
+   - Signs in or creates auth user then signs in.
+   - Provisions organization + owner membership if needed.
+   - Creates 14-day trial if none exists.
+4. Redirects to `/app` (or `/app/expired` when trial is expired).

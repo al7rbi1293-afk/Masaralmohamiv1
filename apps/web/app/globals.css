@@ -16,6 +16,10 @@ body {
   overflow-x: hidden;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-ibm-plex-arabic), var(--font-inter), sans-serif;
   background: #f7f8fa;

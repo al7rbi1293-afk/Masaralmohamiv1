@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3)
+## Current scope (Phase 1 + 2 + 3 + 4)
 
 - Marketing pages:
   - `/`
@@ -10,6 +10,7 @@ Next.js (App Router) + Supabase.
   - `/privacy`
   - `/terms`
   - `/contact`
+  - Landing trial form section: `/#trial`
 - Auth routes:
   - `/signin`
   - `/signup`
@@ -20,6 +21,8 @@ Next.js (App Router) + Supabase.
   - `/app/expired`
 - Trial status debug endpoint:
   - `/app/api/trial-status`
+- Trial provisioning endpoint:
+  - `POST /api/start-trial`
 - Supabase migration:
   - `supabase/migrations/0001_init.sql`
 
@@ -69,9 +72,21 @@ supabase db push
 3. Expected:
    - Logged-in user with no org/trial yet -> `status: "none"`
 
+## Start trial flow
+
+1. Open `http://localhost:3000/#trial`.
+2. Fill the 14-day trial form.
+3. Backend endpoint `POST /api/start-trial` will:
+   - Insert a lead in `public.leads`.
+   - Sign in existing user or create user then sign in.
+   - Provision `organizations` + `memberships` (owner) if missing.
+   - Create `trial_subscriptions` for 14 days if not present.
+4. User is redirected to `/app` (or `/app/expired` if existing trial is expired).
+
 ## Notes
 
 - `/app` redirects to `/signin` when unauthenticated.
 - Expired trials are redirected from `/app/*` to `/app/expired` (except `/app/expired` itself).
+- Trial is provisioned per organization and defaults to 14 days.
 - `getTrialStatusForCurrentUser` is implemented in:
   - `apps/web/lib/trial.ts`

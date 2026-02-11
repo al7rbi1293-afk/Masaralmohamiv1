@@ -18,11 +18,18 @@ export const metadata: Metadata = {
 type SignInPageProps = {
   searchParams?: {
     error?: string;
+    email?: string;
+    reason?: string;
   };
 };
 
 export default function SignInPage({ searchParams }: SignInPageProps) {
-  const error = searchParams?.error ? decodeURIComponent(searchParams.error) : null;
+  const error = searchParams?.error ? safeDecode(searchParams.error) : null;
+  const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
+  const existsMessage =
+    searchParams?.reason === 'exists'
+      ? 'هذا البريد مسجل بالفعل. سجّل الدخول لإكمال التجربة.'
+      : null;
 
   return (
     <Section className="py-16 sm:py-20">
@@ -32,6 +39,12 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
             أدخل البريد وكلمة المرور للوصول إلى منصة المكتب تحت <code>/app</code>.
           </p>
+
+          {existsMessage ? (
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+              {existsMessage}
+            </p>
+          ) : null}
 
           {error ? (
             <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
@@ -46,6 +59,7 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
                 required
                 name="email"
                 type="email"
+                defaultValue={prefilledEmail}
                 className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
               />
             </label>
@@ -77,4 +91,12 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
       </Container>
     </Section>
   );
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }

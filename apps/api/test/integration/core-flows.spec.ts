@@ -1,9 +1,89 @@
-import { Role } from '@prisma/client';
+import { Language, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../../src/auth/auth.service';
 import { BillingService } from '../../src/billing/billing.service';
 
 describe('Core flows integration', () => {
+  it('signup flow: create tenant and partner then issue tokens', async () => {
+    const createdTenant = {
+      id: 'tenant-new',
+      firmName: 'Masar Law Firm',
+      language: 'AR',
+    };
+
+    const createdUser = {
+      id: 'user-new',
+      tenantId: createdTenant.id,
+      email: 'owner@masar.sa',
+      name: 'Owner',
+      role: Role.PARTNER,
+      isActive: true,
+      passwordHash: await bcrypt.hash('Password123!', 10),
+    };
+
+    const prisma = {
+      tenant: {
+        findFirst: jest.fn(async () => null),
+      },
+      user: {
+        create: jest.fn(async () => createdUser),
+      },
+      refreshToken: {
+        create: jest.fn(async () => ({})),
+      },
+      $transaction: jest.fn(async (cb: any) =>
+        cb({
+          tenant: {
+            create: jest.fn(async () => createdTenant),
+          },
+          user: {
+            create: jest.fn(async () => createdUser),
+          },
+        }),
+      ),
+    } as any;
+
+    const jwtService = {
+      signAsync: jest.fn(async (payload: any) =>
+        Buffer.from(JSON.stringify(payload)).toString('base64'),
+      ),
+      verifyAsync: jest.fn(),
+    } as any;
+
+    const configService = {
+      get: jest.fn((key: string, fallback: string) => {
+        const map: Record<string, string> = {
+          JWT_ACCESS_SECRET: 'access-secret',
+          JWT_REFRESH_SECRET: 'refresh-secret',
+          JWT_ACCESS_TTL: '900s',
+          JWT_REFRESH_TTL: '7d',
+        };
+        return map[key] ?? fallback;
+      }),
+    } as any;
+
+    const auditService = {
+      log: jest.fn(),
+    } as any;
+
+    const service = new AuthService(prisma, jwtService, configService, auditService);
+
+    const result = await service.signup({
+      firmName: 'Masar Law Firm',
+      name: 'Owner',
+      email: 'owner@masar.sa',
+      password: 'Password123!',
+      language: Language.AR,
+      hijriDisplay: true,
+    });
+
+    expect(result.user.role).toBe(Role.PARTNER);
+    expect(result.user.tenantId).toBe(createdTenant.id);
+    expect(result.workspaceUrl).toBe(`/app/${createdTenant.id}/dashboard`);
+    expect(result.accessToken).toBeDefined();
+    expect(result.refreshToken).toBeDefined();
+  });
+
   it('auth flow: login, refresh, logout', async () => {
     const hashedPassword = await bcrypt.hash('Password123!', 10);
     const user = {

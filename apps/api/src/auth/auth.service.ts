@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import { withTenant } from '../common/tenant-scope';
 import { JwtUser } from '../common/types/jwt-user.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
 import { AccessTokenPayload } from './jwt.strategy';
 
 type RefreshTokenPayload = {
@@ -40,6 +42,80 @@ export class AuthService {
     this.refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET', 'refresh-secret-demo');
     this.accessTtl = this.configService.get<string>('JWT_ACCESS_TTL', '900s');
     this.refreshTtl = this.configService.get<string>('JWT_REFRESH_TTL', '7d');
+  }
+
+  async signup(dto: SignupDto, ip?: string, userAgent?: string) {
+    const email = dto.email.toLowerCase().trim();
+
+    const duplicate = await this.prisma.tenant.findFirst({
+      where: {
+        firmName: dto.firmName.trim(),
+        users: {
+          some: {
+            email,
+          },
+        },
+      },
+    });
+
+    if (duplicate) {
+      throw new ConflictException('Account already exists for this firm and email');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    const { tenant, user } = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          firmName: dto.firmName.trim(),
+          language: dto.language,
+          hijriDisplay: dto.hijriDisplay,
+          retentionDays: dto.retentionDays,
+        },
+      });
+
+      const user = await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          name: dto.name.trim(),
+          email,
+          passwordHash,
+          role: Role.PARTNER,
+          isActive: true,
+        },
+      });
+
+      return { tenant, user };
+    });
+
+    const tokens = await this.issueTokens(user);
+
+    await this.auditService.log({
+      tenantId: tenant.id,
+      userId: user.id,
+      action: 'SIGNUP_SUCCESS',
+      entity: 'auth',
+      metadata: { email, firmName: tenant.firmName },
+      ip,
+      userAgent,
+    });
+
+    return {
+      ...tokens,
+      tenant: {
+        id: tenant.id,
+        firmName: tenant.firmName,
+        language: tenant.language,
+      },
+      user: {
+        id: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      },
+      workspaceUrl: `/app/${tenant.id}/dashboard`,
+    };
   }
 
   async login(dto: LoginDto, ip?: string, userAgent?: string) {

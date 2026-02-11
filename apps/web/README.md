@@ -1,21 +1,33 @@
-# Masar Al-Muhami Marketing Website
+# Masar Al-Muhami Web App
 
-Public marketing site for **مسار المحامي** built with:
+واجهة Next.js تشمل:
 
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
-- Arabic-first RTL layout (`lang="ar"` + `dir="rtl"`)
+- الموقع التسويقي
+- إنشاء حساب مكتب جديد (Signup)
+- بوابة إدارة المكتب (Portal)
 
 ## Routes
 
-- `/` الرئيسية
-- `/security` الأمان والخصوصية
-- `/privacy` سياسة الخصوصية
-- `/terms` الشروط والأحكام
-- `/contact` تواصل معنا
+### Marketing
+- `/`
+- `/security`
+- `/privacy`
+- `/terms`
+- `/contact`
 
-## Run locally
+### Workspace
+- `/start`
+- `/app/login`
+- `/app/{tenantId}/dashboard`
+- `/app/{tenantId}/clients`
+- `/app/{tenantId}/matters`
+- `/app/{tenantId}/documents`
+- `/app/{tenantId}/tasks`
+- `/app/{tenantId}/billing`
+- `/app/{tenantId}/settings`
+- `/app/{tenantId}/users`
+
+## Local run
 
 From monorepo root:
 
@@ -24,49 +36,25 @@ npm install
 npm run dev --workspace @masar/web
 ```
 
-Open: [http://localhost:3000](http://localhost:3000)
-
-## Production build
-
-From monorepo root:
+## Build
 
 ```bash
 npm run build --workspace @masar/web
 npm run start --workspace @masar/web
 ```
 
-## Deploy to Vercel
+## Environment
 
-1. Push repository to GitHub.
-2. In Vercel, import the repo.
-3. Set **Root Directory** to `apps/web`.
-4. Framework preset: **Next.js**.
-5. Build command: `npm run build`.
-6. Output directory: leave default.
-7. Deploy.
-
-No required environment variables for this marketing site.
-
-## Optional static export
-
-If you want a fully static build:
-
-1. Update `apps/web/next.config.mjs` with:
-
-```js
-const nextConfig = {
-  reactStrictMode: true,
-  output: 'export',
-  images: { unoptimized: true },
-};
-
-export default nextConfig;
-```
-
-2. Build:
+Create `apps/web/.env.local`:
 
 ```bash
-npm run build --workspace @masar/web
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-Static files will be generated in `apps/web/out`.
+## Deploy to Vercel
+
+1. Import repo in Vercel.
+2. Set root directory to `apps/web`.
+3. Add env var:
+   - `NEXT_PUBLIC_API_URL=https://YOUR_API_DOMAIN`
+4. Deploy.

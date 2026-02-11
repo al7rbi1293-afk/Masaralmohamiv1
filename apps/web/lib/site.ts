@@ -13,6 +13,7 @@ export const navLinks = [
   { href: '/privacy', label: 'الخصوصية' },
   { href: '/terms', label: 'الشروط' },
   { href: '/contact', label: 'تواصل' },
+  { href: '/app/login', label: 'إدارة المكتب' },
 ];
 
 export const footerLinks = [

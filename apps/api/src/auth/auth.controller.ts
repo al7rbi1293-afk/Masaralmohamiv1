@@ -11,6 +11,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { SignupDto } from './dto/signup.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -21,6 +22,13 @@ import { LogoutDto } from './dto/logout.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('signup')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async signup(@Body() dto: SignupDto, @Req() req: Request) {
+    return this.authService.signup(dto, req.ip, req.headers['user-agent']);
+  }
 
   @Public()
   @Post('login')

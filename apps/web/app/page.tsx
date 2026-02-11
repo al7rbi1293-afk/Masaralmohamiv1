@@ -153,14 +153,14 @@ export default function HomePage() {
               بواجهة بسيطة وصلاحيات وسجل تدقيق يحمي المكتب.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href="/contact" className={buttonVariants('primary', 'lg')}>
+              <Link href="/start" className={buttonVariants('primary', 'lg')}>
                 جرّب مجانًا 14 يوم
               </Link>
               <Link
-                href="/contact?intent=demo"
+                href="/app/login"
                 className={buttonVariants('outline', 'lg')}
               >
-                احجز عرض سريع (10 دقائق)
+                دخول الإدارة
               </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
@@ -301,11 +301,11 @@ export default function HomePage() {
             الأولى.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/contact" className={buttonVariants('primary', 'md')}>
+            <Link href="/start" className={buttonVariants('primary', 'md')}>
               جرّب مجانًا
             </Link>
-            <Link href="/contact?intent=early-access" className={buttonVariants('outline', 'md')}>
-              احجز مقعد النسخة الأولى
+            <Link href="/app/login" className={buttonVariants('outline', 'md')}>
+              دخول الإدارة
             </Link>
           </div>
         </div>
@@ -321,11 +321,11 @@ export default function HomePage() {
             خلّ شغلك يمشي على مسار واحد
           </h2>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/contact" className={buttonVariants('primary', 'lg')}>
+            <Link href="/start" className={buttonVariants('primary', 'lg')}>
               جرّب مسار المحامي مجانًا
             </Link>
-            <Link href="/contact?intent=demo" className={buttonVariants('outline', 'lg')}>
-              احجز عرض سريع
+            <Link href="/app/login" className={buttonVariants('outline', 'lg')}>
+              دخول الإدارة
             </Link>
           </div>
         </div>

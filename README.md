@@ -1,85 +1,88 @@
 # مسار المحامي | Masar Al-Muhami
 
-Public marketing website for **مسار المحامي** built with Next.js App Router + TypeScript + Tailwind CSS (Arabic-first RTL).
+منصة SaaS لإدارة مكاتب المحاماة (واجهة عربية RTL + API متعددة المستأجرين).
 
-## Tech stack
+## مكوّنات المونو-ريبو
 
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- `lucide-react` icons
-- `next-themes` for light/dark toggle
+- `apps/web`: Next.js (Landing + Signup + Office Portal)
+- `apps/api`: NestJS + Prisma + PostgreSQL + Redis + MinIO
+- `apps/worker`: BullMQ worker للتذكيرات
 
-## Pages
+## المسارات الأساسية
 
-- `/` Landing
-- `/security` Security & Privacy
-- `/privacy` Privacy Policy
-- `/terms` Terms & Conditions
-- `/contact` Contact
+### الموقع العام
+- `/` الصفحة الرئيسية
+- `/security` الأمان والخصوصية
+- `/privacy` سياسة الخصوصية
+- `/terms` الشروط والأحكام
+- `/contact` تواصل معنا
 
-## Run locally
+### تدفق المكتب
+- `/start` إنشاء مكتب جديد (Signup)
+- `/app/login` دخول الإدارة
+- `/app/{tenantId}/dashboard` لوحة المكتب
+- `/app/{tenantId}/clients`
+- `/app/{tenantId}/matters`
+- `/app/{tenantId}/documents`
+- `/app/{tenantId}/tasks`
+- `/app/{tenantId}/billing`
+- `/app/{tenantId}/settings`
+- `/app/{tenantId}/users`
 
-From repository root:
+## تدفق التسجيل
+
+1. المستخدم يسجل من `/start`.
+2. API ينفذ `POST /auth/signup` ويُنشئ:
+   - Tenant جديد
+   - User بدور `PARTNER`
+3. يعاد JWT يتضمن `tenantId` + `workspaceUrl`.
+4. الواجهة تحفظ الجلسة وتحوّل المستخدم إلى:
+   - `/app/{tenantId}/dashboard`
+
+## تشغيل محلي (كل الخدمات)
+
+```bash
+docker compose up --build
+```
+
+الخدمات:
+- Web: [http://localhost:3000](http://localhost:3000)
+- API: [http://localhost:3001](http://localhost:3001)
+- Swagger: [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
+
+## تشغيل الويب فقط
 
 ```bash
 npm install
 npm run dev --workspace @masar/web
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+## النشر على Vercel (للواجهة)
 
-Alternative (full stack with Docker services):
+1. ارفع المستودع إلى GitHub.
+2. في Vercel: Import Project.
+3. `Root Directory` = `apps/web`.
+4. أضف Environment Variable:
+   - `NEXT_PUBLIC_API_URL=https://YOUR_API_DOMAIN`
+5. Deploy.
 
-```bash
-docker compose up --build
-```
+## إعداد API مع Supabase PostgreSQL
 
-## Build
+في بيئة API (Docker/Render/Railway/Fly):
 
-```bash
-npm run build --workspace @masar/web
-npm run start --workspace @masar/web
-```
+- `DATABASE_URL` = Connection String من Supabase
+- `REDIS_URL`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `WEB_BASE_URL` = رابط Vercel
+- `CORS_ORIGINS` = رابط Vercel (أو عدة روابط مفصولة بفاصلة)
 
-## Deploy to Vercel
+أمثلة جاهزة:
+- `apps/api/.env.example`
+- `apps/web/.env.example`
 
-1. Push the repository to GitHub.
-2. Import project in Vercel.
-3. Set **Root Directory** to `apps/web`.
-4. Framework preset: **Next.js**.
-5. Build command: `npm run build`.
-6. Install command: `npm install`.
-7. Deploy.
+## ملاحظات
 
-No environment variables are required for this marketing site.
-
-## Optional static export
-
-If you want static hosting only:
-
-1. Update `apps/web/next.config.mjs`:
-
-```js
-const nextConfig = {
-  reactStrictMode: true,
-  output: 'export',
-  images: { unoptimized: true },
-};
-
-export default nextConfig;
-```
-
-2. Build:
-
-```bash
-npm run build --workspace @masar/web
-```
-
-Exported files will be generated under `apps/web/out`.
-
-## Notes
-
-- Shared UI components are in `apps/web/components`.
-- Site config, branding, and links are in `apps/web/lib/site.ts`.
-- This repository still contains API/worker services from the broader Sijil stack, but the marketing website is isolated in `apps/web`.
+- العزل متعدد المستأجرين مفروض عبر `tenantId` على مستوى الجدول والاستعلام.
+- كل JWT يتضمن `tenantId` ويُستخدم على الخادم لكل العمليات.
+- روابط المستندات مشاركة/تنزيل موقعة ومؤقتة.

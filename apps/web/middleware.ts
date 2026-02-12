@@ -27,6 +27,8 @@ export async function middleware(request: NextRequest) {
     return missingEnvResponse();
   }
 
+  const requestHeaders = new Headers(request.headers);
+
   const accessToken = request.cookies.get(ACCESS_COOKIE_NAME)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE_NAME)?.value;
 
@@ -44,7 +46,12 @@ export async function middleware(request: NextRequest) {
   if (accessToken) {
     const { data, error } = await supabase.auth.getUser(accessToken);
     if (!error && data.user) {
-      return NextResponse.next();
+      // Propagate the access token to the server so route handlers/server components
+      // can perform RLS queries reliably (even when cookies are rotated).
+      requestHeaders.set('x-masar-access-token', accessToken);
+      return NextResponse.next({
+        request: { headers: requestHeaders },
+      });
     }
   }
 
@@ -54,7 +61,10 @@ export async function middleware(request: NextRequest) {
     });
 
     if (!error && data.session) {
-      const response = NextResponse.next();
+      requestHeaders.set('x-masar-access-token', data.session.access_token);
+      const response = NextResponse.next({
+        request: { headers: requestHeaders },
+      });
       response.cookies.set(ACCESS_COOKIE_NAME, data.session.access_token, {
         ...SESSION_COOKIE_OPTIONS,
         maxAge: data.session.expires_in,

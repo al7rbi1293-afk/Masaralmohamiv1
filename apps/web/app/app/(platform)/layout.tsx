@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
+import { getCurrentOrgContextForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 
@@ -10,16 +11,22 @@ type PlatformLayoutProps = {
   children: React.ReactNode;
 };
 
-const navItems = [
+const navItemsBase = [
   { href: '/app', label: 'لوحة التحكم' },
+  { href: '/app/matters', label: 'القضايا' },
+  { href: '/app/clients', label: 'العملاء' },
+  { href: '/app/documents', label: 'المستندات' },
+  { href: '/app/tasks', label: 'المهام' },
+  { href: '/app/billing', label: 'الفوترة' },
+  { href: '/app/reports', label: 'التقارير' },
   { href: '/app/settings', label: 'الإعدادات' },
-  { href: '/app/billing', label: 'التجربة والفوترة' },
-];
+] as const;
 
 export default async function PlatformLayout({ children }: PlatformLayoutProps) {
-  const [user, trial] = await Promise.all([
+  const [user, trial, org] = await Promise.all([
     getCurrentAuthUser(),
     getTrialStatusForCurrentUser(),
+    getCurrentOrgContextForUser(),
   ]);
 
   if (!user) {
@@ -30,13 +37,20 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
     redirect('/app/expired');
   }
 
+  const navItems = [
+    ...navItemsBase,
+    ...(org.role === 'owner' ? [{ href: '/app/audit', label: 'سجل التدقيق' }] : []),
+  ];
+
   return (
     <Container className="py-8 sm:py-10">
       <section className="rounded-xl2 border border-brand-border bg-white shadow-panel dark:border-slate-700 dark:bg-slate-900">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-border px-5 py-4 dark:border-slate-700">
           <div>
             <h1 className="text-lg font-bold text-brand-navy dark:text-slate-100">مسار المحامي</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">منصة التجربة</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {org.orgName ? `منصة المكتب: ${org.orgName}` : 'منصة المكتب'}
+            </p>
           </div>
 
           <div className="flex items-center gap-3">

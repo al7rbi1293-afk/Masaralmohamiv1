@@ -1,39 +1,54 @@
+import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 
-const supportEmail = 'masar.almohami@outlook.sa';
-
-function statusLabel(status: 'active' | 'expired' | 'none') {
-  if (status === 'active') return 'نشطة';
-  if (status === 'expired') return 'منتهية';
-  return 'غير مبدوءة';
-}
-
-export default async function BillingPage() {
+export default async function BillingIndexPage() {
   const trial = await getTrialStatusForCurrentUser();
-  const message =
-    trial.status === 'active'
-      ? 'انتهت التجربة؟ تواصل معنا للنسخة الكاملة.'
-      : 'الخطط والأسعار النهائية قريبًا.';
 
   return (
-    <section className="space-y-5 rounded-lg border border-brand-border p-5 dark:border-slate-700">
-      <h2 className="text-xl font-bold text-brand-navy dark:text-slate-100">التجربة والفوترة</h2>
+    <section className="rounded-lg border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+      <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">الفوترة</h1>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+        عروض أسعار وفواتير وتصدير PDF (MVP).
+      </p>
 
-      <article className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
-        <p className="text-sm text-slate-600 dark:text-slate-300">حالة التجربة</p>
-        <p className="mt-1 text-lg font-semibold text-brand-navy dark:text-slate-100">
-          {statusLabel(trial.status)}
+      {trial.status !== 'active' ? (
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          ملاحظة: الفوترة متاحة أثناء التجربة النشطة.
         </p>
-        <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">{message}</p>
-      </article>
+      ) : null}
 
-      <a
-        href={`mailto:${supportEmail}?subject=${encodeURIComponent('تفعيل النسخة الكاملة - مسار المحامي')}`}
-        className={buttonVariants('primary', 'md')}
-      >
-        تواصل معنا
-      </a>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <Link
+          href="/app/billing/quotes"
+          className="rounded-lg border border-brand-border bg-brand-background p-5 transition hover:border-brand-emerald dark:border-slate-700 dark:bg-slate-800"
+        >
+          <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">عروض الأسعار</h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            إنشاء عرض سعر وإرساله للعميل.
+          </p>
+        </Link>
+
+        <Link
+          href="/app/billing/invoices"
+          className="rounded-lg border border-brand-border bg-brand-background p-5 transition hover:border-brand-emerald dark:border-slate-700 dark:bg-slate-800"
+        >
+          <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">الفواتير</h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            إنشاء فاتورة، تحديث الحالة، وتصدير PDF.
+          </p>
+        </Link>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link href="/app/billing/quotes/new" className={buttonVariants('primary', 'md')}>
+          عرض سعر جديد
+        </Link>
+        <Link href="/app/billing/invoices/new" className={buttonVariants('outline', 'md')}>
+          فاتورة جديدة
+        </Link>
+      </div>
     </section>
   );
 }
+

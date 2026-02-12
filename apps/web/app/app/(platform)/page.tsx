@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { getCurrentOrgIdForUser } from '@/lib/org';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 
 const supportEmail = 'masar.almohami@outlook.sa';
@@ -19,8 +21,49 @@ function statusLabel(status: 'active' | 'expired' | 'none') {
 }
 
 export default async function DashboardPage() {
-  const trial = await getTrialStatusForCurrentUser();
+  const [trial, orgId] = await Promise.all([getTrialStatusForCurrentUser(), getCurrentOrgIdForUser()]);
   const mailtoActivate = `mailto:${supportEmail}?subject=${encodeURIComponent('تفعيل النسخة الكاملة - مسار المحامي')}`;
+
+  const supabase = createSupabaseServerRlsClient();
+
+  const [{ count: clientsCount }, { count: mattersCount }, { count: overdueTasksCount }, { data: unpaidInvoices }] =
+    orgId
+      ? await Promise.all([
+          supabase
+            .from('clients')
+            .select('id', { count: 'exact', head: true })
+            .eq('org_id', orgId)
+            .eq('status', 'active'),
+          supabase
+            .from('matters')
+            .select('id', { count: 'exact', head: true })
+            .eq('org_id', orgId)
+            .neq('status', 'archived'),
+          supabase
+            .from('tasks')
+            .select('id', { count: 'exact', head: true })
+            .eq('org_id', orgId)
+            .lt('due_at', new Date().toISOString())
+            .in('status', ['todo', 'doing']),
+          supabase
+            .from('invoices')
+            .select('total')
+            .eq('org_id', orgId)
+            .in('status', ['unpaid', 'partial'])
+            .limit(500),
+        ])
+      : await Promise.all([
+          Promise.resolve({ count: 0 }),
+          Promise.resolve({ count: 0 }),
+          Promise.resolve({ count: 0 }),
+          Promise.resolve({ data: [] as any }),
+        ]);
+
+  const unpaidTotal =
+    (unpaidInvoices as Array<{ total: string }> | null)?.reduce((sum, row) => {
+      const value = Number(row.total);
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0) ?? 0;
 
   return (
     <div className="space-y-5">
@@ -37,6 +80,49 @@ export default async function DashboardPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-lg border border-brand-border bg-brand-background p-4 dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-sm text-slate-600 dark:text-slate-300">العملاء</p>
+          <p className="mt-2 text-3xl font-bold text-brand-navy dark:text-slate-100">
+            {clientsCount ?? 0}
+          </p>
+          <Link href="/app/clients" className="mt-3 inline-block text-sm text-brand-emerald hover:underline">
+            فتح العملاء
+          </Link>
+        </article>
+
+        <article className="rounded-lg border border-brand-border bg-brand-background p-4 dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-sm text-slate-600 dark:text-slate-300">القضايا</p>
+          <p className="mt-2 text-3xl font-bold text-brand-navy dark:text-slate-100">
+            {mattersCount ?? 0}
+          </p>
+          <Link href="/app/matters" className="mt-3 inline-block text-sm text-brand-emerald hover:underline">
+            فتح القضايا
+          </Link>
+        </article>
+
+        <article className="rounded-lg border border-brand-border bg-brand-background p-4 dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-sm text-slate-600 dark:text-slate-300">مهام متأخرة</p>
+          <p className="mt-2 text-3xl font-bold text-brand-navy dark:text-slate-100">
+            {overdueTasksCount ?? 0}
+          </p>
+          <Link href="/app/tasks" className="mt-3 inline-block text-sm text-brand-emerald hover:underline">
+            فتح المهام
+          </Link>
+        </article>
+
+        <article className="rounded-lg border border-brand-border bg-brand-background p-4 dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-sm text-slate-600 dark:text-slate-300">فواتير غير مسددة</p>
+          <p className="mt-2 text-3xl font-bold text-brand-navy dark:text-slate-100">
+            {unpaidTotal.toFixed(2)}
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">SAR</p>
+          <Link href="/app/billing/invoices" className="mt-2 inline-block text-sm text-brand-emerald hover:underline">
+            فتح الفواتير
+          </Link>
+        </article>
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2">
         <article className="rounded-lg border border-brand-border p-4 dark:border-slate-700">

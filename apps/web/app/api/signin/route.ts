@@ -93,16 +93,27 @@ function safeNextPlatformPath(raw?: string) {
     return null;
   }
 
+  const value = raw.trim();
+
   // Disallow protocol-relative or malformed values.
-  if (raw.startsWith('//')) {
+  if (!value.startsWith('/') || value.startsWith('//')) {
     return null;
   }
 
-  // Only allow returning to the current trial platform routes.
-  const allowed = new Set(['/app', '/app/settings', '/app/billing', '/app/expired']);
-  if (allowed.has(raw)) {
-    return raw;
+  // Basic hardening against header injection.
+  if (value.includes('\n') || value.includes('\r')) {
+    return null;
   }
 
-  return null;
+  // Only allow returning to the platform (avoid open redirects).
+  if (!value.startsWith('/app')) {
+    return null;
+  }
+
+  // Disallow returning to API endpoints.
+  if (value.startsWith('/app/api')) {
+    return null;
+  }
+
+  return value;
 }

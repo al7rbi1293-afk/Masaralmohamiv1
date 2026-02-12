@@ -39,7 +39,9 @@ export async function POST(request: NextRequest) {
     return redirectWithError(request, toArabicAuthError(error?.message), parsed.data.email);
   }
 
-  const destination = safeNextPath(parsed.data.next) ?? '/app';
+  // Some users might come with old bookmarked routes (e.g. legacy /app/[tenantId] pages).
+  // Only allow returning to the current trial platform pages.
+  const destination = safeNextPlatformPath(parsed.data.next) ?? '/app';
   const response = NextResponse.redirect(new URL(destination, request.url), 303);
 
   response.cookies.set(ACCESS_COOKIE_NAME, data.session.access_token, {
@@ -86,13 +88,8 @@ function toArabicAuthError(message?: string) {
   return 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.';
 }
 
-function safeNextPath(raw?: string) {
+function safeNextPlatformPath(raw?: string) {
   if (!raw) {
-    return null;
-  }
-
-  // Prevent open redirects. Only allow returning to /app routes.
-  if (!raw.startsWith('/app')) {
     return null;
   }
 
@@ -101,6 +98,11 @@ function safeNextPath(raw?: string) {
     return null;
   }
 
-  return raw;
-}
+  // Only allow returning to the current trial platform routes.
+  const allowed = new Set(['/app', '/app/settings', '/app/billing', '/app/expired']);
+  if (allowed.has(raw)) {
+    return raw;
+  }
 
+  return null;
+}

@@ -11,3 +11,4 @@ apps/api/prisma/migrations/*/migration_lock.toml
 .vercel
 apps/web/playwright-report
 apps/web/test-results
+localhost

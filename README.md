@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.1)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.2)
 
 - Marketing pages:
   - `/`
@@ -19,7 +19,9 @@ Next.js (App Router) + Supabase.
   - `/app/clients` (CRUD + Archive/Restore)
   - `/app/clients/new`
   - `/app/clients/[id]`
-  - `/app/matters` (Placeholder)
+  - `/app/matters` (List + Search + Filters + Pagination)
+  - `/app/matters/new`
+  - `/app/matters/[id]` (Summary + Edit + Archive/Restore)
   - `/app/documents` (Placeholder)
   - `/app/tasks` (Placeholder)
   - `/app/billing` (Placeholder)
@@ -37,6 +39,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0001_init.sql`
   - `supabase/migrations/0002_full_version_requests.sql`
   - `supabase/migrations/0003_clients.sql`
+  - `supabase/migrations/0004_matters.sql`
 
 ## Run locally
 
@@ -80,6 +83,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0001_init.sql`
    - `supabase/migrations/0002_full_version_requests.sql`
    - `supabase/migrations/0003_clients.sql`
+   - `supabase/migrations/0004_matters.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -123,6 +127,26 @@ supabase db push
 - أضف عميل جديد من `/app/clients/new`
 - حدّث بيانات العميل من `/app/clients/[id]`
 - أرشف العميل أو استعده من القائمة أو صفحة التفاصيل
+
+## Matters module (Phase 7.1.2)
+
+بعد تطبيق migration `0004_matters.sql`:
+- افتح `/app/matters` لإنشاء واستعراض القضايا
+- أنشئ قضية من `/app/matters/new` واربطها بموكل موجود
+- افتح `/app/matters/[id]` لتعديل الملخص والحالة والأرشفة/الاستعادة
+
+### قاعدة الخصوصية للقضايا الخاصة
+
+- القضية العامة: تظهر لكل أعضاء المكتب
+- القضية الخاصة: تظهر فقط للشريك (owner) وأعضاء القضية المصرّح لهم
+- عند إنشاء قضية خاصة يتم إضافة منشئ القضية تلقائيًا إلى `matter_members`
+
+### اختبار يدوي سريع لخصوصية القضية
+
+1. أنشئ قضية خاصة من حساب عضو داخل المكتب.
+2. تأكد أن المنشئ يستطيع فتح القضية في `/app/matters/[id]`.
+3. من حساب مستخدم آخر غير مالك وغير عضو في القضية، حاول فتح نفس الرابط:
+   - يجب أن تظهر رسالة: `القضية غير موجودة أو لا تملك صلاحية الوصول.`
 
 ## Notes
 

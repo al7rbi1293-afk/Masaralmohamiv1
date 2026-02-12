@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.2)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.3)
 
 - Marketing pages:
   - `/`
@@ -21,7 +21,7 @@ Next.js (App Router) + Supabase.
   - `/app/clients/[id]`
   - `/app/matters` (List + Search + Filters + Pagination)
   - `/app/matters/new`
-  - `/app/matters/[id]` (Summary + Edit + Archive/Restore)
+  - `/app/matters/[id]` (Summary + Timeline + Edit + Archive/Restore)
   - `/app/documents` (Placeholder)
   - `/app/tasks` (Placeholder)
   - `/app/billing` (Placeholder)
@@ -40,6 +40,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0002_full_version_requests.sql`
   - `supabase/migrations/0003_clients.sql`
   - `supabase/migrations/0004_matters.sql`
+  - `supabase/migrations/0005_matter_events.sql`
 
 ## Run locally
 
@@ -84,6 +85,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0002_full_version_requests.sql`
    - `supabase/migrations/0003_clients.sql`
    - `supabase/migrations/0004_matters.sql`
+   - `supabase/migrations/0005_matter_events.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -147,6 +149,22 @@ supabase db push
 2. تأكد أن المنشئ يستطيع فتح القضية في `/app/matters/[id]`.
 3. من حساب مستخدم آخر غير مالك وغير عضو في القضية، حاول فتح نفس الرابط:
    - يجب أن تظهر رسالة: `القضية غير موجودة أو لا تملك صلاحية الوصول.`
+
+## Matter timeline (Phase 7.1.3)
+
+بعد تطبيق migration `0005_matter_events.sql`:
+- افتح `/app/matters/[id]?tab=timeline`
+- أضف حدث جديد (نوع + تاريخ اختياري + ملاحظات)
+- صفّ الأحداث حسب النوع وتحقق من الترقيم
+
+### اختبار خصوصية أحداث القضية
+
+1. أنشئ حدثًا داخل قضية عامة:
+   - يجب أن يراه أعضاء المكتب.
+2. أنشئ حدثًا داخل قضية خاصة:
+   - يجب أن يراه الشريك (owner) وأعضاء القضية فقط.
+3. من مستخدم من مكتب آخر:
+   - لا يمكن قراءة/إضافة أحداث بسبب RLS.
 
 ## Notes
 

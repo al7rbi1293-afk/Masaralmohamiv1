@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { archiveMatter, createMatter, restoreMatter, updateMatter } from '@/lib/matters';
+import { createMatterEvent, createMatterEventSchema } from '@/lib/matterEvents';
 import { logError, logInfo } from '@/lib/logger';
 
 const matterSchema = z.object({
@@ -75,6 +76,31 @@ export async function restoreMatterAction(id: string, redirectTo = '/app/matters
   }
 }
 
+export async function createMatterEventAction(matterId: string, formData: FormData) {
+  const parsed = createMatterEventSchema.safeParse(toEventPayload(formData));
+  if (!parsed.success) {
+    redirect(
+      `/app/matters/${matterId}?tab=timeline&error=${encodeURIComponent(
+        parsed.error.issues[0]?.message ?? 'تعذر إضافة الحدث.',
+      )}`,
+    );
+  }
+
+  try {
+    const created = await createMatterEvent(matterId, {
+      type: parsed.data.type,
+      note: emptyToNull(parsed.data.note),
+      event_date: emptyToNull(parsed.data.event_date),
+    });
+    logInfo('matter_event_created', { matterId, type: created.type });
+    redirect(`/app/matters/${matterId}?tab=timeline&success=${encodeURIComponent('تمت إضافة الحدث.')}`);
+  } catch (error) {
+    const message = toEventUserMessage(error);
+    logError('matter_event_create_failed', { matterId, message });
+    redirect(`/app/matters/${matterId}?tab=timeline&error=${encodeURIComponent(message)}`);
+  }
+}
+
 function toPayload(formData: FormData) {
   return {
     title: String(formData.get('title') ?? ''),
@@ -82,6 +108,14 @@ function toPayload(formData: FormData) {
     status: String(formData.get('status') ?? 'new'),
     summary: String(formData.get('summary') ?? ''),
     is_private: formData.get('is_private') === 'on',
+  };
+}
+
+function toEventPayload(formData: FormData) {
+  return {
+    type: String(formData.get('type') ?? 'note'),
+    note: String(formData.get('note') ?? ''),
+    event_date: String(formData.get('event_date') ?? ''),
   };
 }
 
@@ -130,4 +164,21 @@ function toUserMessage(error: unknown) {
 function withToast(path: string, key: 'success' | 'error', message: string) {
   const [pathname] = path.split('?');
   return `${pathname}?${key}=${encodeURIComponent(message)}`;
+}
+
+function toEventUserMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes('permission denied') ||
+    normalized.includes('not allowed') ||
+    normalized.includes('violates row-level security') ||
+    normalized.includes('not_found') ||
+    normalized.includes('no rows')
+  ) {
+    return 'لا تملك صلاحية إضافة أحداث لهذه القضية.';
+  }
+
+  return 'تعذر إضافة الحدث.';
 }

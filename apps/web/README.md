@@ -5,7 +5,7 @@ Next.js App Router codebase for:
 - Marketing pages: `/`, `/security`, `/privacy`, `/terms`, `/contact`
 - Trial platform pages under `/app` (protected)
 
-## Trial platform routes (Phase 3 + 4 + 5 readiness)
+## Trial platform routes (Phase 3 + 4 + 5 + 6 readiness)
 
 - `/signin`
 - `/signup`
@@ -15,6 +15,7 @@ Next.js App Router codebase for:
 - `/app/expired`
 - `GET /app/api/trial-status` (debug)
 - `POST /api/start-trial` (landing trial provisioning)
+- `POST /api/contact-request` (activation/contact requests)
 
 ## Trial gating behavior
 
@@ -41,6 +42,13 @@ From repo root:
 npm run build --workspace @masar/web
 ```
 
+## E2E smoke tests
+
+```bash
+npm run test:e2e:install --workspace @masar/web
+npm run test:e2e --workspace @masar/web
+```
+
 ## Required environment variables
 
 Create `apps/web/.env.local`:
@@ -57,6 +65,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ### Option 1: Supabase SQL Editor
 
 Copy/paste `supabase/migrations/0001_init.sql` into SQL Editor and run it.
+Then run `supabase/migrations/0002_full_version_requests.sql`.
 
 ### Option 2: Supabase CLI
 
@@ -81,6 +90,22 @@ supabase db push
    - Provisions organization + owner membership if needed.
    - Creates 14-day trial if none exists.
 4. Redirects to `/app` (or `/app/expired` when trial is expired).
+
+## Contact-request flow
+
+1. Submit activation/contact form on:
+   - `/contact`
+   - `/app/expired`
+2. Route `POST /api/contact-request` validates and inserts into:
+   - `public.full_version_requests`
+
+## Security + operations docs
+
+- `QA_CHECKLIST.md`
+- `OBSERVABILITY.md`
+- `SECURITY.md`
+- `PILOT_PLAYBOOK.md`
+- `apps/web/lib/rateLimit.md`
 
 ## Deployment
 

@@ -1,10 +1,14 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
+import { FullVersionRequestForm } from '@/components/sections/full-version-request-form';
 import { Container } from '@/components/ui/container';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 const supportEmail = 'masar.almohami@outlook.sa';
 
-export default function TrialExpiredPage() {
+export default async function TrialExpiredPage() {
+  const user = await getCurrentAuthUser();
+
   return (
     <Container className="py-14 sm:py-20">
       <section className="mx-auto max-w-2xl rounded-xl2 border border-brand-border bg-white p-7 text-center shadow-panel dark:border-slate-700 dark:bg-slate-900">
@@ -23,6 +27,16 @@ export default function TrialExpiredPage() {
           <Link href="/" className={buttonVariants('outline', 'md')}>
             العودة للموقع
           </Link>
+        </div>
+
+        <div id="request-full-version" className="mt-8 rounded-lg border border-brand-border p-5 text-start dark:border-slate-700">
+          <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">طلب تفعيل النسخة الكاملة</h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            أرسل الطلب وسيتواصل معك فريق مسار المحامي خلال وقت قصير.
+          </p>
+          <div className="mt-4">
+            <FullVersionRequestForm source="app" prefilledEmail={user?.email ?? ''} />
+          </div>
         </div>
       </section>
     </Container>

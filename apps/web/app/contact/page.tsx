@@ -31,7 +31,28 @@ const contactCards = [
   },
 ];
 
-export default function ContactPage() {
+type ContactPageProps = {
+  searchParams?: {
+    topic?: string | string[];
+  };
+};
+
+function getDefaultMessage(topic?: string) {
+  if (topic === 'demo') {
+    return 'أرغب بحجز عرض سريع (10 دقائق).';
+  }
+
+  if (topic === 'activation') {
+    return 'أرغب بتفعيل النسخة الكاملة.';
+  }
+
+  return '';
+}
+
+export default function ContactPage({ searchParams }: ContactPageProps) {
+  const topic = Array.isArray(searchParams?.topic) ? searchParams?.topic[0] : searchParams?.topic;
+  const defaultMessage = getDefaultMessage(topic);
+
   return (
     <Section
       title="تواصل معنا"
@@ -58,7 +79,7 @@ export default function ContactPage() {
       </div>
 
       <div className="mt-8">
-        <ContactForm />
+        <ContactForm defaultMessage={defaultMessage} />
       </div>
     </Section>
   );

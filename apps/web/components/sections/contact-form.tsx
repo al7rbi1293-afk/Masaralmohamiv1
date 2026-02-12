@@ -8,8 +8,8 @@ type FormState = {
   firmName: string;
   email: string;
   phone: string;
-  subject: string;
   message: string;
+  website: string;
 };
 
 const initialState: FormState = {
@@ -17,16 +17,21 @@ const initialState: FormState = {
   firmName: '',
   email: '',
   phone: '',
-  subject: '',
   message: '',
+  website: '',
 };
 
-export function ContactForm() {
+type ContactFormProps = {
+  defaultMessage?: string;
+};
+
+export function ContactForm({ defaultMessage = '' }: ContactFormProps) {
   const [form, setForm] = useState<FormState>(initialState);
-  const [status, setStatus] = useState<'idle' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [error, setError] = useState<string | null>(null);
 
   const mailtoHref = useMemo(() => {
-    const subject = encodeURIComponent(form.subject || 'طلب تواصل من موقع مسار المحامي');
+    const subject = encodeURIComponent('طلب تواصل من موقع مسار المحامي');
     const body = encodeURIComponent(
       [
         `الاسم: ${form.fullName}`,
@@ -41,10 +46,45 @@ export function ContactForm() {
     return `mailto:masar.almohami@outlook.sa?subject=${subject}&body=${body}`;
   }, [form]);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus('success');
-    setForm(initialState);
+    setError(null);
+    setStatus('submitting');
+
+    try {
+      const response = await fetch('/api/contact-request', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          full_name: form.fullName || undefined,
+          email: form.email,
+          phone: form.phone || undefined,
+          firm_name: form.firmName || undefined,
+          message: form.message || undefined,
+          source: 'contact',
+          website: form.website,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+      if (!response.ok) {
+        setError(payload?.message ?? 'تعذر إرسال الطلب. حاول مرة أخرى.');
+        setStatus('idle');
+        return;
+      }
+
+      setStatus('success');
+      setForm({
+        ...initialState,
+        message: defaultMessage,
+      });
+    } catch {
+      setError('تعذر الاتصال بالخدمة. حاول مرة أخرى.');
+      setStatus('idle');
+    }
   }
 
   useEffect(() => {
@@ -59,11 +99,18 @@ export function ContactForm() {
     return () => window.clearTimeout(timeout);
   }, [status]);
 
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      message: current.message || defaultMessage,
+    }));
+  }, [defaultMessage]);
+
   return (
     <div className="relative rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
       <h2 className="text-xl font-bold text-brand-navy dark:text-slate-100">أرسل لنا رسالة</h2>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-        النموذج يعمل محليًا بدون تكامل خارجي. يمكنك استخدام البريد المباشر كخيار سريع.
+        أرسل طلبك مباشرة لفريقنا، أو استخدم البريد المباشر كخيار سريع.
       </p>
 
       {status === 'success' ? (
@@ -81,7 +128,6 @@ export function ContactForm() {
           <label className="space-y-1 text-sm">
             <span className="font-medium text-slate-700 dark:text-slate-200">الاسم</span>
             <input
-              required
               value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
               className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
@@ -121,19 +167,8 @@ export function ContactForm() {
         </div>
 
         <label className="space-y-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">الموضوع</span>
-          <input
-            required
-            value={form.subject}
-            onChange={(e) => setForm({ ...form, subject: e.target.value })}
-            className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-          />
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">الرسالة</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">الرسالة (اختياري)</span>
           <textarea
-            required
             rows={5}
             value={form.message}
             onChange={(e) => setForm({ ...form, message: e.target.value })}
@@ -141,8 +176,31 @@ export function ContactForm() {
           />
         </label>
 
+        <div className="hidden" aria-hidden>
+          <label htmlFor="contact-website">Website</label>
+          <input
+            id="contact-website"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={form.website}
+            onChange={(event) => setForm({ ...form, website: event.target.value })}
+          />
+        </div>
+
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300"
+          >
+            {error}
+          </p>
+        ) : null}
+
         <div className="flex flex-wrap gap-3">
-          <Button type="submit">إرسال</Button>
+          <Button type="submit" disabled={status === 'submitting'}>
+            {status === 'submitting' ? 'جارٍ الإرسال...' : 'إرسال الطلب'}
+          </Button>
           <a
             href={mailtoHref}
             className="inline-flex h-11 items-center justify-center rounded-lg border border-brand-border px-4 text-sm font-medium text-brand-navy transition hover:bg-brand-navy/5 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"

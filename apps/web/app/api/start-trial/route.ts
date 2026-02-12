@@ -6,14 +6,27 @@ import {
   REFRESH_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
 } from '@/lib/supabase/constants';
+import { logError, logInfo, logWarn } from '@/lib/logger';
+import { checkRateLimit, getRequestIp, type RateLimitResult } from '@/lib/rateLimit';
 import { createSupabaseServerAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
 
 const startTrialSchema = z.object({
-  full_name: z.string().trim().min(1, 'يرجى إدخال الاسم الكامل.'),
-  email: z.string().trim().email('يرجى إدخال بريد إلكتروني صحيح.'),
-  password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.'),
-  phone: z.string().trim().optional(),
-  firm_name: z.string().trim().optional(),
+  full_name: z
+    .string()
+    .trim()
+    .min(1, 'يرجى إدخال الاسم الكامل.')
+    .max(120, 'الاسم طويل جدًا.'),
+  email: z
+    .string()
+    .trim()
+    .email('يرجى إدخال بريد إلكتروني صحيح.')
+    .max(255, 'البريد الإلكتروني طويل جدًا.'),
+  password: z
+    .string()
+    .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.')
+    .max(72, 'كلمة المرور طويلة جدًا.'),
+  phone: z.string().trim().max(40, 'رقم الجوال طويل جدًا.').optional(),
+  firm_name: z.string().trim().max(120, 'اسم المكتب طويل جدًا.').optional(),
   website: z.string().trim().max(0, 'تم رفض الطلب.'),
 });
 
@@ -31,6 +44,33 @@ type OrgRow = {
 };
 
 export async function POST(request: NextRequest) {
+  const requestId = getOrCreateRequestId(request);
+  const requestIp = getRequestIp(request);
+  const rate = checkRateLimit({
+    key: `start-trial:${requestIp}`,
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (!rate.allowed) {
+    logWarn('trial_start_failed', {
+      requestId,
+      ip: requestIp,
+      reason: 'rate_limited',
+      limit: rate.limit,
+      remaining: rate.remaining,
+    });
+
+    return jsonResponse(
+      {
+        message: 'تم تجاوز الحد المسموح من المحاولات. حاول مرة أخرى بعد قليل.',
+      },
+      429,
+      requestId,
+      rate,
+    );
+  }
+
   const formData = await request.formData();
   const parsed = startTrialSchema.safeParse({
     full_name: toText(formData, 'full_name'),
@@ -42,9 +82,19 @@ export async function POST(request: NextRequest) {
   });
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { message: parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.' },
-      { status: 400 },
+    const message = parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.';
+    logWarn('trial_start_failed', {
+      requestId,
+      ip: requestIp,
+      reason: 'validation_failed',
+      validationMessage: message,
+    });
+
+    return jsonResponse(
+      { message },
+      400,
+      requestId,
+      rate,
     );
   }
 
@@ -65,7 +115,19 @@ export async function POST(request: NextRequest) {
   });
 
   if (leadError) {
-    return NextResponse.json({ message: 'تعذر حفظ طلب التجربة. حاول مرة أخرى.' }, { status: 500 });
+    logError('trial_start_failed', {
+      requestId,
+      ip: requestIp,
+      reason: 'lead_insert_failed',
+      error: leadError.message,
+    });
+
+    return jsonResponse(
+      { message: 'تعذر حفظ طلب التجربة. حاول مرة أخرى.' },
+      500,
+      requestId,
+      rate,
+    );
   }
 
   const signInResult = await authClient.auth.signInWithPassword({ email, password });
@@ -73,7 +135,19 @@ export async function POST(request: NextRequest) {
 
   if (!session) {
     if (!isInvalidCredentials(signInResult.error?.message)) {
-      return NextResponse.json({ message: 'تعذر بدء التجربة. حاول مرة أخرى.' }, { status: 401 });
+      logWarn('trial_start_failed', {
+        requestId,
+        ip: requestIp,
+        reason: 'sign_in_failed',
+        error: signInResult.error?.message ?? null,
+      });
+
+      return jsonResponse(
+        { message: 'تعذر بدء التجربة. حاول مرة أخرى.' },
+        401,
+        requestId,
+        rate,
+      );
     }
 
     const createUserResult = await adminClient.auth.admin.createUser({
@@ -88,20 +162,58 @@ export async function POST(request: NextRequest) {
 
     if (createUserResult.error) {
       if (isAlreadyRegistered(createUserResult.error.message)) {
+        logWarn('signup_failed_existing_user', {
+          requestId,
+          ip: requestIp,
+          email,
+        });
+
         const redirectUrl = new URL('/signin', request.url);
         redirectUrl.searchParams.set('email', email);
         redirectUrl.searchParams.set('reason', 'exists');
-        return NextResponse.redirect(redirectUrl, 303);
+        const response = NextResponse.redirect(redirectUrl, 303);
+        setRequestIdHeader(response, requestId);
+        setRateLimitHeaders(response, rate);
+        return response;
       }
 
-      return NextResponse.json({ message: 'تعذر إنشاء الحساب. حاول مرة أخرى.' }, { status: 500 });
+      logError('trial_start_failed', {
+        requestId,
+        ip: requestIp,
+        reason: 'signup_create_failed',
+        error: createUserResult.error.message,
+      });
+
+      return jsonResponse(
+        { message: 'تعذر إنشاء الحساب. حاول مرة أخرى.' },
+        500,
+        requestId,
+        rate,
+      );
     }
+
+    logInfo('signup_success', {
+      requestId,
+      ip: requestIp,
+      email,
+      userId: createUserResult.data.user?.id ?? null,
+    });
 
     const secondSignInResult = await authClient.auth.signInWithPassword({ email, password });
     if (secondSignInResult.error || !secondSignInResult.data.session) {
-      return NextResponse.json(
+      logWarn('trial_start_failed', {
+        requestId,
+        ip: requestIp,
+        reason: 'post_signup_sign_in_failed',
+        email,
+        error: secondSignInResult.error?.message ?? null,
+      });
+
+      return jsonResponse(
         { message: 'تم إنشاء الحساب لكن تعذر تسجيل الدخول. استخدم صفحة تسجيل الدخول.' },
-        { status: 500 },
+        500,
+        requestId,
+        rate,
       );
     }
 
@@ -117,9 +229,35 @@ export async function POST(request: NextRequest) {
     });
 
     const destination = isExpired ? '/app/expired' : '/app';
-    return buildSessionRedirectResponse(request, destination, session);
-  } catch {
-    return NextResponse.json({ message: 'تعذر تهيئة التجربة. حاول مرة أخرى.' }, { status: 500 });
+    if (isExpired) {
+      logWarn('trial_expired_redirect', {
+        requestId,
+        ip: requestIp,
+        userId,
+      });
+    } else {
+      logInfo('trial_started', {
+        requestId,
+        ip: requestIp,
+        userId,
+      });
+    }
+
+    return buildSessionRedirectResponse(request, destination, session, requestId, rate);
+  } catch (error) {
+    logError('trial_start_failed', {
+      requestId,
+      ip: requestIp,
+      reason: 'provision_failed',
+      error: toErrorMessage(error),
+    });
+
+    return jsonResponse(
+      { message: 'تعذر تهيئة التجربة. حاول مرة أخرى.' },
+      500,
+      requestId,
+      rate,
+    );
   }
 }
 
@@ -213,6 +351,8 @@ function buildSessionRedirectResponse(
   request: NextRequest,
   destination: '/app' | '/app/expired',
   session: Session,
+  requestId: string,
+  rate: RateLimitResult,
 ) {
   const response = NextResponse.redirect(new URL(destination, request.url), 303);
   response.cookies.set(ACCESS_COOKIE_NAME, session.access_token, {
@@ -223,6 +363,8 @@ function buildSessionRedirectResponse(
     ...SESSION_COOKIE_OPTIONS,
     maxAge: 60 * 60 * 24 * 30,
   });
+  setRequestIdHeader(response, requestId);
+  setRateLimitHeaders(response, rate);
   return response;
 }
 
@@ -251,4 +393,54 @@ function isAlreadyRegistered(message?: string) {
 
   const normalized = message.toLowerCase();
   return normalized.includes('already') || normalized.includes('registered');
+}
+
+function getOrCreateRequestId(request: NextRequest) {
+  const incoming = request.headers.get('x-request-id')?.trim();
+  if (incoming) {
+    return incoming;
+  }
+
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}`;
+}
+
+function jsonResponse(
+  body: { message: string },
+  status: number,
+  requestId: string,
+  rate: RateLimitResult,
+) {
+  const response = NextResponse.json(
+    {
+      ...body,
+      requestId,
+    },
+    { status },
+  );
+
+  setRequestIdHeader(response, requestId);
+  setRateLimitHeaders(response, rate);
+  return response;
+}
+
+function setRequestIdHeader(response: NextResponse, requestId: string) {
+  response.headers.set('x-request-id', requestId);
+}
+
+function setRateLimitHeaders(response: NextResponse, rate: RateLimitResult) {
+  response.headers.set('x-ratelimit-limit', String(rate.limit));
+  response.headers.set('x-ratelimit-remaining', String(rate.remaining));
+  response.headers.set('x-ratelimit-reset', String(Math.floor(rate.resetAt / 1000)));
+}
+
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'unknown_error';
 }

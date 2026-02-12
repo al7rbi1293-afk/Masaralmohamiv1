@@ -78,6 +78,9 @@ export default async function DashboardPage() {
           <a href={mailtoActivate} className={buttonVariants('primary', 'md')}>
             تواصل معنا لتفعيل النسخة الكاملة
           </a>
+          <Link href="/app/expired#request-full-version" className={buttonVariants('outline', 'md')}>
+            إرسال طلب التفعيل
+          </Link>
           <Link href="/contact?topic=demo" className={buttonVariants('outline', 'md')}>
             حجز عرض سريع
           </Link>

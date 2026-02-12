@@ -9,6 +9,7 @@
     "build": "npm run build --workspace @masar/web",
     "build:all": "npm run build -ws",
     "test": "npm run test -ws",
-    "lint": "npm run lint -ws"
+    "lint": "npm run lint -ws",
+    "test:e2e": "npm run test:e2e --workspace @masar/web"
   }
 }

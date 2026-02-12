@@ -1,0 +1,136 @@
+'use server';
+
+import { redirect } from 'next/navigation';
+import { z } from 'zod';
+import { createClient, setClientStatus, updateClient } from '@/lib/clients';
+import { logError, logInfo } from '@/lib/logger';
+
+const clientSchema = z.object({
+  type: z.enum(['person', 'company']),
+  name: z.string().trim().min(2, 'الاسم مطلوب ويجب أن لا يقل عن حرفين.').max(200, 'الاسم طويل جدًا.'),
+  identity_no: z.string().trim().max(100, 'رقم الهوية طويل جدًا.').optional().or(z.literal('')),
+  commercial_no: z.string().trim().max(100, 'رقم السجل التجاري طويل جدًا.').optional().or(z.literal('')),
+  email: z
+    .string()
+    .trim()
+    .max(255, 'البريد الإلكتروني طويل جدًا.')
+    .optional()
+    .or(z.literal(''))
+    .refine((value) => !value || z.string().email().safeParse(value).success, {
+      message: 'البريد الإلكتروني غير صحيح.',
+    }),
+  phone: z.string().trim().max(60, 'رقم الجوال طويل جدًا.').optional().or(z.literal('')),
+  notes: z.string().trim().max(4000, 'الملاحظات طويلة جدًا.').optional().or(z.literal('')),
+});
+
+export async function createClientAction(formData: FormData) {
+  const parsed = clientSchema.safeParse(toPayload(formData));
+  if (!parsed.success) {
+    redirect(`/app/clients/new?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? 'تعذر الحفظ. حاول مرة أخرى.')}`);
+  }
+
+  try {
+    const created = await createClient(normalize(parsed.data));
+    logInfo('client_created', { clientId: created.id });
+    redirect(`/app/clients/${created.id}?success=${encodeURIComponent('تم إنشاء العميل.')}`);
+  } catch (error) {
+    const message = toUserMessage(error);
+    logError('client_create_failed', { message });
+    redirect(`/app/clients/new?error=${encodeURIComponent(message)}`);
+  }
+}
+
+export async function updateClientAction(id: string, formData: FormData) {
+  const parsed = clientSchema.safeParse(toPayload(formData));
+  if (!parsed.success) {
+    redirect(`/app/clients/${id}?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? 'تعذر الحفظ. حاول مرة أخرى.')}`);
+  }
+
+  try {
+    await updateClient(id, normalize(parsed.data));
+    logInfo('client_updated', { clientId: id });
+    redirect(`/app/clients/${id}?success=${encodeURIComponent('تم تحديث بيانات العميل.')}`);
+  } catch (error) {
+    const message = toUserMessage(error);
+    logError('client_update_failed', { clientId: id, message });
+    redirect(`/app/clients/${id}?error=${encodeURIComponent(message)}`);
+  }
+}
+
+export async function archiveClientAction(id: string, redirectTo = '/app/clients') {
+  try {
+    await setClientStatus(id, 'archived');
+    logInfo('client_archived', { clientId: id });
+    redirect(withToast(redirectTo, 'success', 'تمت أرشفة العميل.'));
+  } catch (error) {
+    const message = toUserMessage(error);
+    logError('client_archive_failed', { clientId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
+  }
+}
+
+export async function restoreClientAction(id: string, redirectTo = '/app/clients') {
+  try {
+    await setClientStatus(id, 'active');
+    logInfo('client_restored', { clientId: id });
+    redirect(withToast(redirectTo, 'success', 'تمت استعادة العميل.'));
+  } catch (error) {
+    const message = toUserMessage(error);
+    logError('client_restore_failed', { clientId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
+  }
+}
+
+function toPayload(formData: FormData) {
+  return {
+    type: String(formData.get('type') ?? 'person'),
+    name: String(formData.get('name') ?? ''),
+    identity_no: String(formData.get('identity_no') ?? ''),
+    commercial_no: String(formData.get('commercial_no') ?? ''),
+    email: String(formData.get('email') ?? ''),
+    phone: String(formData.get('phone') ?? ''),
+    notes: String(formData.get('notes') ?? ''),
+  };
+}
+
+function normalize(data: z.infer<typeof clientSchema>) {
+  return {
+    type: data.type,
+    name: data.name.trim(),
+    identity_no: emptyToNull(data.identity_no),
+    commercial_no: emptyToNull(data.commercial_no),
+    email: emptyToNull(data.email),
+    phone: emptyToNull(data.phone),
+    notes: emptyToNull(data.notes),
+  };
+}
+
+function emptyToNull(value?: string) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function toUserMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes('permission denied') ||
+    normalized.includes('not allowed') ||
+    normalized.includes('violates row-level security')
+  ) {
+    return 'لا تملك صلاحية لهذا الإجراء.';
+  }
+  if (
+    normalized.includes('no rows') ||
+    normalized.includes('not found') ||
+    normalized.includes('not_found')
+  ) {
+    return 'العميل غير موجود.';
+  }
+  return 'تعذر الحفظ. حاول مرة أخرى.';
+}
+
+function withToast(path: string, key: 'success' | 'error', message: string) {
+  const [pathname] = path.split('?');
+  return `${pathname}?${key}=${encodeURIComponent(message)}`;
+}

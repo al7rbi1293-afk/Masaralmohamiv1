@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.0)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.1)
 
 - Marketing pages:
   - `/`
@@ -16,7 +16,9 @@ Next.js (App Router) + Supabase.
   - `/signup`
 - Protected platform (`/app`) with trial gating:
   - `/app` (Dashboard)
-  - `/app/clients` (Placeholder)
+  - `/app/clients` (CRUD + Archive/Restore)
+  - `/app/clients/new`
+  - `/app/clients/[id]`
   - `/app/matters` (Placeholder)
   - `/app/documents` (Placeholder)
   - `/app/tasks` (Placeholder)
@@ -34,6 +36,7 @@ Next.js (App Router) + Supabase.
 - Supabase migration:
   - `supabase/migrations/0001_init.sql`
   - `supabase/migrations/0002_full_version_requests.sql`
+  - `supabase/migrations/0003_clients.sql`
 
 ## Run locally
 
@@ -76,6 +79,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 2. Copy contents of:
    - `supabase/migrations/0001_init.sql`
    - `supabase/migrations/0002_full_version_requests.sql`
+   - `supabase/migrations/0003_clients.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -112,14 +116,19 @@ supabase db push
 2. Request is saved to `public.full_version_requests`.
 3. Endpoint allows anon/authenticated inserts with RLS policy.
 
+## Clients module (Phase 7.1.1)
+
+بعد تطبيق migration `0003_clients.sql`:
+- افتح `/app/clients`
+- أضف عميل جديد من `/app/clients/new`
+- حدّث بيانات العميل من `/app/clients/[id]`
+- أرشف العميل أو استعده من القائمة أو صفحة التفاصيل
+
 ## Notes
 
 - `/app` redirects to `/signin` when unauthenticated.
 - Expired trials are redirected from `/app/*` to `/app/expired` (except `/app/expired` itself).
 - Trial is provisioned per organization and defaults to 14 days.
-- Storage (documents):
-  - Create a **private** bucket named `documents` in Supabase Storage.
-  - The app uses signed upload/download URLs via server routes under `/app/api/documents/*`.
 - Rate limiting:
   - `POST /api/start-trial`: `5` requests / `10` minutes / IP.
   - `POST /api/contact-request`: `10` requests / `10` minutes / IP.

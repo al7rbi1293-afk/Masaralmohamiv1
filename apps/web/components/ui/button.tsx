@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'outline' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost';
 type Size = 'sm' | 'md' | 'lg';
 
 export function buttonVariants(variant: Variant = 'primary', size: Size = 'md') {
@@ -9,6 +9,8 @@ export function buttonVariants(variant: Variant = 'primary', size: Size = 'md') 
 
   const variants: Record<Variant, string> = {
     primary: 'bg-brand-emerald text-white hover:bg-green-600',
+    secondary:
+      'bg-brand-navy text-white hover:bg-brand-navy/90 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-100',
     outline:
       'border border-brand-border bg-white text-brand-text hover:border-brand-navy hover:text-brand-navy dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-500',
     ghost: 'text-brand-navy hover:bg-brand-navy/5 dark:text-slate-100 dark:hover:bg-slate-800',

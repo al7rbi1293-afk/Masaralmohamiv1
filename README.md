@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.0)
 
 - Marketing pages:
   - `/`
@@ -16,13 +16,13 @@ Next.js (App Router) + Supabase.
   - `/signup`
 - Protected platform (`/app`) with trial gating:
   - `/app` (Dashboard)
-  - `/app/clients` (CRUD)
-  - `/app/matters` (CRUD + Timeline)
-  - `/app/documents` (versions + share links)
-  - `/app/tasks` (basic)
-  - `/app/billing` (Quotes + Invoices + PDF export)
-  - `/app/reports` (basic)
-  - `/app/audit` (owners only)
+  - `/app/clients` (Placeholder)
+  - `/app/matters` (Placeholder)
+  - `/app/documents` (Placeholder)
+  - `/app/tasks` (Placeholder)
+  - `/app/billing` (Placeholder)
+  - `/app/reports` (Placeholder)
+  - `/app/audit` (Placeholder)
   - `/app/settings`
   - `/app/expired`
 - Trial status debug endpoint:
@@ -34,7 +34,6 @@ Next.js (App Router) + Supabase.
 - Supabase migration:
   - `supabase/migrations/0001_init.sql`
   - `supabase/migrations/0002_full_version_requests.sql`
-  - `supabase/migrations/0003_core_tables.sql`
 
 ## Run locally
 
@@ -77,7 +76,6 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 2. Copy contents of:
    - `supabase/migrations/0001_init.sql`
    - `supabase/migrations/0002_full_version_requests.sql`
-   - `supabase/migrations/0003_core_tables.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI

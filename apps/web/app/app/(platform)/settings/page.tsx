@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
 import { buttonVariants } from '@/components/ui/button';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { Card } from '@/components/ui/card';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 
@@ -27,7 +28,7 @@ export default async function SettingsPage() {
     redirect('/signin');
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServerRlsClient();
   const { data: profileData } = await supabase
     .from('profiles')
     .select('full_name')
@@ -37,7 +38,7 @@ export default async function SettingsPage() {
   const profile = profileData as ProfileRow | null;
 
   return (
-    <section className="space-y-5 rounded-lg border border-brand-border p-5 dark:border-slate-700">
+    <Card className="p-6">
       <h2 className="text-xl font-bold text-brand-navy dark:text-slate-100">الإعدادات</h2>
 
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -78,6 +79,6 @@ export default async function SettingsPage() {
           تواصل معنا
         </a>
       </div>
-    </section>
+    </Card>
   );
 }

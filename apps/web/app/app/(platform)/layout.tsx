@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
-import { getCurrentOrgContextForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 
@@ -13,20 +12,20 @@ type PlatformLayoutProps = {
 
 const navItemsBase = [
   { href: '/app', label: 'لوحة التحكم' },
-  { href: '/app/matters', label: 'القضايا' },
   { href: '/app/clients', label: 'العملاء' },
+  { href: '/app/matters', label: 'القضايا' },
   { href: '/app/documents', label: 'المستندات' },
   { href: '/app/tasks', label: 'المهام' },
   { href: '/app/billing', label: 'الفوترة' },
   { href: '/app/reports', label: 'التقارير' },
+  { href: '/app/audit', label: 'سجل التدقيق' },
   { href: '/app/settings', label: 'الإعدادات' },
 ] as const;
 
 export default async function PlatformLayout({ children }: PlatformLayoutProps) {
-  const [user, trial, org] = await Promise.all([
+  const [user, trial] = await Promise.all([
     getCurrentAuthUser(),
     getTrialStatusForCurrentUser(),
-    getCurrentOrgContextForUser(),
   ]);
 
   if (!user) {
@@ -36,11 +35,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   if (trial.status === 'expired' || trial.isExpired) {
     redirect('/app/expired');
   }
-
-  const navItems = [
-    ...navItemsBase,
-    ...(org.role === 'owner' ? [{ href: '/app/audit', label: 'سجل التدقيق' }] : []),
-  ];
+  const navItems = [...navItemsBase];
 
   return (
     <Container className="py-8 sm:py-10">
@@ -49,7 +44,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
           <div>
             <h1 className="text-lg font-bold text-brand-navy dark:text-slate-100">مسار المحامي</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {org.orgName ? `منصة المكتب: ${org.orgName}` : 'منصة المكتب'}
+              منصة المكتب
             </p>
           </div>
 

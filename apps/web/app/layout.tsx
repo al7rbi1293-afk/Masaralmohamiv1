@@ -3,6 +3,7 @@ import { IBM_Plex_Sans_Arabic, Inter } from 'next/font/google';
 import { Footer } from '@/components/layout/footer';
 import { Navbar } from '@/components/layout/navbar';
 import { ThemeProvider } from '@/components/layout/theme-provider';
+import { getPublicSiteUrl } from '@/lib/env';
 import { siteConfig } from '@/lib/site';
 import './globals.css';
 
@@ -18,8 +19,10 @@ const inter = Inter({
   weight: ['400', '500', '600', '700'],
 });
 
+const siteUrl = getPublicSiteUrl();
+
 export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
+  metadataBase: new URL(siteUrl),
   title: {
     default: `${siteConfig.nameAr} | ${siteConfig.tagline}`,
     template: `%s | ${siteConfig.nameAr}`,
@@ -28,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: `${siteConfig.nameAr} | ${siteConfig.tagline}`,
     description: siteConfig.description,
-    url: siteConfig.url,
+    url: siteUrl,
     siteName: siteConfig.nameEn,
     locale: 'ar_SA',
     type: 'website',

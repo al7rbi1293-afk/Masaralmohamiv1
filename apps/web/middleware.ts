@@ -12,12 +12,19 @@ function redirectToSignIn(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
+function missingEnvResponse() {
+  return new NextResponse(
+    'إعدادات البيئة غير مكتملة. Missing environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+    { status: 500 },
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnon) {
-    return redirectToSignIn(request);
+    return missingEnvResponse();
   }
 
   const accessToken = request.cookies.get(ACCESS_COOKIE_NAME)?.value;

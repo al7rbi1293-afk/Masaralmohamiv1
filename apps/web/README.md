@@ -5,7 +5,7 @@ Next.js App Router codebase for:
 - Marketing pages: `/`, `/security`, `/privacy`, `/terms`, `/contact`
 - Trial platform pages under `/app` (protected)
 
-## Trial platform routes (Phase 3 + 4)
+## Trial platform routes (Phase 3 + 4 + 5 readiness)
 
 - `/signin`
 - `/signup`
@@ -32,6 +32,14 @@ npm run dev --workspace @masar/web
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
+
+## Build
+
+From repo root:
+
+```bash
+npm run build --workspace @masar/web
+```
 
 ## Required environment variables
 
@@ -73,3 +81,9 @@ supabase db push
    - Provisions organization + owner membership if needed.
    - Creates 14-day trial if none exists.
 4. Redirects to `/app` (or `/app/expired` when trial is expired).
+
+## Deployment
+
+Deployment runbook:
+
+- `/DEPLOYMENT.md`

@@ -1,20 +1,12 @@
 import 'server-only';
 
 import { createClient } from '@supabase/supabase-js';
-
-function required(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is not set.`);
-  }
-  return value;
-}
+import { getSupabasePublicEnv, getSupabaseServiceEnv } from '@/lib/env';
 
 export function createSupabaseServerClient() {
-  const url = required('NEXT_PUBLIC_SUPABASE_URL');
-  const serviceRole = required('SUPABASE_SERVICE_ROLE_KEY');
+  const { url, serviceRoleKey } = getSupabaseServiceEnv();
 
-  return createClient(url, serviceRole, {
+  return createClient(url, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -23,8 +15,7 @@ export function createSupabaseServerClient() {
 }
 
 export function createSupabaseServerAuthClient() {
-  const url = required('NEXT_PUBLIC_SUPABASE_URL');
-  const anonKey = required('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  const { url, anonKey } = getSupabasePublicEnv();
 
   return createClient(url, anonKey, {
     auth: {

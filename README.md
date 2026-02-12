@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5)
 
 - Marketing pages:
   - `/`
@@ -35,9 +35,15 @@ npm run dev --workspace @masar/web
 
 Open: [http://localhost:3000](http://localhost:3000)
 
+## Build
+
+```bash
+npm run build --workspace @masar/web
+```
+
 ## Required environment variables
 
-Set in `apps/web/.env.local`:
+Set in `apps/web/.env.local` (see `.env.example`):
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -90,3 +96,5 @@ supabase db push
 - Trial is provisioned per organization and defaults to 14 days.
 - `getTrialStatusForCurrentUser` is implemented in:
   - `apps/web/lib/trial.ts`
+- Deployment guide:
+  - `DEPLOYMENT.md`

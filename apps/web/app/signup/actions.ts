@@ -17,7 +17,7 @@ export async function signUpAction(formData: FormData) {
   const firmName = String(formData.get('firm_name') ?? '').trim();
 
   if (!fullName || !email || password.length < 8) {
-    redirect('/signup?error=تحقق_من_الاسم_والبريد_وكلمة_المرور');
+    redirect(`/signup?error=${encodeURIComponent('تحقق من الاسم والبريد وكلمة المرور (8 أحرف على الأقل).')}`);
   }
 
   try {
@@ -48,7 +48,7 @@ export async function signUpAction(formData: FormData) {
       });
 
       if (signInError || !signInData.session) {
-        redirect('/signin?error=تم_إنشاء_الحساب_سجل_الدخول_للمتابعة');
+        redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}`);
       }
 
       session = signInData.session;
@@ -66,7 +66,7 @@ export async function signUpAction(formData: FormData) {
 
     redirect('/app');
   } catch {
-    redirect('/signup?error=تعذّر_إنشاء_الحساب_حاول_مرة_أخرى');
+    redirect(`/signup?error=${encodeURIComponent('تعذّر إنشاء الحساب. حاول مرة أخرى.')}`);
   }
 }
 

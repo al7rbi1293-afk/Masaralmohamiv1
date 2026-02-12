@@ -22,7 +22,7 @@ type SignUpPageProps = {
 };
 
 export default function SignUpPage({ searchParams }: SignUpPageProps) {
-  const error = searchParams?.error ? decodeURIComponent(searchParams.error) : null;
+  const error = searchParams?.error ? safeDecode(searchParams.error) : null;
 
   return (
     <Section className="py-16 sm:py-20">
@@ -106,4 +106,12 @@ export default function SignUpPage({ searchParams }: SignUpPageProps) {
       </Container>
     </Section>
   );
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }

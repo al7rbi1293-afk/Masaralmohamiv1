@@ -27,7 +27,15 @@ export function StartTrialForm() {
         return;
       }
 
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      const payload = (await response.json().catch(() => null)) as
+        | { message?: string; redirectTo?: string }
+        | null;
+
+      if (payload?.redirectTo) {
+        window.location.assign(payload.redirectTo);
+        return;
+      }
+
       setErrorMessage(payload?.message ?? 'تعذّر بدء التجربة. حاول مرة أخرى.');
     } catch {
       setErrorMessage('تعذّر الاتصال بالخدمة. حاول مرة أخرى.');

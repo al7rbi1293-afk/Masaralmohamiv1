@@ -14,7 +14,7 @@ export async function signInAction(formData: FormData) {
   const password = String(formData.get('password') ?? '');
 
   if (!email || !password) {
-    redirect('/signin?error=يرجى_إدخال_البريد_وكلمة_المرور');
+    redirect(`/signin?error=${encodeURIComponent('يرجى إدخال البريد وكلمة المرور.')}`);
   }
 
   try {
@@ -38,7 +38,7 @@ export async function signInAction(formData: FormData) {
 
     redirect('/app');
   } catch {
-    redirect('/signin?error=تعذّر_الاتصال_بخدمة_المصادقة');
+    redirect(`/signin?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}`);
   }
 }
 

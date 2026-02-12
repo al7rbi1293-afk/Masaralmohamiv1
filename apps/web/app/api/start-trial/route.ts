@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return buildSessionRedirectResponse(request, destination, session, requestId, rate);
+    return buildSessionSuccessResponse(destination, session, requestId, rate);
   } catch (error) {
     logError('trial_start_failed', {
       requestId,
@@ -347,14 +347,23 @@ async function provisionTrial(params: {
   };
 }
 
-function buildSessionRedirectResponse(
-  request: NextRequest,
+function buildSessionSuccessResponse(
   destination: '/app' | '/app/expired',
   session: Session,
   requestId: string,
   rate: RateLimitResult,
 ) {
-  const response = NextResponse.redirect(new URL(destination, request.url), 303);
+  // Important: don't issue an HTTP redirect here because `fetch()` follows redirects
+  // before processing `Set-Cookie`, which causes the redirected request to miss auth cookies.
+  // Return JSON + cookies, then the client navigates to `redirectTo`.
+  const response = NextResponse.json(
+    {
+      redirectTo: destination,
+      requestId,
+    },
+    { status: 200 },
+  );
+
   response.cookies.set(ACCESS_COOKIE_NAME, session.access_token, {
     ...SESSION_COOKIE_OPTIONS,
     maxAge: session.expires_in,

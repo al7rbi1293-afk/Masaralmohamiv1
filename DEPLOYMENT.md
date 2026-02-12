@@ -27,7 +27,7 @@
    - Framework Preset: `Next.js`
    - Root Directory: `apps/web`
    - Install Command: `npm install`
-   - Build Command: `npm run build`
+   - Build Command: `npm run build` (في الجذر هذا السكربت مهيأ لبناء `@masar/web` فقط)
 4. أضف Environment Variables (لكل من Preview وProduction):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -50,6 +50,12 @@ vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 vercel env add SUPABASE_SERVICE_ROLE_KEY
 vercel env add NEXT_PUBLIC_SITE_URL
 vercel --prod
+```
+
+إذا كنت تربط المشروع من الجذر وتحتاج بناء كل الوورك سبيسس محليًا، استخدم:
+
+```bash
+npm run build:all
 ```
 
 ملاحظة: إذا كانت `NEXT_PUBLIC_SITE_URL` لم تُضبط بعد رابط الإنتاج الحقيقي، حدّثها بعد أول نشر ثم نفّذ:

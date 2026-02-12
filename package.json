@@ -6,7 +6,8 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -ws",
+    "build": "npm run build --workspace @masar/web",
+    "build:all": "npm run build -ws",
     "test": "npm run test -ws",
     "lint": "npm run lint -ws"
   }

@@ -19,7 +19,7 @@ type MatterRow = {
   status: 'new' | 'in_progress' | 'on_hold' | 'closed' | 'archived';
   is_private: boolean;
   created_at: string;
-  client?: { name: string } | null;
+  client?: Array<{ name: string }> | null;
 };
 
 const statusLabels: Record<MatterRow['status'], string> = {
@@ -146,7 +146,7 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                     </Link>
                   </td>
                   <td className="py-3 text-slate-700 dark:text-slate-200">
-                    {row.client?.name ?? '—'}
+                    {row.client?.[0]?.name ?? '—'}
                   </td>
                   <td className="py-3 text-slate-700 dark:text-slate-200">
                     {statusLabels[row.status]}
@@ -197,4 +197,3 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
     </section>
   );
 }
-

@@ -19,7 +19,6 @@ type QuoteRow = {
   currency: string;
   created_at: string;
   client_id: string;
-  client?: { name: string } | null;
 };
 
 const statusLabels: Record<QuoteRow['status'], string> = {
@@ -38,7 +37,7 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
   const supabase = createSupabaseServerRlsClient();
   const { data, error } = await supabase
     .from('quotes')
-    .select('id, number, status, items, total, currency, created_at, client_id, client:clients(name)')
+    .select('id, number, status, items, total, currency, created_at, client_id')
     .eq('org_id', orgId)
     .eq('id', params.id)
     .maybeSingle();
@@ -48,6 +47,13 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
   }
 
   const quote = data as QuoteRow;
+  const { data: clientData } = await supabase
+    .from('clients')
+    .select('name')
+    .eq('org_id', orgId)
+    .eq('id', quote.client_id)
+    .maybeSingle();
+  const clientName = (clientData as { name: string } | null)?.name ?? '—';
   const bannerError = searchParams?.error ? safeDecode(searchParams.error) : null;
   const success = searchParams?.success ? true : false;
 
@@ -57,7 +63,7 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">{quote.number}</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            {quote.client?.name ?? '—'} • {statusLabels[quote.status]}
+            {clientName} • {statusLabels[quote.status]}
           </p>
         </div>
         <Link href="/app/billing/quotes" className={buttonVariants('outline', 'sm')}>
@@ -144,4 +150,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

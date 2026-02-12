@@ -14,7 +14,7 @@ type QuoteRow = {
   total: string;
   currency: string;
   created_at: string;
-  client?: { name: string } | null;
+  client?: Array<{ name: string }> | null;
 };
 
 const statusLabels: Record<QuoteRow['status'], string> = {
@@ -102,7 +102,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                       {quote.number}
                     </Link>
                   </td>
-                  <td className="py-3 text-slate-700 dark:text-slate-200">{quote.client?.name ?? '—'}</td>
+                  <td className="py-3 text-slate-700 dark:text-slate-200">{quote.client?.[0]?.name ?? '—'}</td>
                   <td className="py-3 text-slate-700 dark:text-slate-200">
                     {quote.total} {quote.currency}
                   </td>
@@ -133,4 +133,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

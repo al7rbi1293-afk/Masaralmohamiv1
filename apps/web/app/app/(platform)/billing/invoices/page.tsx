@@ -14,7 +14,7 @@ type InvoiceRow = {
   total: string;
   currency: string;
   issued_at: string;
-  client?: { name: string } | null;
+  client?: Array<{ name: string }> | null;
   matter_id: string | null;
 };
 
@@ -140,7 +140,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
                       {inv.number}
                     </Link>
                   </td>
-                  <td className="py-3 text-slate-700 dark:text-slate-200">{inv.client?.name ?? '—'}</td>
+                  <td className="py-3 text-slate-700 dark:text-slate-200">{inv.client?.[0]?.name ?? '—'}</td>
                   <td className="py-3 text-slate-700 dark:text-slate-200">
                     {inv.total} {inv.currency}
                   </td>
@@ -179,4 +179,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

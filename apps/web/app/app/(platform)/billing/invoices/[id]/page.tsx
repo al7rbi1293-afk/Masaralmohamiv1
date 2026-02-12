@@ -12,6 +12,7 @@ type InvoiceDetailsPageProps = {
 
 type InvoiceRow = {
   id: string;
+  client_id: string;
   number: string;
   status: 'unpaid' | 'partial' | 'paid' | 'void';
   items: Array<{ desc: string; qty: number; unit_price: number }>;
@@ -21,7 +22,6 @@ type InvoiceRow = {
   currency: string;
   issued_at: string;
   due_at: string | null;
-  client?: { name: string } | null;
 };
 
 const statusLabels: Record<InvoiceRow['status'], string> = {
@@ -40,7 +40,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
   const supabase = createSupabaseServerRlsClient();
   const { data, error } = await supabase
     .from('invoices')
-    .select('id, number, status, items, subtotal, tax, total, currency, issued_at, due_at, client:clients(name)')
+    .select('id, client_id, number, status, items, subtotal, tax, total, currency, issued_at, due_at')
     .eq('org_id', orgId)
     .eq('id', params.id)
     .maybeSingle();
@@ -50,6 +50,13 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
   }
 
   const invoice = data as InvoiceRow;
+  const { data: clientData } = await supabase
+    .from('clients')
+    .select('name')
+    .eq('org_id', orgId)
+    .eq('id', invoice.client_id)
+    .maybeSingle();
+  const clientName = (clientData as { name: string } | null)?.name ?? '—';
   const bannerError = searchParams?.error ? safeDecode(searchParams.error) : null;
   const success = searchParams?.success ? true : false;
 
@@ -59,7 +66,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">{invoice.number}</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            {invoice.client?.name ?? '—'} • {statusLabels[invoice.status]}
+            {clientName} • {statusLabels[invoice.status]}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -167,4 +174,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

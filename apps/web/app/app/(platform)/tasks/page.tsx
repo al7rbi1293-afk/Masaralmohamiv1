@@ -21,7 +21,7 @@ type TaskRow = {
   due_at: string | null;
   matter_id: string | null;
   created_at: string;
-  matter?: { title: string } | null;
+  matter?: Array<{ title: string }> | null;
 };
 
 type MatterOption = { id: string; title: string };
@@ -226,7 +226,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   <p className="font-medium text-brand-navy dark:text-slate-100">{task.title}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {priorityLabels[task.priority]} • {statusLabels[task.status]}
-                    {task.matter?.title ? ` • ${task.matter.title}` : ''}
+                    {task.matter?.[0]?.title ? ` • ${task.matter[0].title}` : ''}
                   </p>
                   {task.due_at ? (
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -282,4 +282,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

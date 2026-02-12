@@ -17,29 +17,34 @@ export async function signInAction(formData: FormData) {
     redirect(`/signin?error=${encodeURIComponent('يرجى إدخال البريد وكلمة المرور.')}`);
   }
 
+  const supabase = createSupabaseServerAuthClient();
+
+  let data: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data'] | null = null;
+  let error: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['error'] | null = null;
+
   try {
-    const supabase = createSupabaseServerAuthClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error || !data.session) {
-      const message = encodeURIComponent(toArabicAuthError(error?.message));
-      redirect(`/signin?error=${message}`);
-    }
-
-    const cookieStore = cookies();
-    cookieStore.set(ACCESS_COOKIE_NAME, data.session.access_token, {
-      ...SESSION_COOKIE_OPTIONS,
-      maxAge: data.session.expires_in,
-    });
-    cookieStore.set(REFRESH_COOKIE_NAME, data.session.refresh_token, {
-      ...SESSION_COOKIE_OPTIONS,
-      maxAge: 60 * 60 * 24 * 30,
-    });
-
-    redirect('/app');
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    data = result.data;
+    error = result.error;
   } catch {
     redirect(`/signin?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}`);
   }
+
+  if (!data?.session || error) {
+    redirect(`/signin?error=${encodeURIComponent(toArabicAuthError(error?.message))}`);
+  }
+
+  const cookieStore = cookies();
+  cookieStore.set(ACCESS_COOKIE_NAME, data.session.access_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: data.session.expires_in,
+  });
+  cookieStore.set(REFRESH_COOKIE_NAME, data.session.refresh_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
+  redirect('/app');
 }
 
 function toArabicAuthError(message?: string) {

@@ -20,9 +20,17 @@ export async function signUpAction(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent('تحقق من الاسم والبريد وكلمة المرور (8 أحرف على الأقل).')}`);
   }
 
+  const supabase = createSupabaseServerAuthClient();
+
+  let signUpData:
+    | Awaited<ReturnType<typeof supabase.auth.signUp>>['data']
+    | null = null;
+  let signUpError:
+    | Awaited<ReturnType<typeof supabase.auth.signUp>>['error']
+    | null = null;
+
   try {
-    const supabase = createSupabaseServerAuthClient();
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const result = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -33,41 +41,55 @@ export async function signUpAction(formData: FormData) {
         },
       },
     });
+    signUpData = result.data;
+    signUpError = result.error;
+  } catch {
+    redirect(`/signup?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}`);
+  }
 
-    if (signUpError) {
-      const message = encodeURIComponent(toArabicAuthError(signUpError.message));
-      redirect(`/signup?error=${message}`);
-    }
+  if (signUpError) {
+    redirect(`/signup?error=${encodeURIComponent(toArabicAuthError(signUpError.message))}`);
+  }
 
-    let session = signUpData.session;
+  let session = signUpData?.session ?? null;
 
-    if (!session) {
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+  if (!session) {
+    let signInData:
+      | Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data']
+      | null = null;
+    let signInError:
+      | Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['error']
+      | null = null;
+
+    try {
+      const result = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-
-      if (signInError || !signInData.session) {
-        redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}`);
-      }
-
-      session = signInData.session;
+      signInData = result.data;
+      signInError = result.error;
+    } catch {
+      redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب لكن تعذّر تسجيل الدخول. استخدم صفحة تسجيل الدخول.')}`);
     }
 
-    const cookieStore = cookies();
-    cookieStore.set(ACCESS_COOKIE_NAME, session.access_token, {
-      ...SESSION_COOKIE_OPTIONS,
-      maxAge: session.expires_in,
-    });
-    cookieStore.set(REFRESH_COOKIE_NAME, session.refresh_token, {
-      ...SESSION_COOKIE_OPTIONS,
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    if (signInError || !signInData?.session) {
+      redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}`);
+    }
 
-    redirect('/app');
-  } catch {
-    redirect(`/signup?error=${encodeURIComponent('تعذّر إنشاء الحساب. حاول مرة أخرى.')}`);
+    session = signInData.session;
   }
+
+  const cookieStore = cookies();
+  cookieStore.set(ACCESS_COOKIE_NAME, session.access_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: session.expires_in,
+  });
+  cookieStore.set(REFRESH_COOKIE_NAME, session.refresh_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
+  redirect('/app');
 }
 
 function toArabicAuthError(message?: string) {

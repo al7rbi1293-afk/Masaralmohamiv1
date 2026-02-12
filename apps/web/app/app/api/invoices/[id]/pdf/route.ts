@@ -81,7 +81,7 @@ export async function GET(request: NextRequest, ctx: { params: { id: string } })
     user_agent: request.headers.get('user-agent'),
   });
 
-  return new NextResponse(pdfBytes, {
+  return new NextResponse(Buffer.from(pdfBytes), {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
@@ -223,4 +223,3 @@ function getRequestIp(request: NextRequest) {
 function sanitizeFileName(input: string) {
   return input.replaceAll(/[^A-Za-z0-9._-]/g, '_').slice(0, 120) || 'invoice';
 }
-

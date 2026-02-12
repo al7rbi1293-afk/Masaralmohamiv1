@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { signInAction } from './actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
@@ -22,6 +21,7 @@ type SignInPageProps = {
     error?: string;
     email?: string;
     reason?: string;
+    next?: string;
   };
 };
 
@@ -33,6 +33,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
   const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
+  const nextPath = searchParams?.next ? safeDecode(searchParams.next) : '';
   const existsMessage =
     searchParams?.reason === 'exists'
       ? 'هذا البريد مسجل بالفعل. سجّل الدخول لإكمال التجربة.'
@@ -59,7 +60,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </p>
           ) : null}
 
-          <form action={signInAction} className="mt-6 space-y-4">
+          <form action="/api/signin" method="post" className="mt-6 space-y-4">
+            <input type="hidden" name="next" value={nextPath} />
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
               <input

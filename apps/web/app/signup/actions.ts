@@ -11,7 +11,7 @@ import {
 
 export async function signUpAction(formData: FormData) {
   const fullName = String(formData.get('full_name') ?? '').trim();
-  const email = String(formData.get('email') ?? '').trim();
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
   const phone = String(formData.get('phone') ?? '').trim();
   const firmName = String(formData.get('firm_name') ?? '').trim();

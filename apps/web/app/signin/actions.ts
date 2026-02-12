@@ -10,7 +10,7 @@ import {
 } from '@/lib/supabase/constants';
 
 export async function signInAction(formData: FormData) {
-  const email = String(formData.get('email') ?? '').trim();
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
 
   if (!email || !password) {

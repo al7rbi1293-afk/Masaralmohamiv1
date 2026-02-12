@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { signInAction } from './actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 export const metadata: Metadata = {
   title: 'تسجيل الدخول',
@@ -23,7 +25,12 @@ type SignInPageProps = {
   };
 };
 
-export default function SignInPage({ searchParams }: SignInPageProps) {
+export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const user = await getCurrentAuthUser();
+  if (user) {
+    redirect('/app');
+  }
+
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
   const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
   const existsMessage =

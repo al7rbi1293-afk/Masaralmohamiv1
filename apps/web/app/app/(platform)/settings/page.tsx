@@ -76,6 +76,9 @@ export default async function SettingsPage() {
         <Link href="/app/settings/subscription" className={buttonVariants('outline', 'md')}>
           الاشتراك
         </Link>
+        <Link href="/app/settings/privacy" className={buttonVariants('outline', 'md')}>
+          الخصوصية
+        </Link>
         <form action={signOutAction}>
           <button type="submit" className={buttonVariants('outline', 'md')}>
             تسجيل الخروج

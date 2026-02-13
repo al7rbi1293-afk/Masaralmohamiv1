@@ -59,6 +59,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0008_billing_audit.sql`
   - `supabase/migrations/0011_org_invitations.sql`
   - `supabase/migrations/0013_search_indexes.sql` (اختياري)
+  - `supabase/migrations/0017_full_version_requests_type.sql`
 
 ## Run locally
 

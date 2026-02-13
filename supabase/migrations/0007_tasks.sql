@@ -15,6 +15,11 @@ create table if not exists public.tasks (
   updated_at timestamptz not null default now()
 );
 
+-- If the table was created manually or via an older migration, ensure required columns exist.
+alter table public.tasks add column if not exists created_by uuid;
+alter table public.tasks add column if not exists created_at timestamptz not null default now();
+alter table public.tasks add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists idx_tasks_org on public.tasks (org_id);
 create index if not exists idx_tasks_org_due on public.tasks (org_id, due_at);
 create index if not exists idx_tasks_org_status on public.tasks (org_id, status);
@@ -160,4 +165,3 @@ to authenticated
 using (
   public.is_org_owner(org_id)
 );
-

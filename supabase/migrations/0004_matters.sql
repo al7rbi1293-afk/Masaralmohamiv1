@@ -29,7 +29,7 @@ before update on public.matters
 for each row
 execute function public.set_updated_at();
 
-create or replace function public.is_org_member(target_org uuid)
+create or replace function public.is_org_member(org uuid)
 returns boolean
 language sql
 stable
@@ -39,12 +39,12 @@ as $$
   select exists (
     select 1
     from public.memberships m
-    where m.org_id = target_org
+    where m.org_id = org
       and m.user_id = auth.uid()
   );
 $$;
 
-create or replace function public.is_org_owner(target_org uuid)
+create or replace function public.is_org_owner(org uuid)
 returns boolean
 language sql
 stable
@@ -54,13 +54,13 @@ as $$
   select exists (
     select 1
     from public.memberships m
-    where m.org_id = target_org
+    where m.org_id = org
       and m.user_id = auth.uid()
       and m.role = 'owner'
   );
 $$;
 
-create or replace function public.is_matter_member(target_matter uuid)
+create or replace function public.is_matter_member(matter uuid)
 returns boolean
 language sql
 stable
@@ -70,7 +70,7 @@ as $$
   select exists (
     select 1
     from public.matter_members mm
-    where mm.matter_id = target_matter
+    where mm.matter_id = matter
       and mm.user_id = auth.uid()
   );
 $$;

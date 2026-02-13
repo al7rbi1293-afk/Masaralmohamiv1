@@ -15,6 +15,10 @@ create table if not exists public.quotes (
   unique (org_id, number)
 );
 
+-- If tables were created manually or via older migrations, ensure required columns exist.
+alter table public.quotes add column if not exists created_by uuid;
+alter table public.quotes add column if not exists created_at timestamptz not null default now();
+
 create table if not exists public.invoices (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations(id) on delete cascade,
@@ -33,6 +37,9 @@ create table if not exists public.invoices (
   unique (org_id, number)
 );
 
+alter table public.invoices add column if not exists created_by uuid;
+alter table public.invoices add column if not exists issued_at timestamptz not null default now();
+
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations(id) on delete cascade,
@@ -44,6 +51,9 @@ create table if not exists public.payments (
   created_by uuid not null references auth.users(id),
   created_at timestamptz not null default now()
 );
+
+alter table public.payments add column if not exists created_by uuid;
+alter table public.payments add column if not exists created_at timestamptz not null default now();
 
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),

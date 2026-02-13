@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
+import { SentryClientInit } from '@/components/observability/sentry-client-init';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 type PlatformLayoutProps = {
@@ -32,6 +33,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
 
   return (
     <Container className="py-8 sm:py-10">
+      <SentryClientInit />
       <section className="rounded-xl2 border border-brand-border bg-white shadow-panel dark:border-slate-700 dark:bg-slate-900">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-border px-5 py-4 dark:border-slate-700">
           <div>

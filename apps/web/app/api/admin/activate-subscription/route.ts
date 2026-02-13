@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getAdminActivationSecret } from '@/lib/env';
+import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { logError, logInfo } from '@/lib/logger';
 
 export const runtime = 'nodejs';
@@ -22,6 +23,17 @@ function safeEqual(a: string, b: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getRequestIp(request);
+  const limit = checkRateLimit({
+    key: `admin_activate_subscription:${ip}`,
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (!limit.allowed) {
+    return NextResponse.json({ error: RATE_LIMIT_MESSAGE_AR }, { status: 429 });
+  }
+
   const expected = getAdminActivationSecret();
   const provided = request.headers.get('x-admin-secret')?.trim() ?? '';
 
@@ -110,4 +122,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'تعذر تفعيل الاشتراك.' }, { status: 500 });
   }
 }
-

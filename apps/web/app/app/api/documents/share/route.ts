@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
@@ -8,8 +9,10 @@ import { getPublicSiteUrl } from '@/lib/env';
 import { logError, logInfo } from '@/lib/logger';
 
 const shareSchema = z.object({
-  document_id: z.string().uuid(),
-  expires_in: z.enum(['1h', '24h', '7d']),
+  document_id: z.string().uuid('معرّف المستند غير صحيح.'),
+  expires_in: z.enum(['1h', '24h', '7d'], {
+    errorMap: () => ({ message: 'مدة المشاركة غير صحيحة.' }),
+  }),
 });
 
 const expiresSeconds: Record<z.infer<typeof shareSchema>['expires_in'], number> = {
@@ -18,8 +21,19 @@ const expiresSeconds: Record<z.infer<typeof shareSchema>['expires_in'], number> 
   '7d': 60 * 60 * 24 * 7,
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const ip = getRequestIp(request);
+    const limit = checkRateLimit({
+      key: `document_share:${ip}`,
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!limit.allowed) {
+      return NextResponse.json({ error: RATE_LIMIT_MESSAGE_AR }, { status: 429 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const parsed = shareSchema.safeParse(body);
 
@@ -33,7 +47,7 @@ export async function POST(request: Request) {
     const orgId = await requireOrgIdForUser();
     const currentUser = await getCurrentAuthUser();
     if (!currentUser) {
-      return NextResponse.json({ error: 'غير مصرح.' }, { status: 401 });
+      return NextResponse.json({ error: 'الرجاء تسجيل الدخول.' }, { status: 401 });
     }
 
     const rls = createSupabaseServerRlsClient();
@@ -91,4 +105,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'تعذر إنشاء رابط المشاركة.' }, { status: 500 });
   }
 }
-

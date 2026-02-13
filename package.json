@@ -10,6 +10,10 @@
     "build:all": "npm run build -ws",
     "test": "npm run test -ws",
     "lint": "npm run lint -ws",
-    "test:e2e": "npm run test:e2e --workspace @masar/web"
+    "test:e2e": "npm run test:e2e --workspace @masar/web",
+    "test:rls": "tsx scripts/rls-smoke-test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
   }
 }

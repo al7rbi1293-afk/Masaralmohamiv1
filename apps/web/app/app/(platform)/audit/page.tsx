@@ -2,8 +2,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { requireOrgIdForUser } from '@/lib/org';
-import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { requireOwner } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 
 type AuditPageProps = {
@@ -16,31 +15,43 @@ type AuditPageProps = {
 };
 
 export default async function AuditPage({ searchParams }: AuditPageProps) {
-  const user = await getCurrentAuthUser();
-  if (!user) {
-    return (
-      <Card className="p-6">
-        <p className="text-sm text-slate-700 dark:text-slate-200">يرجى تسجيل الدخول.</p>
-      </Card>
-    );
-  }
+  let orgId = '';
+  let userId = '';
+  try {
+    const owner = await requireOwner();
+    orgId = owner.orgId;
+    userId = owner.userId;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message === 'الرجاء تسجيل الدخول.') {
+      return (
+        <Card className="p-6">
+          <p className="text-sm text-slate-700 dark:text-slate-200">يرجى تسجيل الدخول.</p>
+        </Card>
+      );
+    }
 
-  const orgId = await requireOrgIdForUser();
-  const supabase = createSupabaseServerRlsClient();
+    if (message === 'لا تملك صلاحية تنفيذ هذا الإجراء.') {
+      return (
+        <Card className="p-6">
+          <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">سجل التدقيق</h1>
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+            لا تملك صلاحية الوصول.
+          </p>
+          <div className="mt-4">
+            <Link href="/app" className={buttonVariants('outline', 'sm')}>
+              العودة للوحة التحكم
+            </Link>
+          </div>
+        </Card>
+      );
+    }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from('memberships')
-    .select('role')
-    .eq('org_id', orgId)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (membershipError || !membership || membership.role !== 'owner') {
     return (
       <Card className="p-6">
         <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">سجل التدقيق</h1>
         <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-          لا تملك صلاحية الوصول.
+          {message || 'تعذر تحميل السجل.'}
         </p>
         <div className="mt-4">
           <Link href="/app" className={buttonVariants('outline', 'sm')}>
@@ -50,6 +61,8 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
       </Card>
     );
   }
+
+  const supabase = createSupabaseServerRlsClient();
 
   const today = new Date();
   const defaultFrom = new Date(today);
@@ -173,7 +186,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
                     {new Date(row.created_at).toLocaleString('ar-SA')}
                   </td>
                   <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                    {row.user_id ? (row.user_id === user.id ? 'أنت' : 'عضو الفريق') : 'النظام'}
+                    {row.user_id ? (row.user_id === userId ? 'أنت' : 'عضو الفريق') : 'النظام'}
                   </td>
                   <td className="px-3 py-3">
                     <Badge variant="default">{row.action}</Badge>
@@ -250,4 +263,3 @@ function renderMeta(meta: unknown) {
     return '—';
   }
 }
-

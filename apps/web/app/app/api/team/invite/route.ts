@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
     );
 
     logInfo('team_invite_created', {
-      email: result.invitation.email,
       role: result.invitation.role,
     });
 

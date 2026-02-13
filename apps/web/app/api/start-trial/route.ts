@@ -165,7 +165,6 @@ export async function POST(request: NextRequest) {
         logWarn('signup_failed_existing_user', {
           requestId,
           ip: requestIp,
-          email,
         });
 
         const redirectUrl = new URL('/signin', request.url);
@@ -195,7 +194,6 @@ export async function POST(request: NextRequest) {
     logInfo('signup_success', {
       requestId,
       ip: requestIp,
-      email,
       userId: createUserResult.data.user?.id ?? null,
     });
 
@@ -205,7 +203,6 @@ export async function POST(request: NextRequest) {
         requestId,
         ip: requestIp,
         reason: 'post_signup_sign_in_failed',
-        email,
         error: secondSignInResult.error?.message ?? null,
       });
 

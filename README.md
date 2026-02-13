@@ -82,6 +82,18 @@ npm run test:e2e:install --workspace @masar/web
 npm run test:e2e --workspace @masar/web
 ```
 
+## RLS Smoke Test (Dev)
+
+This script creates temporary test users/orgs and verifies org isolation + private matter visibility rules.
+
+```bash
+RLS_SMOKE_TEST_RUN=1 \
+NEXT_PUBLIC_SUPABASE_URL=... \
+NEXT_PUBLIC_SUPABASE_ANON_KEY=... \
+SUPABASE_SERVICE_ROLE_KEY=... \
+npm run test:rls
+```
+
 ## Required environment variables
 
 Set in `apps/web/.env.local` (see `.env.example`):

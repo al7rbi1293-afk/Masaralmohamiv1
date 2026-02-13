@@ -2,12 +2,78 @@ type LogLevel = 'info' | 'warn' | 'error';
 
 type LogData = Record<string, unknown>;
 
+const REDACTED = '[REDACTED]';
+
+function looksLikeJwt(value: string) {
+  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value);
+}
+
+function maskEmail(value: string) {
+  const normalized = value.trim();
+  const atIndex = normalized.indexOf('@');
+  if (atIndex <= 0) return '***';
+  const local = normalized.slice(0, atIndex);
+  const domain = normalized.slice(atIndex + 1);
+  const first = local.slice(0, 1);
+  return `${first}***@${domain}`;
+}
+
+function maskPhone(value: string) {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '***';
+  const tail = digits.slice(-4);
+  return `***${tail}`;
+}
+
+function sanitizeValue(value: unknown, depth = 0, key = ''): unknown {
+  if (depth > 4) return '[TRUNCATED]';
+  if (value === null || value === undefined) return value;
+
+  const normalizedKey = String(key || '').toLowerCase();
+
+  if (
+    normalizedKey.includes('token') ||
+    normalizedKey.includes('secret') ||
+    normalizedKey.includes('password') ||
+    normalizedKey.includes('authorization') ||
+    normalizedKey.includes('service') && normalizedKey.includes('key')
+  ) {
+    return REDACTED;
+  }
+
+  if (typeof value === 'string') {
+    if (looksLikeJwt(value)) return REDACTED;
+    if (normalizedKey.includes('email')) return maskEmail(value);
+    if (normalizedKey.includes('phone')) return maskPhone(value);
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeValue(entry, depth + 1, key));
+  }
+
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      output[k] = sanitizeValue(v, depth + 1, k);
+    }
+    return output;
+  }
+
+  return value;
+}
+
+function sanitizeData(data: LogData) {
+  return sanitizeValue(data, 0) as LogData;
+}
+
 function emit(level: LogLevel, event: string, data: LogData = {}) {
   const payload = {
     timestamp: new Date().toISOString(),
     level,
     event,
-    ...data,
+    ...sanitizeData(data),
   };
 
   const line = JSON.stringify(payload);

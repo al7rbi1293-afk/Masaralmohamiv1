@@ -70,3 +70,29 @@ export function getAdminActivationSecret() {
   }
   return secret;
 }
+
+export function getStripeSecretKey() {
+  const secret = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secret) {
+    throw missingEnvError('STRIPE_SECRET_KEY');
+  }
+  return secret;
+}
+
+export function getStripeWebhookSecret() {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  if (!secret) {
+    throw missingEnvError('STRIPE_WEBHOOK_SECRET');
+  }
+  return secret;
+}
+
+export function getStripePriceId(planCode: string) {
+  const normalized = String(planCode || '').trim().toUpperCase();
+  const envKey = `STRIPE_PRICE_ID_${normalized}`;
+  const value = (process.env as Record<string, string | undefined>)[envKey]?.trim();
+  if (!value) {
+    throw missingEnvError(envKey);
+  }
+  return value;
+}

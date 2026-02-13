@@ -18,6 +18,10 @@ function isBypassedPath(pathname: string) {
   if (pathname === '/app/settings/subscription' || pathname.startsWith('/app/settings/subscription/')) {
     return true;
   }
+  // Allow creating Stripe checkout sessions even when the org is locked (trial ended).
+  if (pathname.startsWith('/app/api/stripe/')) {
+    return true;
+  }
   // Expired page is always accessible when authenticated.
   if (pathname === '/app/expired' || pathname.startsWith('/app/expired/')) {
     return true;

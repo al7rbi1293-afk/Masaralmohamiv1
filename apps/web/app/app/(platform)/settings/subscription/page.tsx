@@ -77,9 +77,14 @@ export default async function SubscriptionSettingsPage() {
             عرض حالة الاشتراك والخطط المتاحة (للمالك فقط).
           </p>
         </div>
-        <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>
-          رجوع
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/app/settings/subscription/pricing" className={buttonVariants('primary', 'sm')}>
+            ترقية عبر الدفع الإلكتروني
+          </Link>
+          <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>
+            رجوع
+          </Link>
+        </div>
       </div>
 
       {errorMessage ? (

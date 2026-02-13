@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { createClientAction } from '../actions';
 
 type ClientNewPageProps = {
@@ -12,6 +14,15 @@ export default function ClientNewPage({ searchParams }: ClientNewPageProps) {
 
   return (
     <Card className="p-6">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'العملاء', href: '/app/clients' },
+          { label: 'عميل جديد' },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">عميل جديد</h1>
@@ -44,7 +55,9 @@ export default function ClientNewPage({ searchParams }: ClientNewPageProps) {
         </label>
 
         <label className="block space-y-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">الاسم</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            الاسم <span className="text-red-600">*</span>
+          </span>
           <input
             required
             name="name"
@@ -96,9 +109,9 @@ export default function ClientNewPage({ searchParams }: ClientNewPageProps) {
         </label>
 
         <div className="flex flex-wrap gap-3 sm:col-span-2">
-          <button type="submit" className={buttonVariants('primary', 'md')}>
+          <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
             حفظ
-          </button>
+          </FormSubmitButton>
           <Link href="/app/clients" className={buttonVariants('outline', 'md')}>
             إلغاء
           </Link>
@@ -115,4 +128,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

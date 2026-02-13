@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listClients, type ClientStatus, type ClientType } from '@/lib/clients';
 import { archiveClientAction, restoreClientAction } from './actions';
@@ -159,17 +160,27 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                           عرض
                         </Link>
                         {client.status === 'active' ? (
-                          <form action={archiveClientAction.bind(null, client.id, '/app/clients')}>
-                            <button type="submit" className={buttonVariants('outline', 'sm')}>
-                              أرشفة
-                            </button>
-                          </form>
+                          <ConfirmActionForm
+                            action={archiveClientAction.bind(null, client.id, '/app/clients')}
+                            triggerLabel="أرشفة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="أرشفة العميل"
+                            confirmMessage="هل تريد أرشفة هذا العميل؟ يمكنك استعادته لاحقًا."
+                            confirmLabel="أرشفة"
+                            destructive
+                          />
                         ) : (
-                          <form action={restoreClientAction.bind(null, client.id, '/app/clients')}>
-                            <button type="submit" className={buttonVariants('outline', 'sm')}>
-                              استعادة
-                            </button>
-                          </form>
+                          <ConfirmActionForm
+                            action={restoreClientAction.bind(null, client.id, '/app/clients')}
+                            triggerLabel="استعادة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="استعادة العميل"
+                            confirmMessage="هل تريد استعادة هذا العميل إلى الحالة النشطة؟"
+                            confirmLabel="استعادة"
+                            destructive={false}
+                          />
                         )}
                       </div>
                     </td>
@@ -232,4 +243,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

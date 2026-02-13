@@ -79,6 +79,30 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        <div className="mt-5 rounded-lg border border-brand-border p-4 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-brand-navy dark:text-slate-100">إجراءات سريعة</h3>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            اختصارات لإنشاء العناصر الأساسية بسرعة.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            <Link href="/app/clients/new" className={buttonVariants('outline', 'sm')}>
+              عميل جديد
+            </Link>
+            <Link href="/app/matters/new" className={buttonVariants('outline', 'sm')}>
+              قضية جديدة
+            </Link>
+            <Link href="/app/documents/new" className={buttonVariants('outline', 'sm')}>
+              مستند جديد
+            </Link>
+            <Link href="/app/tasks?new=1" className={buttonVariants('outline', 'sm')}>
+              مهمة جديدة
+            </Link>
+            <Link href="/app/billing/invoices/new" className={buttonVariants('outline', 'sm')}>
+              فاتورة جديدة
+            </Link>
+          </div>
+        </div>
+
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href="/app/settings" className={buttonVariants('primary', 'md')}>
             الإعدادات

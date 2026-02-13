@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
 import { MatterMembersClient } from '@/components/matters/matter-members-client';
@@ -99,6 +101,15 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
 
   return (
     <Card className="space-y-5 p-6">
+      <Breadcrumbs
+        className="mb-1"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'القضايا', href: '/app/matters' },
+          { label: matter.title },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">{matter.title}</h1>
@@ -345,26 +356,36 @@ async function MatterSummarySection({
           </label>
 
           <div>
-            <button type="submit" className={buttonVariants('primary', 'md')}>
+            <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
               تعديل القضية
-            </button>
+            </FormSubmitButton>
           </div>
         </form>
       </section>
 
       <div className="flex flex-wrap gap-3">
         {matter.status === 'archived' ? (
-          <form action={restoreMatterAction.bind(null, matterId, `/app/matters/${matterId}`)}>
-            <button type="submit" className={buttonVariants('outline', 'md')}>
-              استعادة
-            </button>
-          </form>
+          <ConfirmActionForm
+            action={restoreMatterAction.bind(null, matterId, `/app/matters/${matterId}`)}
+            triggerLabel="استعادة"
+            triggerVariant="outline"
+            triggerSize="md"
+            confirmTitle="استعادة القضية"
+            confirmMessage="هل تريد استعادة هذه القضية إلى الحالة الجديدة؟"
+            confirmLabel="استعادة"
+            destructive={false}
+          />
         ) : (
-          <form action={archiveMatterAction.bind(null, matterId, `/app/matters/${matterId}`)}>
-            <button type="submit" className={buttonVariants('outline', 'md')}>
-              أرشفة
-            </button>
-          </form>
+          <ConfirmActionForm
+            action={archiveMatterAction.bind(null, matterId, `/app/matters/${matterId}`)}
+            triggerLabel="أرشفة"
+            triggerVariant="outline"
+            triggerSize="md"
+            confirmTitle="أرشفة القضية"
+            confirmMessage="هل تريد أرشفة هذه القضية؟ يمكنك استعادتها لاحقًا."
+            confirmLabel="أرشفة"
+            destructive
+          />
         )}
       </div>
     </>

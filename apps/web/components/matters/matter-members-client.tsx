@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 type Role = 'owner' | 'lawyer' | 'assistant';
 
@@ -42,6 +43,7 @@ export function MatterMembersClient({
   orgMembers,
 }: MatterMembersClientProps) {
   const router = useRouter();
+  const confirmActionRef = useRef<null | (() => Promise<void>)>(null);
   const [members, setMembers] = useState<MatterMemberItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -50,6 +52,11 @@ export function MatterMembersClient({
   const [selectedUserId, setSelectedUserId] = useState('');
   const [busy, setBusy] = useState(false);
   const [busyRemoveId, setBusyRemoveId] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmLabel, setConfirmLabel] = useState('تأكيد');
 
   async function loadMembers() {
     setLoading(true);
@@ -122,10 +129,7 @@ export function MatterMembersClient({
     }
   }
 
-  async function removeMember(userId: string) {
-    const confirmed = window.confirm('هل أنت متأكد من إزالة هذا العضو من القضية؟');
-    if (!confirmed) return;
-
+  async function removeMemberDirect(userId: string) {
     setBusyRemoveId(userId);
     setError('');
     setMessage('');
@@ -155,6 +159,29 @@ export function MatterMembersClient({
     }
   }
 
+  function openConfirm(params: {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    action: () => Promise<void>;
+  }) {
+    confirmActionRef.current = params.action;
+    setConfirmTitle(params.title);
+    setConfirmMessage(params.message);
+    setConfirmLabel(params.confirmLabel);
+    setConfirmBusy(false);
+    setConfirmOpen(true);
+  }
+
+  function removeMember(userId: string) {
+    openConfirm({
+      title: 'إزالة عضو',
+      message: 'هل أنت متأكد من إزالة هذا العضو من القضية؟',
+      confirmLabel: 'إزالة',
+      action: async () => removeMemberDirect(userId),
+    });
+  }
+
   return (
     <div className="mt-4 space-y-4">
       {message ? (
@@ -168,6 +195,28 @@ export function MatterMembersClient({
           {error}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirmLabel={confirmLabel}
+        destructive
+        busy={confirmBusy}
+        onCancel={() => {
+          if (!confirmBusy) setConfirmOpen(false);
+        }}
+        onConfirm={async () => {
+          if (!confirmActionRef.current) return;
+          setConfirmBusy(true);
+          try {
+            await confirmActionRef.current();
+            setConfirmOpen(false);
+          } finally {
+            setConfirmBusy(false);
+          }
+        }}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -331,4 +380,3 @@ export function MatterMembersClient({
     </div>
   );
 }
-

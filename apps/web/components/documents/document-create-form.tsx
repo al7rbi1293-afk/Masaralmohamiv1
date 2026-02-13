@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -168,7 +169,9 @@ export function DocumentCreateForm({
       ) : null}
 
       <label className="block space-y-1 text-sm">
-        <span className="font-medium text-slate-700 dark:text-slate-200">العنوان</span>
+        <span className="font-medium text-slate-700 dark:text-slate-200">
+          العنوان <span className="text-red-600">*</span>
+        </span>
         <input
           required
           minLength={2}
@@ -213,7 +216,9 @@ export function DocumentCreateForm({
       </div>
 
       <label className="block space-y-1 text-sm">
-        <span className="font-medium text-slate-700 dark:text-slate-200">ملف</span>
+        <span className="font-medium text-slate-700 dark:text-slate-200">
+          ملف <span className="text-red-600">*</span>
+        </span>
         <input
           required
           type="file"
@@ -226,11 +231,10 @@ export function DocumentCreateForm({
         <Button type="submit" variant="primary" size="md" disabled={!canSubmit}>
           {loading ? 'جارٍ إنشاء المستند ورفع الملف...' : 'حفظ ورفع'}
         </Button>
-        <a href="/app/documents" className={buttonVariants('outline', 'md')}>
+        <Link href="/app/documents" className={buttonVariants('outline', 'md')}>
           إلغاء
-        </a>
+        </Link>
       </div>
     </form>
   );
 }
-

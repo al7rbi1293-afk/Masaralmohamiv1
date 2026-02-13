@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BillingItemsEditor } from '@/components/billing/items-editor';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
 import { createInvoiceAction } from '../../actions';
@@ -36,6 +38,15 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
 
   return (
     <Card className="p-6">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'الفوترة', href: '/app/billing/invoices' },
+          { label: 'فاتورة جديدة' },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">فاتورة جديدة</h2>
@@ -57,7 +68,9 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
       <form action={createInvoiceAction} className="mt-6 grid gap-5">
         <div className="grid gap-4 lg:grid-cols-4">
           <label className="block space-y-1 text-sm lg:col-span-2">
-            <span className="font-medium text-slate-700 dark:text-slate-200">العميل</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              العميل <span className="text-red-600">*</span>
+            </span>
             <select
               name="client_id"
               required
@@ -115,9 +128,9 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
         </section>
 
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={buttonVariants('primary', 'md')}>
+          <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
             حفظ
-          </button>
+          </FormSubmitButton>
           <Link href="/app/billing/invoices" className={buttonVariants('outline', 'md')}>
             إلغاء
           </Link>

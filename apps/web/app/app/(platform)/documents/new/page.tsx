@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { DocumentCreateForm } from '@/components/documents/document-create-form';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
@@ -23,6 +24,15 @@ export default async function DocumentNewPage({ searchParams }: DocumentNewPageP
 
   return (
     <Card className="p-6">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'المستندات', href: '/app/documents' },
+          { label: 'مستند جديد' },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">مستند جديد</h1>
@@ -44,4 +54,3 @@ export default async function DocumentNewPage({ searchParams }: DocumentNewPageP
     </Card>
   );
 }
-

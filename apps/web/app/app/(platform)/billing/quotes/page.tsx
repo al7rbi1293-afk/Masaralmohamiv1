@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listClients } from '@/lib/clients';
 import { listQuotes, type QuoteStatus } from '@/lib/billing';
@@ -82,6 +83,15 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <Card className="p-6">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'الفوترة', href: '/app/billing/invoices' },
+          { label: 'عروض الأسعار' },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">عروض الأسعار</h2>
@@ -240,4 +250,3 @@ function formatMoney(value: string | number) {
   const safe = Number.isFinite(numberValue) ? numberValue : 0;
   return safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-

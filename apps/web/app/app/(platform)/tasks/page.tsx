@@ -16,6 +16,7 @@ type TasksPageProps = {
     assignee?: string;
     page?: string;
     error?: string;
+    new?: string;
   };
 };
 
@@ -43,6 +44,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
   const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
+  const autoOpenCreate = (searchParams?.new ?? '').trim() === '1';
 
   let tasksResult: Awaited<ReturnType<typeof listTasks>>;
   let mattersResult: Awaited<ReturnType<typeof listMatters>>;
@@ -217,7 +219,12 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       </form>
 
       <div className="mt-6">
-        <TasksTableClient tasks={tasks} matters={matters} currentUserId={user.id} />
+        <TasksTableClient
+          tasks={tasks}
+          matters={matters}
+          currentUserId={user.id}
+          autoOpenCreate={autoOpenCreate}
+        />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300">

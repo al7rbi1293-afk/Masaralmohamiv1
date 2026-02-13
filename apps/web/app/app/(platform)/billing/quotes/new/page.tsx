@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BillingItemsEditor } from '@/components/billing/items-editor';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
 import { createQuoteAction } from '../../actions';
@@ -36,6 +38,16 @@ export default async function QuoteNewPage({ searchParams }: QuoteNewPageProps) 
 
   return (
     <Card className="p-6">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'الفوترة', href: '/app/billing/invoices' },
+          { label: 'عروض الأسعار', href: '/app/billing/quotes' },
+          { label: 'عرض سعر جديد' },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">عرض سعر جديد</h2>
@@ -57,7 +69,9 @@ export default async function QuoteNewPage({ searchParams }: QuoteNewPageProps) 
       <form action={createQuoteAction} className="mt-6 grid gap-5">
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">العميل</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              العميل <span className="text-red-600">*</span>
+            </span>
             <select
               name="client_id"
               required
@@ -108,9 +122,9 @@ export default async function QuoteNewPage({ searchParams }: QuoteNewPageProps) 
         </section>
 
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={buttonVariants('primary', 'md')}>
+          <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
             حفظ
-          </button>
+          </FormSubmitButton>
           <Link href="/app/billing/quotes" className={buttonVariants('outline', 'md')}>
             إلغاء
           </Link>

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { createMatterAction } from '../actions';
 
@@ -32,6 +34,15 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
 
   return (
     <Card className="p-6">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'القضايا', href: '/app/matters' },
+          { label: 'قضية جديدة' },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">قضية جديدة</h1>
@@ -52,7 +63,9 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
 
       <form action={createMatterAction} className="mt-6 grid gap-4">
         <label className="block space-y-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">العنوان</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            العنوان <span className="text-red-600">*</span>
+          </span>
           <input
             required
             minLength={2}
@@ -63,7 +76,9 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">الموكل</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              الموكل <span className="text-red-600">*</span>
+            </span>
             <select
               required
               name="client_id"
@@ -115,9 +130,9 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
         </label>
 
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={buttonVariants('primary', 'md')}>
+          <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
             حفظ
-          </button>
+          </FormSubmitButton>
           <Link href="/app/matters" className={buttonVariants('outline', 'md')}>
             إلغاء
           </Link>

@@ -2,6 +2,9 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getClientById } from '@/lib/clients';
 import { archiveClientAction, restoreClientAction, updateClientAction } from '../actions';
 
@@ -33,6 +36,15 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
 
   return (
     <Card className="p-6">
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'العملاء', href: '/app/clients' },
+          { label: client.name },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">{client.name}</h1>
@@ -73,7 +85,9 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
         </label>
 
         <label className="block space-y-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">الاسم</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            الاسم <span className="text-red-600">*</span>
+          </span>
           <input
             required
             name="name"
@@ -131,25 +145,35 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
         </label>
 
         <div className="flex flex-wrap gap-3 sm:col-span-2">
-          <button type="submit" className={buttonVariants('primary', 'md')}>
+          <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
             حفظ التحديثات
-          </button>
+          </FormSubmitButton>
         </div>
       </form>
 
       <div className="mt-4">
         {client.status === 'active' ? (
-          <form action={archiveClientAction.bind(null, client.id, `/app/clients/${client.id}`)}>
-            <button type="submit" className={buttonVariants('outline', 'md')}>
-              أرشفة
-            </button>
-          </form>
+          <ConfirmActionForm
+            action={archiveClientAction.bind(null, client.id, `/app/clients/${client.id}`)}
+            triggerLabel="أرشفة"
+            triggerVariant="outline"
+            triggerSize="md"
+            confirmTitle="أرشفة العميل"
+            confirmMessage="هل تريد أرشفة هذا العميل؟ يمكنك استعادته لاحقًا."
+            confirmLabel="أرشفة"
+            destructive
+          />
         ) : (
-          <form action={restoreClientAction.bind(null, client.id, `/app/clients/${client.id}`)}>
-            <button type="submit" className={buttonVariants('outline', 'md')}>
-              استعادة
-            </button>
-          </form>
+          <ConfirmActionForm
+            action={restoreClientAction.bind(null, client.id, `/app/clients/${client.id}`)}
+            triggerLabel="استعادة"
+            triggerVariant="outline"
+            triggerSize="md"
+            confirmTitle="استعادة العميل"
+            confirmMessage="هل تريد استعادة هذا العميل إلى الحالة النشطة؟"
+            confirmLabel="استعادة"
+            destructive={false}
+          />
         )}
       </div>
     </Card>

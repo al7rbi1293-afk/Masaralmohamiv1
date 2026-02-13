@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
 import { DocumentVersionActions } from '@/components/documents/document-version-actions';
 import { getDocumentById, listDocumentVersions } from '@/lib/documents';
@@ -43,6 +44,15 @@ export default async function DocumentDetailsPage({ params, searchParams }: Docu
 
   return (
     <Card className="space-y-5 p-6">
+      <Breadcrumbs
+        className="mb-1"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'المستندات', href: '/app/documents' },
+          { label: document.title },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">{document.title}</h1>

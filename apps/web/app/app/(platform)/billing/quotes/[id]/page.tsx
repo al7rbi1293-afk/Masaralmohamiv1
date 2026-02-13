@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { BillingItemsEditor } from '@/components/billing/items-editor';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
 import { getQuoteById, type QuoteStatus } from '@/lib/billing';
@@ -58,6 +60,16 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
 
   return (
     <Card className="p-6 space-y-5">
+      <Breadcrumbs
+        className="mb-1"
+        items={[
+          { label: 'لوحة التحكم', href: '/app' },
+          { label: 'الفوترة', href: '/app/billing/invoices' },
+          { label: 'عروض الأسعار', href: '/app/billing/quotes' },
+          { label: quote.number },
+        ]}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">{quote.number}</h2>
@@ -86,7 +98,9 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
       <form action={updateQuoteAction.bind(null, quote.id)} className="grid gap-5">
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">العميل</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              العميل <span className="text-red-600">*</span>
+            </span>
             <select
               name="client_id"
               required
@@ -138,9 +152,9 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
         </section>
 
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={buttonVariants('primary', 'md')}>
+          <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
             حفظ التحديثات
-          </button>
+          </FormSubmitButton>
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">

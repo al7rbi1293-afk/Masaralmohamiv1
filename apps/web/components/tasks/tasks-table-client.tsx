@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { TaskUpsertModal, type TaskUpsertMatterOption, type TaskUpsertInitialTask } from './task-upsert-modal';
 
 type TaskPriority = 'low' | 'medium' | 'high';
@@ -27,6 +28,7 @@ type TasksTableClientProps = {
   tasks: TaskTableItem[];
   matters: TaskUpsertMatterOption[];
   currentUserId: string;
+  autoOpenCreate?: boolean;
 };
 
 const statusLabel: Record<TaskStatus, string> = {
@@ -55,7 +57,7 @@ const priorityVariant: Record<TaskPriority, 'default' | 'success' | 'warning' | 
   high: 'danger',
 };
 
-export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableClientProps) {
+export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate = false }: TasksTableClientProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -73,6 +75,13 @@ export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableCl
     setError('');
     setMessage('');
   }
+
+  useEffect(() => {
+    if (autoOpenCreate) {
+      openCreate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenCreate]);
 
   function openEdit(task: TaskTableItem) {
     setSelectedTask({
@@ -141,8 +150,8 @@ export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableCl
       ) : null}
 
       {!tasks.length ? (
-        <div className="rounded-lg border border-brand-border p-6 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
-          لا توجد مهام.
+        <div className="rounded-lg border border-brand-border dark:border-slate-700">
+          <EmptyState title="المهام" message="لا توجد مهام." backHref="/app/tasks?new=1" backLabel="أضف مهمة" />
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">

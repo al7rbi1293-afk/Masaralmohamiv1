@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export type TeamMemberItem = {
   user_id: string;
@@ -48,6 +49,14 @@ export function TeamManagementClient({
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  const confirmActionRef = useRef<null | (() => Promise<void>)>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmLabel, setConfirmLabel] = useState('تأكيد');
+  const [confirmDestructive, setConfirmDestructive] = useState(true);
+
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<TeamMemberItem['role']>('lawyer');
@@ -74,6 +83,22 @@ export function TeamManagementClient({
       setInviteLink('');
     }
   }, [inviteOpen]);
+
+  function openConfirm(params: {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    action: () => Promise<void>;
+  }) {
+    confirmActionRef.current = params.action;
+    setConfirmTitle(params.title);
+    setConfirmMessage(params.message);
+    setConfirmLabel(params.confirmLabel);
+    setConfirmDestructive(params.destructive ?? true);
+    setConfirmBusy(false);
+    setConfirmOpen(true);
+  }
 
   async function createInvite() {
     setInviteBusy(true);
@@ -113,7 +138,7 @@ export function TeamManagementClient({
     }
   }
 
-  async function revokeInvite(invitationId: string) {
+  async function revokeInviteDirect(invitationId: string) {
     setBusyKey(`revoke:${invitationId}`);
     setError('');
     setMessage('');
@@ -137,6 +162,16 @@ export function TeamManagementClient({
     } finally {
       setBusyKey('');
     }
+  }
+
+  function revokeInvite(invitationId: string) {
+    openConfirm({
+      title: 'إلغاء الدعوة',
+      message: 'هل تريد إلغاء هذه الدعوة؟ لن يتمكن المستخدم من استخدام الرابط بعد ذلك.',
+      confirmLabel: 'إلغاء الدعوة',
+      destructive: true,
+      action: async () => revokeInviteDirect(invitationId),
+    });
   }
 
   async function changeRole(userId: string, role: TeamMemberItem['role']) {
@@ -165,10 +200,7 @@ export function TeamManagementClient({
     }
   }
 
-  async function removeMember(userId: string) {
-    const confirmed = window.confirm('هل أنت متأكد من إزالة هذا العضو من المكتب؟');
-    if (!confirmed) return;
-
+  async function removeMemberDirect(userId: string) {
     setBusyKey(`remove:${userId}`);
     setError('');
     setMessage('');
@@ -192,6 +224,16 @@ export function TeamManagementClient({
     } finally {
       setBusyKey('');
     }
+  }
+
+  function removeMember(userId: string) {
+    openConfirm({
+      title: 'إزالة عضو',
+      message: 'هل أنت متأكد من إزالة هذا العضو من المكتب؟',
+      confirmLabel: 'إزالة',
+      destructive: true,
+      action: async () => removeMemberDirect(userId),
+    });
   }
 
   async function copy(text: string) {
@@ -226,6 +268,28 @@ export function TeamManagementClient({
           {error}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirmLabel={confirmLabel}
+        destructive={confirmDestructive}
+        busy={confirmBusy}
+        onCancel={() => {
+          if (!confirmBusy) setConfirmOpen(false);
+        }}
+        onConfirm={async () => {
+          if (!confirmActionRef.current) return;
+          setConfirmBusy(true);
+          try {
+            await confirmActionRef.current();
+            setConfirmOpen(false);
+          } finally {
+            setConfirmBusy(false);
+          }
+        }}
+      />
 
       <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
         <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">أعضاء المكتب</h2>

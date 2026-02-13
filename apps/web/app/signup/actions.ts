@@ -15,14 +15,9 @@ export async function signUpAction(formData: FormData) {
   const password = String(formData.get('password') ?? '');
   const phone = String(formData.get('phone') ?? '').trim();
   const firmName = String(formData.get('firm_name') ?? '').trim();
-  const nextPath = String(formData.get('next') ?? '').trim();
 
   if (!fullName || !email || password.length < 8) {
-    redirect(
-      `/signup?error=${encodeURIComponent('تحقق من الاسم والبريد وكلمة المرور (8 أحرف على الأقل).')}&email=${encodeURIComponent(
-        email,
-      )}&next=${encodeURIComponent(nextPath)}`,
-    );
+    redirect(`/signup?error=${encodeURIComponent('تحقق من الاسم والبريد وكلمة المرور (8 أحرف على الأقل).')}`);
   }
 
   const supabase = createSupabaseServerAuthClient();
@@ -49,19 +44,11 @@ export async function signUpAction(formData: FormData) {
     signUpData = result.data;
     signUpError = result.error;
   } catch {
-    redirect(
-      `/signup?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}&email=${encodeURIComponent(
-        email,
-      )}&next=${encodeURIComponent(nextPath)}`,
-    );
+    redirect(`/signup?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}`);
   }
 
   if (signUpError) {
-    redirect(
-      `/signup?error=${encodeURIComponent(toArabicAuthError(signUpError.message))}&email=${encodeURIComponent(
-        email,
-      )}&next=${encodeURIComponent(nextPath)}`,
-    );
+    redirect(`/signup?error=${encodeURIComponent(toArabicAuthError(signUpError.message))}`);
   }
 
   let session = signUpData?.session ?? null;
@@ -82,19 +69,11 @@ export async function signUpAction(formData: FormData) {
       signInData = result.data;
       signInError = result.error;
     } catch {
-      redirect(
-        `/signin?error=${encodeURIComponent(
-          'تم إنشاء الحساب لكن تعذّر تسجيل الدخول. استخدم صفحة تسجيل الدخول.',
-        )}&email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`,
-      );
+      redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب لكن تعذّر تسجيل الدخول. استخدم صفحة تسجيل الدخول.')}`);
     }
 
     if (signInError || !signInData?.session) {
-      redirect(
-        `/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}&email=${encodeURIComponent(
-          email,
-        )}&next=${encodeURIComponent(nextPath)}`,
-      );
+      redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}`);
     }
 
     session = signInData.session;
@@ -110,18 +89,7 @@ export async function signUpAction(formData: FormData) {
     maxAge: 60 * 60 * 24 * 30,
   });
 
-  redirect(safeNextPath(nextPath) ?? '/app');
-}
-
-function safeNextPath(raw?: string) {
-  if (!raw) return null;
-  const value = raw.trim();
-  if (!value.startsWith('/') || value.startsWith('//')) return null;
-  if (value.includes('\n') || value.includes('\r')) return null;
-  if (value.startsWith('/api')) return null;
-  if (value.startsWith('/app/api')) return null;
-  if (!(value.startsWith('/app') || value.startsWith('/invite/'))) return null;
-  return value;
+  redirect('/app');
 }
 
 function toArabicAuthError(message?: string) {

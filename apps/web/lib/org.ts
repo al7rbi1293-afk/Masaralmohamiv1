@@ -8,6 +8,8 @@ type MembershipRow = {
   created_at: string;
 };
 
+export type OrgRole = 'owner' | 'lawyer' | 'assistant';
+
 export async function getCurrentOrgIdForUser(): Promise<string | null> {
   const currentUser = await getCurrentAuthUser();
   if (!currentUser) {
@@ -40,3 +42,28 @@ export async function requireOrgIdForUser(): Promise<string> {
   return orgId;
 }
 
+export async function requireOwner(): Promise<{ orgId: string; userId: string }> {
+  const currentUser = await getCurrentAuthUser();
+  if (!currentUser) {
+    throw new Error('الرجاء تسجيل الدخول.');
+  }
+
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data || (data as any).role !== 'owner') {
+    throw new Error('لا تملك صلاحية تنفيذ هذا الإجراء.');
+  }
+
+  return { orgId, userId: currentUser.id };
+}

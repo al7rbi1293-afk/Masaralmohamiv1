@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,6 @@ type TasksTableClientProps = {
   tasks: TaskTableItem[];
   matters: TaskUpsertMatterOption[];
   currentUserId: string;
-  openCreateOnLoad?: boolean;
 };
 
 const statusLabel: Record<TaskStatus, string> = {
@@ -56,7 +55,7 @@ const priorityVariant: Record<TaskPriority, 'default' | 'success' | 'warning' | 
   high: 'danger',
 };
 
-export function TasksTableClient({ tasks, matters, currentUserId, openCreateOnLoad = false }: TasksTableClientProps) {
+export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableClientProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -66,15 +65,14 @@ export function TasksTableClient({ tasks, matters, currentUserId, openCreateOnLo
   const [error, setError] = useState('');
 
   const now = useMemo(() => Date.now(), []);
-  const openedFromQuery = useRef(false);
 
-  const openCreate = useCallback(() => {
+  function openCreate() {
     setSelectedTask(null);
     setModalMode('create');
     setModalOpen(true);
     setError('');
     setMessage('');
-  }, []);
+  }
 
   function openEdit(task: TaskTableItem) {
     setSelectedTask({
@@ -118,16 +116,6 @@ export function TasksTableClient({ tasks, matters, currentUserId, openCreateOnLo
       setBusyTaskId('');
     }
   }
-
-  useEffect(() => {
-    if (!openCreateOnLoad) return;
-    if (openedFromQuery.current) return;
-
-    openedFromQuery.current = true;
-    openCreate();
-    // Drop the query param to avoid re-opening on refresh.
-    router.replace('/app/tasks');
-  }, [openCreateOnLoad, openCreate, router]);
 
   return (
     <div className="space-y-4">

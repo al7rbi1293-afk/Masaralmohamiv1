@@ -61,6 +61,10 @@ export function TeamManagementClient({
     return [...members].sort((a, b) => a.created_at.localeCompare(b.created_at));
   }, [members]);
 
+  const ownersCount = useMemo(() => {
+    return membersSorted.filter((member) => member.role === 'owner').length;
+  }, [membersSorted]);
+
   useEffect(() => {
     if (!inviteOpen) {
       setInviteEmail('');
@@ -152,7 +156,7 @@ export function TeamManagementClient({
         return;
       }
 
-      setMessage('تم تحديث دور العضو.');
+      setMessage('تم تحديث الدور.');
       router.refresh();
     } catch {
       setError('تعذر تحديث الدور.');
@@ -232,7 +236,8 @@ export function TeamManagementClient({
             <table className="min-w-full text-sm">
               <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>
-                  <th className="py-2 text-start font-medium">العضو</th>
+                  <th className="py-2 text-start font-medium">الاسم</th>
+                  <th className="py-2 text-start font-medium">البريد</th>
                   <th className="py-2 text-start font-medium">الدور</th>
                   <th className="py-2 text-start font-medium">إجراءات</th>
                 </tr>
@@ -240,26 +245,34 @@ export function TeamManagementClient({
               <tbody className="divide-y divide-brand-border dark:divide-slate-800">
                 {membersSorted.map((member) => {
                   const displayName = member.full_name?.trim() || member.email || member.user_id;
+                  const isLastOwner = member.role === 'owner' && ownersCount <= 1;
+                  const lastOwnerTooltip = isLastOwner
+                    ? 'لا يمكن إزالة/تغيير آخر شريك (Owner) في المكتب.'
+                    : '';
                   return (
                     <tr key={member.user_id}>
                       <td className="py-2 text-slate-700 dark:text-slate-200">
-                        <div className="space-y-0.5">
-                          <p className="font-medium text-brand-navy dark:text-slate-100">
-                            {displayName}
-                            {member.user_id === currentUserId ? (
-                              <span className="ms-2 text-xs text-slate-500 dark:text-slate-400">(أنت)</span>
-                            ) : null}
-                          </p>
-                          {member.email ? (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{member.email}</p>
+                        <p className="font-medium text-brand-navy dark:text-slate-100">
+                          {displayName}
+                          {member.user_id === currentUserId ? (
+                            <span className="ms-2 text-xs text-slate-500 dark:text-slate-400">(أنت)</span>
                           ) : null}
-                        </div>
+                        </p>
+                      </td>
+                      <td className="py-2 text-slate-700 dark:text-slate-200">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {member.email ?? '-'}
+                        </span>
                       </td>
                       <td className="py-2">
                         <select
                           defaultValue={member.role}
                           onChange={(e) => changeRole(member.user_id, e.target.value as any)}
-                          disabled={busyKey.startsWith('role:') && busyKey.endsWith(member.user_id)}
+                          disabled={
+                            isLastOwner ||
+                            (busyKey.startsWith('role:') && busyKey.endsWith(member.user_id))
+                          }
+                          title={lastOwnerTooltip}
                           className="h-9 rounded-lg border border-brand-border bg-white px-2 text-sm outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                         >
                           <option value="owner">مالك</option>
@@ -274,7 +287,8 @@ export function TeamManagementClient({
                             type="button"
                             className={buttonVariants('outline', 'sm')}
                             onClick={() => removeMember(member.user_id)}
-                            disabled={busyKey === `remove:${member.user_id}`}
+                            disabled={isLastOwner || busyKey === `remove:${member.user_id}`}
+                            title={lastOwnerTooltip}
                           >
                             إزالة
                           </button>
@@ -297,7 +311,6 @@ export function TeamManagementClient({
           <div className="mt-4 space-y-3">
             {invitations.map((inv) => {
               const url = `${publicSiteUrl}/invite/${inv.token}`;
-              const expired = new Date(inv.expires_at).getTime() <= Date.now();
               return (
                 <div
                   key={inv.id}
@@ -307,8 +320,8 @@ export function TeamManagementClient({
                     <div>
                       <p className="font-medium text-brand-navy dark:text-slate-100">{inv.email}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        الدور: {roleLabel[inv.role]} · ينتهي: {new Date(inv.expires_at).toLocaleString('ar-SA')}
-                        {expired ? ' · منتهية' : ''}
+                        الدور: {roleLabel[inv.role]} · تم الإنشاء: {new Date(inv.created_at).toLocaleString('ar-SA')} · ينتهي:{' '}
+                        {new Date(inv.expires_at).toLocaleString('ar-SA')}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -433,4 +446,3 @@ export function TeamManagementClient({
     </div>
   );
 }
-

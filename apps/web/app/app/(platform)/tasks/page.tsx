@@ -16,7 +16,6 @@ type TasksPageProps = {
     assignee?: string;
     page?: string;
     error?: string;
-    new?: string;
   };
 };
 
@@ -111,8 +110,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     updated_at: task.updated_at,
     matter: task.matter ? { id: task.matter.id, title: task.matter.title } : null,
   }));
-
-  const openCreateOnLoad = (searchParams?.new ?? '').trim() === '1';
 
   const previousQuery = buildQuery({
     q,
@@ -220,12 +217,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       </form>
 
       <div className="mt-6">
-        <TasksTableClient
-          tasks={tasks}
-          matters={matters}
-          currentUserId={user.id}
-          openCreateOnLoad={openCreateOnLoad}
-        />
+        <TasksTableClient tasks={tasks} matters={matters} currentUserId={user.id} />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300">

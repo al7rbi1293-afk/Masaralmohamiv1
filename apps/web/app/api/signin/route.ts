@@ -106,12 +106,12 @@ function safeNextPlatformPath(raw?: string) {
   }
 
   // Only allow returning to the platform (avoid open redirects).
-  if (!(value.startsWith('/app') || value.startsWith('/invite/'))) {
+  if (!value.startsWith('/app')) {
     return null;
   }
 
   // Disallow returning to API endpoints.
-  if (value.startsWith('/app/api') || value.startsWith('/api')) {
+  if (value.startsWith('/app/api')) {
     return null;
   }
 

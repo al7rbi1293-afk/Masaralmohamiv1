@@ -12,7 +12,6 @@ type LogAuditParams = {
   entityId?: string | null;
   meta?: Record<string, unknown>;
   req?: Request;
-  orgId?: string;
 };
 
 export async function logAudit({
@@ -21,10 +20,9 @@ export async function logAudit({
   entityId = null,
   meta = {},
   req,
-  orgId: overrideOrgId,
 }: LogAuditParams) {
   try {
-    const orgId = overrideOrgId ?? (await requireOrgIdForUser());
+    const orgId = await requireOrgIdForUser();
     const user = await getCurrentAuthUser();
     const supabase = createSupabaseServerRlsClient();
 

@@ -12,7 +12,6 @@ type PlatformLayoutProps = {
 
 const navItemsBase = [
   { href: '/app', label: 'لوحة التحكم' },
-  { href: '/app/search', label: 'بحث' },
   { href: '/app/clients', label: 'العملاء' },
   { href: '/app/matters', label: 'القضايا' },
   { href: '/app/documents', label: 'المستندات' },

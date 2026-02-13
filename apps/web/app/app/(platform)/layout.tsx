@@ -16,7 +16,7 @@ const navItemsBase = [
   { href: '/app/matters', label: 'القضايا' },
   { href: '/app/documents', label: 'المستندات' },
   { href: '/app/tasks', label: 'المهام' },
-  { href: '/app/billing', label: 'الفوترة' },
+  { href: '/app/billing/invoices', label: 'الفوترة' },
   { href: '/app/reports', label: 'التقارير' },
   { href: '/app/audit', label: 'سجل التدقيق' },
   { href: '/app/settings', label: 'الإعدادات' },

@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.5)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.6)
 
 - Marketing pages:
   - `/`
@@ -26,9 +26,14 @@ Next.js (App Router) + Supabase.
   - `/app/documents/new`
   - `/app/documents/[id]` (Versions + Upload new version + Share + Download)
   - `/app/tasks` (List + Filters + Create/Edit + Done/Cancel)
-  - `/app/billing` (Placeholder)
-  - `/app/reports` (Placeholder)
-  - `/app/audit` (Placeholder)
+  - `/app/billing/invoices` (Invoices + Payments + PDF)
+  - `/app/billing/invoices/new`
+  - `/app/billing/invoices/[id]`
+  - `/app/billing/quotes` (Quotes)
+  - `/app/billing/quotes/new`
+  - `/app/billing/quotes/[id]`
+  - `/app/reports` (Basic reports)
+  - `/app/audit` (Audit log, owners only)
   - `/app/settings`
   - `/app/expired`
 - Trial status debug endpoint:
@@ -37,6 +42,8 @@ Next.js (App Router) + Supabase.
   - `POST /api/start-trial`
 - Contact/activation request endpoint:
   - `POST /api/contact-request`
+- Invoice PDF export:
+  - `GET /app/api/invoices/[id]/pdf`
 - Supabase migration:
   - `supabase/migrations/0001_init.sql`
   - `supabase/migrations/0002_full_version_requests.sql`
@@ -45,6 +52,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0005_matter_events.sql`
   - `supabase/migrations/0006_documents.sql`
   - `supabase/migrations/0007_tasks.sql`
+  - `supabase/migrations/0008_billing_audit.sql`
 
 ## Run locally
 
@@ -92,6 +100,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0005_matter_events.sql`
    - `supabase/migrations/0006_documents.sql`
    - `supabase/migrations/0007_tasks.sql`
+   - `supabase/migrations/0008_billing_audit.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -217,6 +226,53 @@ supabase db push
 1. أنشئ قضية خاصة وأضف مهمة مرتبطة بها.
 2. من مستخدم غير مالك وغير عضو في القضية:
    - لا يجب أن يرى المهمة في `/app/tasks` ولا في تبويب مهام القضية.
+
+## Billing Lite + PDF + Reports + Audit (Phase 7.1.6)
+
+بعد تطبيق migration `0008_billing_audit.sql`:
+
+### أرقام المستندات
+
+- عروض الأسعار: `Q-YYYY-####`
+- الفواتير: `INV-YYYY-####`
+
+> يتم توليد الرقم من السيرفر لكل مكتب (org) مع إعادة المحاولة عند التعارض.
+
+### عروض الأسعار
+
+- افتح `/app/billing/quotes`
+- أنشئ عرض سعر من `/app/billing/quotes/new`
+- عدّل العرض من `/app/billing/quotes/[id]`
+
+### الفواتير + الدفعات
+
+- افتح `/app/billing/invoices`
+- أنشئ فاتورة من `/app/billing/invoices/new`
+- افتح `/app/billing/invoices/[id]` لتسجيل دفعات يدوية
+- الحالة تتحدث تلقائيًا بناءً على مجموع الدفعات: غير مسددة / جزئية / مدفوعة
+
+### تصدير PDF
+
+- من صفحة الفاتورة: زر "تصدير PDF"
+- أو مباشرة:
+  - `GET /app/api/invoices/[id]/pdf`
+
+### التقارير
+
+- افتح `/app/reports` لعرض:
+  - القضايا حسب الحالة
+  - المهام المتأخرة
+  - إجمالي الفواتير غير المسددة
+  - عدد العملاء النشطين
+
+### سجل التدقيق
+
+- `/app/audit` متاح فقط لمالك المكتب (role = owner)
+- يتم تسجيل:
+  - quote.created / quote.updated
+  - invoice.created / invoice.updated
+  - payment.added
+  - invoice.pdf_export
 
 ## Notes
 

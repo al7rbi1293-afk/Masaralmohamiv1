@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.3)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.4)
 
 - Marketing pages:
   - `/`
@@ -21,8 +21,10 @@ Next.js (App Router) + Supabase.
   - `/app/clients/[id]`
   - `/app/matters` (List + Search + Filters + Pagination)
   - `/app/matters/new`
-  - `/app/matters/[id]` (Summary + Timeline + Edit + Archive/Restore)
-  - `/app/documents` (Placeholder)
+  - `/app/matters/[id]` (Summary + Timeline + Documents + Edit + Archive/Restore)
+  - `/app/documents` (List + Search + Filter + Pagination)
+  - `/app/documents/new`
+  - `/app/documents/[id]` (Versions + Upload new version + Share + Download)
   - `/app/tasks` (Placeholder)
   - `/app/billing` (Placeholder)
   - `/app/reports` (Placeholder)
@@ -41,6 +43,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0003_clients.sql`
   - `supabase/migrations/0004_matters.sql`
   - `supabase/migrations/0005_matter_events.sql`
+  - `supabase/migrations/0006_documents.sql`
 
 ## Run locally
 
@@ -86,6 +89,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0003_clients.sql`
    - `supabase/migrations/0004_matters.sql`
    - `supabase/migrations/0005_matter_events.sql`
+   - `supabase/migrations/0006_documents.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -165,6 +169,39 @@ supabase db push
    - يجب أن يراه الشريك (owner) وأعضاء القضية فقط.
 3. من مستخدم من مكتب آخر:
    - لا يمكن قراءة/إضافة أحداث بسبب RLS.
+
+## Documents module (Phase 7.1.4)
+
+بعد تطبيق migration `0006_documents.sql`:
+- افتح `/app/documents` لإدارة المستندات
+- أنشئ مستندًا وارفع النسخة الأولى من `/app/documents/new`
+- افتح `/app/documents/[id]` لرفع نسخة جديدة أو تنزيل آخر نسخة
+- أنشئ رابط مشاركة مؤقت (ساعة/24 ساعة/7 أيام)
+- افتح رابط المشاركة العام: `/share/[token]`
+- داخل القضية: افتح `/app/matters/[id]?tab=documents`
+
+### إنشاء Bucket للمستندات (Supabase Storage)
+
+1. في Supabase Dashboard -> Storage
+2. أنشئ Bucket باسم: `documents`
+3. اجعله **Private**
+
+> ملاحظة: في الـ MVP، لا نعتمد على Storage RLS. الرفع/التنزيل يتم عبر روابط موقعة (Signed URLs) يتم توليدها من السيرفر.
+
+### تدفق الرفع (مختصر)
+
+1. إنشاء سجل المستند في `public.documents`
+2. طلب `signed upload url` من:
+   - `POST /app/api/documents/upload-url`
+3. رفع الملف إلى Storage باستخدام الرابط/التوكن
+4. تثبيت النسخة في `public.document_versions` عبر:
+   - `POST /app/api/documents/commit-upload`
+
+### اختبار خصوصية مستندات قضية خاصة
+
+1. أنشئ قضية خاصة وأضف مستندًا لها.
+2. من مستخدم غير مالك وغير عضو في القضية:
+   - لا يجب أن يرى المستند في `/app/documents` ولا في تبويب مستندات القضية.
 
 ## Notes
 

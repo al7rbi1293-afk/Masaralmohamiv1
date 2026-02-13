@@ -3,7 +3,9 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { DocumentShareButton } from '@/components/documents/document-share-button';
 import { listClients } from '@/lib/clients';
+import { listDocuments } from '@/lib/documents';
 import { listMatterEvents, type MatterEventType } from '@/lib/matterEvents';
 import { getMatterById, type MatterStatus } from '@/lib/matters';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
@@ -81,7 +83,12 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
 
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
-  const tab = searchParams?.tab === 'timeline' ? 'timeline' : 'summary';
+  const tab =
+    searchParams?.tab === 'timeline'
+      ? 'timeline'
+      : searchParams?.tab === 'documents'
+        ? 'documents'
+        : 'summary';
 
   return (
     <Card className="space-y-5 p-6">
@@ -111,6 +118,12 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
         >
           الخط الزمني
         </Link>
+        <Link
+          href={`/app/matters/${matter.id}?tab=documents`}
+          className={`${buttonVariants(tab === 'documents' ? 'primary' : 'outline', 'sm')}`}
+        >
+          المستندات
+        </Link>
       </div>
 
       {success ? (
@@ -127,10 +140,16 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
 
       {tab === 'summary' ? (
         <MatterSummarySection matterId={matter.id} matter={matter} />
-      ) : (
+      ) : tab === 'timeline' ? (
         <MatterTimelineSection
           matterId={matter.id}
           currentUserId={currentUser?.id ?? null}
+          searchParams={searchParams}
+        />
+      ) : (
+        <MatterDocumentsSection
+          matterId={matter.id}
+          clientId={matter.client_id}
           searchParams={searchParams}
         />
       )}
@@ -484,4 +503,118 @@ function safeDecode(value: string) {
   } catch {
     return value;
   }
+}
+
+async function MatterDocumentsSection({
+  matterId,
+  clientId,
+  searchParams,
+}: {
+  matterId: string;
+  clientId: string;
+  searchParams?: { page?: string };
+}) {
+  const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
+  const documentsResult = await listDocuments({
+    matterId,
+    page,
+    limit: 10,
+  });
+
+  const totalPages = Math.max(1, Math.ceil(documentsResult.total / documentsResult.limit));
+  const hasPrevious = documentsResult.page > 1;
+  const hasNext = documentsResult.page < totalPages;
+
+  const previousQuery = buildDocumentsQuery(Math.max(1, documentsResult.page - 1));
+  const nextQuery = buildDocumentsQuery(Math.min(totalPages, documentsResult.page + 1));
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">مستندات القضية</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            تظهر المستندات وفق خصوصية القضية.
+          </p>
+        </div>
+        <Link
+          href={`/app/documents/new?matterId=${encodeURIComponent(matterId)}&clientId=${encodeURIComponent(clientId)}`}
+          className={buttonVariants('primary', 'sm')}
+        >
+          إضافة مستند للقضية
+        </Link>
+      </div>
+
+      {!documentsResult.data.length ? (
+        <div className="rounded-lg border border-brand-border p-6 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+          لا توجد مستندات بعد.
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
+            <table className="min-w-full text-sm">
+              <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                <tr>
+                  <th className="px-3 py-3 text-start font-medium">العنوان</th>
+                  <th className="px-3 py-3 text-start font-medium">آخر نسخة</th>
+                  <th className="px-3 py-3 text-start font-medium">تاريخ الرفع</th>
+                  <th className="px-3 py-3 text-start font-medium">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand-border dark:divide-slate-800">
+                {documentsResult.data.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
+                    <td className="px-3 py-3 font-medium text-brand-navy dark:text-slate-100">{doc.title}</td>
+                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                      {doc.latestVersion ? `v${doc.latestVersion.version_no} · ${doc.latestVersion.file_name}` : '—'}
+                    </td>
+                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                      {doc.latestVersion ? new Date(doc.latestVersion.created_at).toLocaleDateString('ar-SA') : '—'}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/app/documents/${doc.id}`} className={buttonVariants('ghost', 'sm')}>
+                          عرض
+                        </Link>
+                        <DocumentShareButton documentId={doc.id} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <p>
+              الصفحة {documentsResult.page} من {totalPages} ({documentsResult.total} مستند)
+            </p>
+            <div className="flex items-center gap-2">
+              <Link
+                aria-disabled={!hasPrevious}
+                href={{ pathname: `/app/matters/${matterId}`, query: previousQuery }}
+                className={`${buttonVariants('outline', 'sm')} ${!hasPrevious ? 'pointer-events-none opacity-50' : ''}`}
+              >
+                السابق
+              </Link>
+              <Link
+                aria-disabled={!hasNext}
+                href={{ pathname: `/app/matters/${matterId}`, query: nextQuery }}
+                className={`${buttonVariants('outline', 'sm')} ${!hasNext ? 'pointer-events-none opacity-50' : ''}`}
+              >
+                التالي
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function buildDocumentsQuery(page: number) {
+  return {
+    tab: 'documents',
+    page: String(page),
+  };
 }

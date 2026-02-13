@@ -18,13 +18,16 @@ export default async function TrialExpiredPage() {
         </p>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Link href="/app/settings/subscription" className={buttonVariants('primary', 'md')}>
+            ترقية الخطة
+          </Link>
           <a
             href={`mailto:${supportEmail}?subject=${encodeURIComponent('تفعيل النسخة الكاملة - مسار المحامي')}`}
-            className={buttonVariants('primary', 'md')}
+            className={buttonVariants('outline', 'md')}
           >
             تفعيل النسخة الكاملة
           </a>
-          <Link href="/" className={buttonVariants('outline', 'md')}>
+          <Link href="/" className={buttonVariants('ghost', 'md')}>
             العودة للموقع
           </Link>
         </div>

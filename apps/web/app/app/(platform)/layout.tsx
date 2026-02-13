@@ -4,7 +4,6 @@ import { signOutAction } from '@/app/app/actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
-import { getTrialStatusForCurrentUser } from '@/lib/trial';
 
 type PlatformLayoutProps = {
   children: React.ReactNode;
@@ -24,17 +23,10 @@ const navItemsBase = [
 ] as const;
 
 export default async function PlatformLayout({ children }: PlatformLayoutProps) {
-  const [user, trial] = await Promise.all([
-    getCurrentAuthUser(),
-    getTrialStatusForCurrentUser(),
-  ]);
+  const user = await getCurrentAuthUser();
 
   if (!user) {
     redirect('/signin');
-  }
-
-  if (trial.status === 'expired' || trial.isExpired) {
-    redirect('/app/expired');
   }
   const navItems = [...navItemsBase];
 

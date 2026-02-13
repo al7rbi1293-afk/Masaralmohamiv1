@@ -18,6 +18,7 @@ Next.js (App Router) + Supabase.
   - `/invite/[token]`
 - Protected platform (`/app`) with trial gating:
   - `/app` (Dashboard)
+  - `/app/search` (Global search)
   - `/app/clients` (CRUD + Archive/Restore)
   - `/app/clients/new`
   - `/app/clients/[id]`
@@ -57,6 +58,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0007_tasks.sql`
   - `supabase/migrations/0008_billing_audit.sql`
   - `supabase/migrations/0011_org_invitations.sql`
+  - `supabase/migrations/0013_search_indexes.sql` (اختياري)
 
 ## Run locally
 
@@ -106,6 +108,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0007_tasks.sql`
    - `supabase/migrations/0008_billing_audit.sql`
    - `supabase/migrations/0011_org_invitations.sql`
+   - `supabase/migrations/0013_search_indexes.sql` (اختياري)
 3. Run the query.
 
 ### Option 2: Supabase CLI

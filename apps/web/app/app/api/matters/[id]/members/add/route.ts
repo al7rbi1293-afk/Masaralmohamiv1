@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { checkRateLimit, getRequestIp } from '@/lib/rateLimit';
+import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
@@ -27,7 +27,7 @@ export async function POST(
 
   if (!limit.allowed) {
     return NextResponse.json(
-      { error: 'تم إرسال طلبات كثيرة. حاول لاحقًا.' },
+      { error: RATE_LIMIT_MESSAGE_AR },
       { status: 429 },
     );
   }
@@ -159,4 +159,3 @@ function toUserMessage(error: unknown) {
 
   return message || 'تعذر إضافة العضو.';
 }
-

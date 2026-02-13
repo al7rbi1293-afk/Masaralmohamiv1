@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 
+export const RATE_LIMIT_MESSAGE_AR = 'تم تجاوز الحد المسموح. حاول مرة أخرى بعد قليل.';
+
 type RateLimitConfig = {
   key: string;
   limit: number;

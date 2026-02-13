@@ -7,7 +7,7 @@ import {
   SESSION_COOKIE_OPTIONS,
 } from '@/lib/supabase/constants';
 import { logError, logInfo, logWarn } from '@/lib/logger';
-import { checkRateLimit, getRequestIp, type RateLimitResult } from '@/lib/rateLimit';
+import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
 import { createSupabaseServerAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
 
 const startTrialSchema = z.object({
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     return jsonResponse(
       {
-        message: 'تم تجاوز الحد المسموح من المحاولات. حاول مرة أخرى بعد قليل.',
+        message: RATE_LIMIT_MESSAGE_AR,
       },
       429,
       requestId,

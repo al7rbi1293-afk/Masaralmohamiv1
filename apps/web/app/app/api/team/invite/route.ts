@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, getRequestIp } from '@/lib/rateLimit';
+import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { createInvitation, TeamHttpError } from '@/lib/team';
 import { logError, logInfo } from '@/lib/logger';
 
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   if (!limit.allowed) {
     return NextResponse.json(
-      { error: 'تم إرسال طلبات كثيرة. حاول لاحقًا.' },
+      { error: RATE_LIMIT_MESSAGE_AR },
       { status: 429 },
     );
   }

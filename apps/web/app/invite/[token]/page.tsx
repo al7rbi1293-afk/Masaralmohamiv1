@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
-import { checkRateLimit } from '@/lib/rateLimit';
+import { checkRateLimit, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { signOutAction } from '@/app/app/actions';
@@ -176,7 +176,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
   if (!limit.allowed) {
     return renderMessage({
-      title: 'تم إرسال طلبات كثيرة. حاول لاحقًا.',
+      title: RATE_LIMIT_MESSAGE_AR,
       body: 'إذا استمرت المشكلة، تواصل معنا.',
       primary: { href: `mailto:${SUPPORT_EMAIL}`, label: 'تواصل معنا' },
       secondary: { href: '/', label: 'العودة للموقع' },
@@ -282,4 +282,3 @@ function renderMessage({
     </Section>
   );
 }
-

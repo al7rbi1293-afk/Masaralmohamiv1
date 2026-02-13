@@ -23,9 +23,19 @@ Current CSP allows required Next.js and Supabase behavior:
 This is a practical baseline for launch. Tightening CSP further is recommended after monitoring production behavior.
 
 ## Abuse Protection
+Rate limiting is applied (in-memory per runtime instance) on key endpoints:
 - `POST /api/start-trial`: 5 requests / 10 minutes / IP.
 - `POST /api/contact-request`: 10 requests / 10 minutes / IP.
-- Honeypot field (`website`) is enforced on both endpoints.
+- Team endpoints (`/app/api/team/*`): 10 requests / 10 minutes / IP.
+- Invite acceptance (`/invite/[token]`): 20 requests / 10 minutes / IP.
+- `GET /app/api/search`: 60 requests / 10 minutes / IP.
+- Private matter members (`/app/api/matters/[id]/members/*`): 30 requests / 10 minutes / IP.
+
+Spam protection:
+- Honeypot field (`website`) is enforced on landing trial and contact request flows.
+
+Unified 429 message:
+- "تم تجاوز الحد المسموح. حاول مرة أخرى بعد قليل."
 
 ## Secrets Safety
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only.

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logError, logInfo, logWarn } from '@/lib/logger';
-import { checkRateLimit, getRequestIp, type RateLimitResult } from '@/lib/rateLimit';
+import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
 import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     });
 
     return jsonResponse(
-      { message: 'تم تجاوز الحد المسموح للطلبات. حاول مرة أخرى بعد قليل.' },
+      { message: RATE_LIMIT_MESSAGE_AR },
       429,
       requestId,
       rate,

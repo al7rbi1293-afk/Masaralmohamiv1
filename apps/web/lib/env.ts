@@ -62,3 +62,11 @@ export function getPublicSiteUrl() {
     );
   }
 }
+
+export function getAdminActivationSecret() {
+  const secret = process.env.ADMIN_ACTIVATION_SECRET?.trim();
+  if (!secret) {
+    throw missingEnvError('ADMIN_ACTIVATION_SECRET');
+  }
+  return secret;
+}

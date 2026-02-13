@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { FullVersionRequestForm } from '@/components/sections/full-version-request-form';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { ensureSubscriptionRowExists, listPlans } from '@/lib/subscriptions';
@@ -91,6 +92,15 @@ export default async function SubscriptionSettingsPage() {
         <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
           <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">الحالة الحالية</h2>
           <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <dt className="text-slate-500 dark:text-slate-400">معرّف المكتب</dt>
+              <dd className="mt-1 flex flex-wrap items-center gap-2">
+                <code className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-800 dark:bg-slate-800/60 dark:text-slate-100">
+                  {subscription.org_id}
+                </code>
+                <CopyButton value={subscription.org_id} label="نسخ معرّف المكتب" />
+              </dd>
+            </div>
             <div>
               <dt className="text-slate-500 dark:text-slate-400">الخطة</dt>
               <dd className="mt-1 font-medium text-slate-800 dark:text-slate-100">

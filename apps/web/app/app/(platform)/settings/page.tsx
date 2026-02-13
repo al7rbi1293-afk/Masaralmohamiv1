@@ -73,6 +73,9 @@ export default async function SettingsPage() {
         <Link href="/app/settings/team" className={buttonVariants('outline', 'md')}>
           إدارة الفريق
         </Link>
+        <Link href="/app/settings/subscription" className={buttonVariants('outline', 'md')}>
+          الاشتراك
+        </Link>
         <form action={signOutAction}>
           <button type="submit" className={buttonVariants('outline', 'md')}>
             تسجيل الخروج

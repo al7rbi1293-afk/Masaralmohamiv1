@@ -18,7 +18,7 @@ const contactRequestSchema = z.object({
   phone: z.string().trim().max(40, 'رقم الجوال طويل جدًا.').optional(),
   firm_name: z.string().trim().max(120, 'اسم المكتب طويل جدًا.').optional(),
   message: z.string().trim().max(2000, 'الرسالة طويلة جدًا.').optional(),
-  source: z.enum(['app', 'landing', 'contact']).default('contact'),
+  source: z.enum(['app', 'landing', 'contact', 'subscription']).default('contact'),
   website: z.string().trim().max(0, 'تم رفض الطلب.').optional(),
 });
 

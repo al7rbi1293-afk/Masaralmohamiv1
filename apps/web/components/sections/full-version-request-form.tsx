@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 type FullVersionRequestFormProps = {
-  source: 'app' | 'contact' | 'landing';
+  source: 'app' | 'contact' | 'landing' | 'subscription';
   prefilledEmail?: string;
   prefilledName?: string;
   defaultMessage?: string;

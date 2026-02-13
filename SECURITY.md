@@ -26,9 +26,11 @@ This is a practical baseline for launch. Tightening CSP further is recommended a
 Rate limiting is applied (in-memory per runtime instance) on key endpoints:
 - `POST /api/start-trial`: 5 requests / 10 minutes / IP.
 - `POST /api/contact-request`: 10 requests / 10 minutes / IP.
+- `POST /api/admin/activate-subscription`: 30 requests / 10 minutes / IP (admin secret protected).
 - Team endpoints (`/app/api/team/*`): 10 requests / 10 minutes / IP.
 - Invite acceptance (`/invite/[token]`): 20 requests / 10 minutes / IP.
 - `GET /app/api/search`: 60 requests / 10 minutes / IP.
+- `POST /app/api/documents/share`: 20 requests / 10 minutes / IP.
 - Private matter members (`/app/api/matters/[id]/members/*`): 30 requests / 10 minutes / IP.
 
 Spam protection:
@@ -45,3 +47,6 @@ Unified 429 message:
 ## Notes
 - Rate limiting is in-memory for MVP pilot and works per runtime instance.
 - For distributed hard limits later, move limiter storage to Redis/Upstash.
+
+## Dependency Notes
+- Keep `next` updated to a patched version (security advisories may affect RSC/SSR).

@@ -4,11 +4,14 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
+import { MatterMembersClient } from '@/components/matters/matter-members-client';
 import { MatterTasksClient } from '@/components/tasks/matter-tasks-client';
 import { listClients } from '@/lib/clients';
 import { listDocuments } from '@/lib/documents';
 import { listMatterEvents, type MatterEventType } from '@/lib/matterEvents';
+import { listOrgMembers } from '@/lib/matter-members';
 import { getMatterById, type MatterStatus } from '@/lib/matters';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { listTasks } from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import {
@@ -186,6 +189,32 @@ async function MatterSummarySection({
   });
 
   const selectedClientExists = clientsResult.data.some((client) => client.id === matter.client_id);
+  const currentUser = await getCurrentAuthUser();
+
+  let canManageMembers = false;
+  let orgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
+
+  if (matter.is_private && currentUser) {
+    const supabase = createSupabaseServerRlsClient();
+    const { data: membership, error: membershipError } = await supabase
+      .from('memberships')
+      .select('role')
+      .eq('org_id', matter.org_id)
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (membershipError) {
+      throw membershipError;
+    }
+
+    const isOwner = (membership as any)?.role === 'owner';
+    const isAssignee = String(matter.assigned_user_id ?? '') === currentUser.id;
+    canManageMembers = isOwner || isAssignee;
+
+    if (canManageMembers) {
+      orgMembers = await listOrgMembers(matter.org_id);
+    }
+  }
 
   return (
     <>
@@ -224,6 +253,23 @@ async function MatterSummarySection({
           </div>
         </section>
       </div>
+
+      {matter.is_private ? (
+        <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+          <h2 className="font-semibold text-brand-navy dark:text-slate-100">الأعضاء المصرح لهم</h2>
+          <MatterMembersClient
+            matterId={matterId}
+            currentUserId={currentUser?.id ?? ''}
+            canManage={canManageMembers}
+            orgMembers={orgMembers}
+          />
+          {!canManageMembers ? (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              لإدارة الأعضاء (إضافة/إزالة) يجب أن تكون شريكًا (Owner) أو المسؤول عن القضية.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
         <h2 className="font-semibold text-brand-navy dark:text-slate-100">تعديل القضية</h2>

@@ -10,6 +10,7 @@ import {
 } from '@/lib/supabase/constants';
 
 export async function signUpAction(formData: FormData) {
+  const token = String(formData.get('token') ?? '').trim();
   const fullName = String(formData.get('full_name') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
@@ -17,7 +18,9 @@ export async function signUpAction(formData: FormData) {
   const firmName = String(formData.get('firm_name') ?? '').trim();
 
   if (!fullName || !email || password.length < 8) {
-    redirect(`/signup?error=${encodeURIComponent('تحقق من الاسم والبريد وكلمة المرور (8 أحرف على الأقل).')}`);
+    redirect(
+      `/signup?error=${encodeURIComponent('تحقق من الاسم والبريد وكلمة المرور (8 أحرف على الأقل).')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+    );
   }
 
   const supabase = createSupabaseServerAuthClient();
@@ -44,11 +47,15 @@ export async function signUpAction(formData: FormData) {
     signUpData = result.data;
     signUpError = result.error;
   } catch {
-    redirect(`/signup?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}`);
+    redirect(
+      `/signup?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+    );
   }
 
   if (signUpError) {
-    redirect(`/signup?error=${encodeURIComponent(toArabicAuthError(signUpError.message))}`);
+    redirect(
+      `/signup?error=${encodeURIComponent(toArabicAuthError(signUpError.message))}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+    );
   }
 
   let session = signUpData?.session ?? null;
@@ -69,11 +76,15 @@ export async function signUpAction(formData: FormData) {
       signInData = result.data;
       signInError = result.error;
     } catch {
-      redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب لكن تعذّر تسجيل الدخول. استخدم صفحة تسجيل الدخول.')}`);
+      redirect(
+        `/signin?error=${encodeURIComponent('تم إنشاء الحساب لكن تعذّر تسجيل الدخول. استخدم صفحة تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+      );
     }
 
     if (signInError || !signInData?.session) {
-      redirect(`/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}`);
+      redirect(
+        `/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+      );
     }
 
     session = signInData.session;
@@ -88,6 +99,10 @@ export async function signUpAction(formData: FormData) {
     ...SESSION_COOKIE_OPTIONS,
     maxAge: 60 * 60 * 24 * 30,
   });
+
+  if (token && isSafeToken(token)) {
+    redirect(`/invite/${token}`);
+  }
 
   redirect('/app');
 }
@@ -108,4 +123,8 @@ function toArabicAuthError(message?: string) {
   }
 
   return 'تعذر إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى.';
+}
+
+function isSafeToken(value: string) {
+  return /^[A-Za-z0-9_-]{20,200}$/.test(value);
 }

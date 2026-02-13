@@ -21,23 +21,40 @@ type SignInPageProps = {
     error?: string;
     email?: string;
     reason?: string;
+    token?: string;
     next?: string;
   };
 };
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const tokenFromQuery = searchParams?.token ? safeDecode(searchParams.token) : '';
+  const nextFromQuery = searchParams?.next ? safeDecode(searchParams.next) : '';
+  const tokenFromNext = nextFromQuery.startsWith('/invite/') ? nextFromQuery.slice('/invite/'.length) : '';
+  const inviteToken = tokenFromQuery || tokenFromNext;
+
   const user = await getCurrentAuthUser();
   if (user) {
+    if (inviteToken) {
+      redirect(`/invite/${encodeURIComponent(inviteToken)}`);
+    }
     redirect('/app');
   }
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
   const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
-  const nextPath = searchParams?.next ? safeDecode(searchParams.next) : '';
+  const nextPath = inviteToken ? `/invite/${inviteToken}` : nextFromQuery;
   const existsMessage =
     searchParams?.reason === 'exists'
       ? 'هذا البريد مسجل بالفعل. سجّل الدخول لإكمال التجربة.'
       : null;
+
+  const inviteBanner = inviteToken
+    ? `أنت على وشك قبول دعوة لفريق. استخدم البريد المدعو${prefilledEmail ? `: ${prefilledEmail}` : '.'}`
+    : null;
+
+  const signUpHref = inviteToken
+    ? `/signup?token=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(prefilledEmail)}`
+    : '/signup';
 
   return (
     <Section className="py-16 sm:py-20">
@@ -47,6 +64,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
             أدخل البريد وكلمة المرور للوصول إلى منصة المكتب تحت <code>/app</code>.
           </p>
+
+          {inviteBanner ? (
+            <p className="mt-4 rounded-lg border border-brand-border bg-brand-background px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-200">
+              {inviteBanner}
+            </p>
+          ) : null}
 
           {existsMessage ? (
             <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
@@ -89,7 +112,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </form>
 
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <Link href="/signup" className="block text-brand-emerald hover:underline">
+            <Link href={signUpHref} className="block text-brand-emerald hover:underline">
               إنشاء حساب
             </Link>
             <Link href="/" className="text-brand-emerald hover:underline">

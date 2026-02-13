@@ -19,14 +19,20 @@ const signInSchema = z.object({
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
+  const rawNext = toText(formData, 'next') || undefined;
   const parsed = signInSchema.safeParse({
     email: toText(formData, 'email').toLowerCase(),
     password: toText(formData, 'password'),
-    next: toText(formData, 'next') || undefined,
+    next: rawNext,
   });
 
   if (!parsed.success) {
-    return redirectWithError(request, parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.');
+    return redirectWithError(
+      request,
+      parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.',
+      undefined,
+      rawNext,
+    );
   }
 
   const supabase = createSupabaseServerAuthClient();
@@ -36,12 +42,12 @@ export async function POST(request: NextRequest) {
   });
 
   if (error || !data.session) {
-    return redirectWithError(request, toArabicAuthError(error?.message), parsed.data.email);
+    return redirectWithError(request, toArabicAuthError(error?.message), parsed.data.email, parsed.data.next);
   }
 
   // Some users might come with old bookmarked routes (e.g. legacy /app/[tenantId] pages).
   // Only allow returning to the current trial platform pages.
-  const destination = safeNextPlatformPath(parsed.data.next) ?? '/app';
+  const destination = safeNextPath(parsed.data.next) ?? '/app';
   const response = NextResponse.redirect(new URL(destination, request.url), 303);
 
   response.cookies.set(ACCESS_COOKIE_NAME, data.session.access_token, {
@@ -56,11 +62,15 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
-function redirectWithError(request: NextRequest, message: string, email?: string) {
+function redirectWithError(request: NextRequest, message: string, email?: string, next?: string) {
   const url = new URL('/signin', request.url);
   url.searchParams.set('error', encodeURIComponent(message));
   if (email) {
     url.searchParams.set('email', encodeURIComponent(email));
+  }
+  const nextPath = safeNextPath(next);
+  if (nextPath) {
+    url.searchParams.set('next', encodeURIComponent(nextPath));
   }
   return NextResponse.redirect(url, 303);
 }
@@ -88,7 +98,7 @@ function toArabicAuthError(message?: string) {
   return 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.';
 }
 
-function safeNextPlatformPath(raw?: string) {
+function safeNextPath(raw?: string) {
   if (!raw) {
     return null;
   }
@@ -105,15 +115,19 @@ function safeNextPlatformPath(raw?: string) {
     return null;
   }
 
-  // Only allow returning to the platform (avoid open redirects).
-  if (!value.startsWith('/app')) {
-    return null;
+  // Allow returning to the platform (avoid open redirects).
+  if (value.startsWith('/app')) {
+    // Disallow returning to API endpoints.
+    if (value.startsWith('/app/api')) {
+      return null;
+    }
+    return value;
   }
 
-  // Disallow returning to API endpoints.
-  if (value.startsWith('/app/api')) {
-    return null;
+  // Allow returning to invite acceptance flow.
+  if (value.startsWith('/invite/')) {
+    return value;
   }
 
-  return value;
+  return null;
 }

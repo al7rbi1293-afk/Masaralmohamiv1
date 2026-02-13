@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { signUpAction } from './actions';
+import { InviteEmailField } from './invite-email-field';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
@@ -20,16 +21,31 @@ export const metadata: Metadata = {
 type SignUpPageProps = {
   searchParams?: {
     error?: string;
+    token?: string;
+    email?: string;
   };
 };
 
 export default async function SignUpPage({ searchParams }: SignUpPageProps) {
+  const token = searchParams?.token ? safeDecode(searchParams.token) : '';
+  const invitedEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
+
   const user = await getCurrentAuthUser();
   if (user) {
+    if (token) {
+      redirect(`/invite/${encodeURIComponent(token)}`);
+    }
     redirect('/app');
   }
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
+  const inviteBanner = token
+    ? `أنت على وشك قبول دعوة لفريق. استخدم البريد المدعو${invitedEmail ? `: ${invitedEmail}` : '.'}`
+    : null;
+
+  const signInHref = token
+    ? `/signin?token=${encodeURIComponent(token)}&email=${encodeURIComponent(invitedEmail)}`
+    : '/signin';
 
   return (
     <Section className="py-16 sm:py-20">
@@ -40,6 +56,12 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             أنشئ حسابك للدخول إلى منصة التجربة. تفعيل المنظمة والاشتراك سيتم في مرحلة لاحقة.
           </p>
 
+          {inviteBanner ? (
+            <p className="mt-4 rounded-lg border border-brand-border bg-brand-background px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-200">
+              {inviteBanner}
+            </p>
+          ) : null}
+
           {error ? (
             <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
               {error}
@@ -47,6 +69,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           ) : null}
 
           <form action={signUpAction} className="mt-6 space-y-4">
+            {token ? <input type="hidden" name="token" value={token} /> : null}
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">الاسم الكامل</span>
               <input
@@ -57,15 +80,20 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
               />
             </label>
 
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
-              <input
-                required
-                name="email"
-                type="email"
-                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
+            {token && invitedEmail ? (
+              <InviteEmailField invitedEmail={invitedEmail} />
+            ) : (
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
+                <input
+                  required
+                  name="email"
+                  type="email"
+                  defaultValue={invitedEmail}
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
+            )}
 
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">كلمة المرور</span>
@@ -102,7 +130,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           </form>
 
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <Link href="/signin" className="block text-brand-emerald hover:underline">
+            <Link href={signInHref} className="block text-brand-emerald hover:underline">
               لدي حساب بالفعل
             </Link>
             <Link href="/" className="text-brand-emerald hover:underline">

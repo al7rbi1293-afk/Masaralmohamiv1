@@ -14,6 +14,8 @@ Next.js (App Router) + Supabase.
 - Auth routes:
   - `/signin`
   - `/signup`
+- Invite acceptance:
+  - `/invite/[token]`
 - Protected platform (`/app`) with trial gating:
   - `/app` (Dashboard)
   - `/app/clients` (CRUD + Archive/Restore)

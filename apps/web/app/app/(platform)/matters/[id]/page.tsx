@@ -4,10 +4,12 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
+import { MatterTasksClient } from '@/components/tasks/matter-tasks-client';
 import { listClients } from '@/lib/clients';
 import { listDocuments } from '@/lib/documents';
 import { listMatterEvents, type MatterEventType } from '@/lib/matterEvents';
 import { getMatterById, type MatterStatus } from '@/lib/matters';
+import { listTasks } from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import {
   archiveMatterAction,
@@ -88,7 +90,9 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
       ? 'timeline'
       : searchParams?.tab === 'documents'
         ? 'documents'
-        : 'summary';
+        : searchParams?.tab === 'tasks'
+          ? 'tasks'
+          : 'summary';
 
   return (
     <Card className="space-y-5 p-6">
@@ -124,6 +128,12 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
         >
           المستندات
         </Link>
+        <Link
+          href={`/app/matters/${matter.id}?tab=tasks`}
+          className={`${buttonVariants(tab === 'tasks' ? 'primary' : 'outline', 'sm')}`}
+        >
+          المهام
+        </Link>
       </div>
 
       {success ? (
@@ -146,11 +156,16 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
           currentUserId={currentUser?.id ?? null}
           searchParams={searchParams}
         />
-      ) : (
+      ) : tab === 'documents' ? (
         <MatterDocumentsSection
           matterId={matter.id}
           clientId={matter.client_id}
           searchParams={searchParams}
+        />
+      ) : (
+        <MatterTasksSection
+          matterId={matter.id}
+          currentUserId={currentUser?.id ?? ''}
         />
       )}
     </Card>
@@ -617,4 +632,41 @@ function buildDocumentsQuery(page: number) {
     tab: 'documents',
     page: String(page),
   };
+}
+
+async function MatterTasksSection({
+  matterId,
+  currentUserId,
+}: {
+  matterId: string;
+  currentUserId: string;
+}) {
+  const tasksResult = await listTasks({
+    matterId,
+    status: 'all',
+    priority: 'all',
+    due: 'all',
+    assignee: 'any',
+    page: 1,
+    limit: 20,
+  });
+
+  const tasks = tasksResult.data.map((task) => ({
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    matter_id: task.matter_id,
+    assignee_id: task.assignee_id,
+    due_at: task.due_at,
+    priority: task.priority,
+    status: task.status,
+  }));
+
+  return (
+    <MatterTasksClient
+      matterId={matterId}
+      tasks={tasks}
+      currentUserId={currentUserId}
+    />
+  );
 }

@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.4)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.5)
 
 - Marketing pages:
   - `/`
@@ -25,7 +25,7 @@ Next.js (App Router) + Supabase.
   - `/app/documents` (List + Search + Filter + Pagination)
   - `/app/documents/new`
   - `/app/documents/[id]` (Versions + Upload new version + Share + Download)
-  - `/app/tasks` (Placeholder)
+  - `/app/tasks` (List + Filters + Create/Edit + Done/Cancel)
   - `/app/billing` (Placeholder)
   - `/app/reports` (Placeholder)
   - `/app/audit` (Placeholder)
@@ -44,6 +44,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0004_matters.sql`
   - `supabase/migrations/0005_matter_events.sql`
   - `supabase/migrations/0006_documents.sql`
+  - `supabase/migrations/0007_tasks.sql`
 
 ## Run locally
 
@@ -90,6 +91,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0004_matters.sql`
    - `supabase/migrations/0005_matter_events.sql`
    - `supabase/migrations/0006_documents.sql`
+   - `supabase/migrations/0007_tasks.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -202,6 +204,19 @@ supabase db push
 1. أنشئ قضية خاصة وأضف مستندًا لها.
 2. من مستخدم غير مالك وغير عضو في القضية:
    - لا يجب أن يرى المستند في `/app/documents` ولا في تبويب مستندات القضية.
+
+## Tasks module (Phase 7.1.5)
+
+بعد تطبيق migration `0007_tasks.sql`:
+- افتح `/app/tasks` لإدارة المهام مع الفلاتر
+- أنشئ مهمة جديدة (مع ربط اختياري بقضية) ثم عدّلها أو غيّر حالتها إلى "تم" أو "إلغاء"
+- داخل القضية: افتح `/app/matters/[id]?tab=tasks` لإدارة مهام القضية
+
+### اختبار خصوصية مهام قضية خاصة
+
+1. أنشئ قضية خاصة وأضف مهمة مرتبطة بها.
+2. من مستخدم غير مالك وغير عضو في القضية:
+   - لا يجب أن يرى المهمة في `/app/tasks` ولا في تبويب مهام القضية.
 
 ## Notes
 

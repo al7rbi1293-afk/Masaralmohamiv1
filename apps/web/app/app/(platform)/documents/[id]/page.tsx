@@ -43,6 +43,14 @@ export default async function DocumentDetailsPage({ params, searchParams }: Docu
 
   return (
     <Card className="space-y-5 p-6">
+      <nav aria-label="breadcrumbs" className="text-sm text-slate-500 dark:text-slate-400">
+        <Link href="/app/documents" className="hover:underline">
+          المستندات
+        </Link>
+        <span className="mx-2">›</span>
+        <span className="text-slate-700 dark:text-slate-200">{document.title}</span>
+      </nav>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">{document.title}</h1>
@@ -144,4 +152,3 @@ function formatBytes(value: number) {
   }
   return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
-

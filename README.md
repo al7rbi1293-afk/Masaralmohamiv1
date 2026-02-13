@@ -2,7 +2,7 @@
 
 Next.js (App Router) + Supabase.
 
-## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.6)
+## Current scope (Phase 1 + 2 + 3 + 4 + 5 + 6 + 7.1.6 + 7.2)
 
 - Marketing pages:
   - `/`
@@ -16,12 +16,13 @@ Next.js (App Router) + Supabase.
   - `/signup`
 - Protected platform (`/app`) with trial gating:
   - `/app` (Dashboard)
+  - `/app/search` (Global search)
   - `/app/clients` (CRUD + Archive/Restore)
   - `/app/clients/new`
   - `/app/clients/[id]`
   - `/app/matters` (List + Search + Filters + Pagination)
   - `/app/matters/new`
-  - `/app/matters/[id]` (Summary + Timeline + Documents + Edit + Archive/Restore)
+  - `/app/matters/[id]` (Summary + Timeline + Documents + Tasks + Edit + Archive/Restore + Private members)
   - `/app/documents` (List + Search + Filter + Pagination)
   - `/app/documents/new`
   - `/app/documents/[id]` (Versions + Upload new version + Share + Download)
@@ -35,7 +36,10 @@ Next.js (App Router) + Supabase.
   - `/app/reports` (Basic reports)
   - `/app/audit` (Audit log, owners only)
   - `/app/settings`
+  - `/app/settings/team` (Team management, owners only)
   - `/app/expired`
+- Invite accept page:
+  - `/invite/[token]`
 - Trial status debug endpoint:
   - `/app/api/trial-status`
 - Trial provisioning endpoint:
@@ -53,6 +57,8 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0006_documents.sql`
   - `supabase/migrations/0007_tasks.sql`
   - `supabase/migrations/0008_billing_audit.sql`
+  - `supabase/migrations/0009_org_invitations.sql`
+  - `supabase/migrations/0010_search_indexes.sql`
 
 ## Run locally
 
@@ -101,6 +107,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0006_documents.sql`
    - `supabase/migrations/0007_tasks.sql`
    - `supabase/migrations/0008_billing_audit.sql`
+   - `supabase/migrations/0009_org_invitations.sql`
+   - `supabase/migrations/0010_search_indexes.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -282,6 +290,8 @@ supabase db push
 - Rate limiting:
   - `POST /api/start-trial`: `5` requests / `10` minutes / IP.
   - `POST /api/contact-request`: `10` requests / `10` minutes / IP.
+  - Team endpoints: `5-10` requests / `10` minutes / IP.
+  - Search endpoint: `30` requests / `10` minutes / IP.
 - `getTrialStatusForCurrentUser` is implemented in:
   - `apps/web/lib/trial.ts`
 - Deployment guide: `DEPLOYMENT.md`
@@ -290,3 +300,5 @@ supabase db push
 - Security baseline: `SECURITY.md`
 - Pilot runbook: `PILOT_PLAYBOOK.md`
 - Rate limiting note: `apps/web/lib/rateLimit.md`
+- Team management doc: `TEAM_MANAGEMENT.md`
+- Search doc: `SEARCH.md`

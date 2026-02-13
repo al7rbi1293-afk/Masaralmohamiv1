@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
+import { MatterMembersClient, type MatterMemberDisplay, type OrgMemberOption } from '@/components/matters/matter-members-client';
 import { MatterTasksClient } from '@/components/tasks/matter-tasks-client';
 import { listClients } from '@/lib/clients';
 import { listDocuments } from '@/lib/documents';
@@ -11,6 +12,7 @@ import { listMatterEvents, type MatterEventType } from '@/lib/matterEvents';
 import { getMatterById, type MatterStatus } from '@/lib/matters';
 import { listTasks } from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import {
   archiveMatterAction,
   createMatterEventAction,
@@ -96,6 +98,14 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
 
   return (
     <Card className="space-y-5 p-6">
+      <nav aria-label="breadcrumbs" className="text-sm text-slate-500 dark:text-slate-400">
+        <Link href="/app/matters" className="hover:underline">
+          القضايا
+        </Link>
+        <span className="mx-2">›</span>
+        <span className="text-slate-700 dark:text-slate-200">{matter.title}</span>
+      </nav>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">{matter.title}</h1>
@@ -149,7 +159,7 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
       ) : null}
 
       {tab === 'summary' ? (
-        <MatterSummarySection matterId={matter.id} matter={matter} />
+        <MatterSummarySection matterId={matter.id} matter={matter} currentUserId={currentUser?.id ?? null} />
       ) : tab === 'timeline' ? (
         <MatterTimelineSection
           matterId={matter.id}
@@ -175,9 +185,11 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
 async function MatterSummarySection({
   matterId,
   matter,
+  currentUserId,
 }: {
   matterId: string;
   matter: NonNullable<Awaited<ReturnType<typeof getMatterById>>>;
+  currentUserId: string | null;
 }) {
   const clientsResult = await listClients({
     status: 'all',
@@ -186,6 +198,91 @@ async function MatterSummarySection({
   });
 
   const selectedClientExists = clientsResult.data.some((client) => client.id === matter.client_id);
+
+  const supabase = createSupabaseServerRlsClient();
+  const { data: membership } = currentUserId
+    ? await supabase
+        .from('memberships')
+        .select('role')
+        .eq('org_id', matter.org_id)
+        .eq('user_id', currentUserId)
+        .maybeSingle()
+    : { data: null as any };
+
+  const isOwner = membership?.role === 'owner';
+  const isAssignee = Boolean(currentUserId && matter.assigned_user_id === currentUserId);
+  const canManageMembers = matter.is_private && (isOwner || isAssignee);
+
+  let members: MatterMemberDisplay[] = [];
+  let orgOptions: OrgMemberOption[] = [];
+
+  if (matter.is_private) {
+    const service = createSupabaseServerClient();
+
+    const { data: mmRows } = await service
+      .from('matter_members')
+      .select('user_id')
+      .eq('matter_id', matterId);
+
+    const memberIds = ((mmRows as any[] | null) ?? []).map((row) => String(row.user_id));
+
+    if (memberIds.length) {
+      const [authUsers, profiles] = await Promise.all([
+        service.schema('auth').from('users').select('id, email').in('id', memberIds),
+        service.from('profiles').select('user_id, full_name').in('user_id', memberIds),
+      ]);
+
+      const emailById = new Map<string, string>();
+      for (const row of (authUsers.data as any[] | null) ?? []) {
+        if (row?.id && row?.email) emailById.set(String(row.id), String(row.email));
+      }
+
+      const nameById = new Map<string, string>();
+      for (const row of (profiles.data as any[] | null) ?? []) {
+        if (row?.user_id) nameById.set(String(row.user_id), String(row.full_name ?? ''));
+      }
+
+      members = memberIds.map((id) => ({
+        user_id: id,
+        email: emailById.get(id) ?? null,
+        full_name: nameById.get(id) ?? '',
+        is_current_user: Boolean(currentUserId && id === currentUserId),
+      }));
+    }
+
+    if (canManageMembers) {
+      const { data: orgMemberRows } = await service
+        .from('memberships')
+        .select('user_id, role, created_at')
+        .eq('org_id', matter.org_id)
+        .order('created_at', { ascending: true });
+
+      const orgIds = ((orgMemberRows as any[] | null) ?? []).map((row) => String(row.user_id));
+      if (orgIds.length) {
+        const [orgAuthUsers, orgProfiles] = await Promise.all([
+          service.schema('auth').from('users').select('id, email').in('id', orgIds),
+          service.from('profiles').select('user_id, full_name').in('user_id', orgIds),
+        ]);
+
+        const emailById = new Map<string, string>();
+        for (const row of (orgAuthUsers.data as any[] | null) ?? []) {
+          if (row?.id && row?.email) emailById.set(String(row.id), String(row.email));
+        }
+
+        const nameById = new Map<string, string>();
+        for (const row of (orgProfiles.data as any[] | null) ?? []) {
+          if (row?.user_id) nameById.set(String(row.user_id), String(row.full_name ?? ''));
+        }
+
+        orgOptions = orgIds.map((id) => {
+          const fullName = (nameById.get(id) ?? '').trim();
+          const email = (emailById.get(id) ?? '').trim();
+          const label = fullName || email || id;
+          return { user_id: id, label };
+        });
+      }
+    }
+  }
 
   return (
     <>
@@ -305,6 +402,23 @@ async function MatterSummarySection({
           </div>
         </form>
       </section>
+
+      {matter.is_private ? (
+        <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+          <h2 className="font-semibold text-brand-navy dark:text-slate-100">الأعضاء المصرح لهم</h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            القضية الخاصة تظهر فقط للمالك والأعضاء المصرّح لهم.
+          </p>
+          <div className="mt-4">
+            <MatterMembersClient
+              matterId={matterId}
+              canManage={canManageMembers}
+              members={members}
+              orgOptions={orgOptions}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         {matter.status === 'archived' ? (

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import Link from 'next/link';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
@@ -69,6 +70,9 @@ export default async function SettingsPage() {
       </dl>
 
       <div className="flex flex-wrap gap-3">
+        <Link href="/app/settings/team" className={buttonVariants('outline', 'md')}>
+          إدارة الفريق
+        </Link>
         <form action={signOutAction}>
           <button type="submit" className={buttonVariants('outline', 'md')}>
             تسجيل الخروج

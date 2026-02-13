@@ -51,6 +51,24 @@ export default async function DashboardPage() {
           <Badge variant={label.variant}>{label.text}</Badge>
         </div>
 
+        <div className="mt-5 rounded-lg border border-brand-border p-4 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-brand-navy dark:text-slate-100">إجراءات سريعة</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/app/clients/new" className={buttonVariants('outline', 'sm')}>
+              عميل جديد
+            </Link>
+            <Link href="/app/matters/new" className={buttonVariants('outline', 'sm')}>
+              قضية جديدة
+            </Link>
+            <Link href="/app/documents/new" className={buttonVariants('outline', 'sm')}>
+              مستند جديد
+            </Link>
+            <Link href="/app/tasks?new=1" className={buttonVariants('outline', 'sm')}>
+              مهمة جديدة
+            </Link>
+          </div>
+        </div>
+
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-brand-navy dark:text-slate-100">حالة التجربة</h3>
@@ -91,4 +109,3 @@ export default async function DashboardPage() {
     </div>
   );
 }
-

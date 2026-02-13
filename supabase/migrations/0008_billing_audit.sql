@@ -274,7 +274,7 @@ using (
   )
 )
 with check (
-  and public.is_org_member(org_id)
+  public.is_org_member(org_id)
   and exists (
     select 1
     from public.invoices inv

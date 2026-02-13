@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,7 @@ type TasksTableClientProps = {
   tasks: TaskTableItem[];
   matters: TaskUpsertMatterOption[];
   currentUserId: string;
+  openCreateOnLoad?: boolean;
 };
 
 const statusLabel: Record<TaskStatus, string> = {
@@ -55,7 +56,7 @@ const priorityVariant: Record<TaskPriority, 'default' | 'success' | 'warning' | 
   high: 'danger',
 };
 
-export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableClientProps) {
+export function TasksTableClient({ tasks, matters, currentUserId, openCreateOnLoad = false }: TasksTableClientProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -65,14 +66,15 @@ export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableCl
   const [error, setError] = useState('');
 
   const now = useMemo(() => Date.now(), []);
+  const openedFromQuery = useRef(false);
 
-  function openCreate() {
+  const openCreate = useCallback(() => {
     setSelectedTask(null);
     setModalMode('create');
     setModalOpen(true);
     setError('');
     setMessage('');
-  }
+  }, []);
 
   function openEdit(task: TaskTableItem) {
     setSelectedTask({
@@ -116,6 +118,16 @@ export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableCl
       setBusyTaskId('');
     }
   }
+
+  useEffect(() => {
+    if (!openCreateOnLoad) return;
+    if (openedFromQuery.current) return;
+
+    openedFromQuery.current = true;
+    openCreate();
+    // Drop the query param to avoid re-opening on refresh.
+    router.replace('/app/tasks');
+  }, [openCreateOnLoad, openCreate, router]);
 
   return (
     <div className="space-y-4">
@@ -244,4 +256,3 @@ export function TasksTableClient({ tasks, matters, currentUserId }: TasksTableCl
     </div>
   );
 }
-

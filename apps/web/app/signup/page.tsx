@@ -20,6 +20,8 @@ export const metadata: Metadata = {
 type SignUpPageProps = {
   searchParams?: {
     error?: string;
+    email?: string;
+    next?: string;
   };
 };
 
@@ -30,6 +32,8 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   }
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
+  const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
+  const nextPath = searchParams?.next ? safeDecode(searchParams.next) : '';
 
   return (
     <Section className="py-16 sm:py-20">
@@ -47,6 +51,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           ) : null}
 
           <form action={signUpAction} className="mt-6 space-y-4">
+            <input type="hidden" name="next" value={nextPath} />
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">الاسم الكامل</span>
               <input
@@ -63,6 +68,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
                 required
                 name="email"
                 type="email"
+                defaultValue={prefilledEmail}
                 className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
               />
             </label>

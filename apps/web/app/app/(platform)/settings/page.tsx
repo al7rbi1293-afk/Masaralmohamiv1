@@ -85,6 +85,11 @@ export default async function SettingsPage() {
         <Link href="/app/settings/team" className={buttonVariants('outline', 'md')}>
           إدارة الفريق
         </Link>
+        {isOwner ? (
+          <Link href="/app/settings/email" className={buttonVariants('outline', 'md')}>
+            البريد
+          </Link>
+        ) : null}
         <Link href="/app/settings/subscription" className={buttonVariants('outline', 'md')}>
           الاشتراك
         </Link>

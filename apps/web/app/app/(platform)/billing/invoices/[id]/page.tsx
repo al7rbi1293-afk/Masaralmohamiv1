@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { BillingItemsEditor } from '@/components/billing/items-editor';
 import { PaymentAddButton } from '@/components/billing/payment-add-button';
+import { InvoiceEmailButton } from '@/components/billing/invoice-email-button';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
@@ -96,6 +97,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
           >
             تصدير PDF
           </a>
+          <InvoiceEmailButton invoiceId={invoice.id} />
           <Link href="/app/billing/invoices" className={buttonVariants('outline', 'sm')}>
             رجوع
           </Link>

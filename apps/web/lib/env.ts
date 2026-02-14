@@ -12,6 +12,14 @@ type SupabaseServiceEnv = {
   serviceRoleKey: string;
 };
 
+export type SmtpEnv = {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+};
+
 function missingEnvError(name: string) {
   return new Error(
     `متغير البيئة ${name} غير مضبوط. Missing required environment variable: ${name}.`,
@@ -95,4 +103,35 @@ export function getStripePriceId(planCode: string) {
     throw missingEnvError(envKey);
   }
   return value;
+}
+
+export function isSmtpConfigured() {
+  return Boolean(
+    process.env.SMTP_HOST?.trim() &&
+      process.env.SMTP_PORT?.trim() &&
+      process.env.SMTP_USER?.trim() &&
+      process.env.SMTP_PASS?.trim() &&
+      process.env.SMTP_FROM?.trim(),
+  );
+}
+
+export function getSmtpEnv(): SmtpEnv {
+  const host = process.env.SMTP_HOST?.trim();
+  const portRaw = process.env.SMTP_PORT?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+  const from = process.env.SMTP_FROM?.trim();
+
+  if (!host) throw missingEnvError('SMTP_HOST');
+  if (!portRaw) throw missingEnvError('SMTP_PORT');
+  if (!user) throw missingEnvError('SMTP_USER');
+  if (!pass) throw missingEnvError('SMTP_PASS');
+  if (!from) throw missingEnvError('SMTP_FROM');
+
+  const port = Number(portRaw);
+  if (!Number.isFinite(port) || port <= 0) {
+    throw new Error('قيمة SMTP_PORT غير صحيحة. SMTP_PORT must be a valid port number.');
+  }
+
+  return { host, port, user, pass, from };
 }

@@ -19,6 +19,7 @@ Next.js (App Router) + Supabase.
 - Protected platform (`/app`) with trial gating:
   - `/app` (Dashboard)
   - `/app/search` (Global search)
+  - `/app/calendar` (Calendar + ICS export)
   - `/app/clients` (CRUD + Archive/Restore)
   - `/app/clients/new`
   - `/app/clients/[id]`
@@ -42,6 +43,7 @@ Next.js (App Router) + Supabase.
   - `/app/audit` (Audit log, owners only)
   - `/app/settings`
   - `/app/settings/team` (Team management, owners only)
+  - `/app/settings/email` (Email logs, owners only)
   - `/app/expired`
 - Trial status debug endpoint:
   - `/app/api/trial-status`
@@ -51,6 +53,12 @@ Next.js (App Router) + Supabase.
   - `POST /api/contact-request`
 - Invoice PDF export:
   - `GET /app/api/invoices/[id]/pdf`
+- Calendar ICS export:
+  - `GET /app/api/calendar/ics?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- Email endpoints (SMTP):
+  - `POST /app/api/email/send-doc-share`
+  - `POST /app/api/email/send-invoice`
+  - `POST /app/api/email/send-task-reminder`
 - Supabase migration:
   - `supabase/migrations/0001_init.sql`
   - `supabase/migrations/0002_full_version_requests.sql`
@@ -64,6 +72,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0013_search_indexes.sql` (اختياري)
   - `supabase/migrations/0017_full_version_requests_type.sql`
   - `supabase/migrations/0018_templates.sql`
+  - `supabase/migrations/0019_email_log.sql`
 
 ## Run locally
 
@@ -110,6 +119,18 @@ SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
+### SMTP (optional)
+
+To enable outbound emails:
+
+```bash
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=
+```
+
 ## Apply Supabase migration
 
 ### Option 1: SQL Editor (manual)
@@ -127,6 +148,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0011_org_invitations.sql`
    - `supabase/migrations/0013_search_indexes.sql` (اختياري)
    - `supabase/migrations/0018_templates.sql`
+   - `supabase/migrations/0019_email_log.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TaskUpsertModal, type TaskUpsertMatterOption, type TaskUpsertInitialTask } from './task-upsert-modal';
+import { TaskEmailReminderButton } from './task-email-reminder-button';
 
 type TaskPriority = 'low' | 'medium' | 'high';
 type TaskStatus = 'todo' | 'doing' | 'done' | 'canceled';
@@ -227,6 +228,7 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
                         >
                           إلغاء
                         </button>
+                        <TaskEmailReminderButton taskId={task.id} />
                       </div>
                     </td>
                   </tr>

@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
+import { DocumentEmailShareButton } from '@/components/documents/document-email-share-button';
 import { DocumentVersionActions } from '@/components/documents/document-version-actions';
 import { getDocumentById, listDocumentVersions } from '@/lib/documents';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
@@ -84,6 +85,7 @@ export default async function DocumentDetailsPage({ params, searchParams }: Docu
 
       <div className="flex flex-wrap gap-2">
         <DocumentShareButton documentId={document.id} label="مشاركة" />
+        <DocumentEmailShareButton documentId={document.id} />
         <Badge variant="default">عدد النسخ: {versions.length}</Badge>
       </div>
 

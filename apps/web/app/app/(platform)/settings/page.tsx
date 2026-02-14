@@ -37,6 +37,18 @@ export default async function SettingsPage() {
     .maybeSingle();
 
   const profile = profileData as ProfileRow | null;
+  const orgId = trial.orgId ?? null;
+
+  const { data: membership } = orgId
+    ? await supabase
+        .from('memberships')
+        .select('role')
+        .eq('org_id', orgId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const isOwner = Boolean((membership as any)?.role === 'owner');
 
   return (
     <Card className="p-6">
@@ -79,6 +91,11 @@ export default async function SettingsPage() {
         <Link href="/app/settings/privacy" className={buttonVariants('outline', 'md')}>
           الخصوصية
         </Link>
+        {isOwner ? (
+          <Link href="/app/settings/diagnostics" className={buttonVariants('outline', 'md')}>
+            التشخيص
+          </Link>
+        ) : null}
         <form action={signOutAction}>
           <button type="submit" className={buttonVariants('outline', 'md')}>
             تسجيل الخروج

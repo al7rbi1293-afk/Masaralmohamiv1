@@ -10,6 +10,9 @@ export type NajizIntegrationConfig = {
   environment: NajizEnvironment;
   base_url: string;
   last_error?: string | null;
+  sync_path?: string | null;
+  last_tested_at?: string | null;
+  last_connected_at?: string | null;
 };
 
 type NajizSecrets = {
@@ -174,15 +177,27 @@ export async function testNajizOAuth(params: {
     body.set('scope', params.scope);
   }
 
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-    body,
-    cache: 'no-store',
-  });
+  let response: Response;
+  try {
+    response = await najizFetch(
+      tokenUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
+        body,
+        cache: 'no-store',
+      },
+      { throttleKey: params.baseUrl, maxAttempts: 2, timeoutMs: 12_000 },
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'تعذر الاتصال بـ Najiz. حاول مرة أخرى.',
+    };
+  }
 
   if (!response.ok) {
     return {
@@ -218,17 +233,24 @@ export async function getNajizAccessToken(params: {
     body.set('scope', params.scope);
   }
 
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
+  const response = await najizFetch(
+    tokenUrl,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body,
+      cache: 'no-store',
     },
-    body,
-    cache: 'no-store',
-  });
+    { throttleKey: params.baseUrl, maxAttempts: 2, timeoutMs: 12_000 },
+  );
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('بيانات Najiz غير صحيحة أو لا تملك صلاحية الوصول.');
+    }
     throw new Error(`فشل الحصول على رمز الوصول (${response.status}).`);
   }
 
@@ -239,6 +261,107 @@ export async function getNajizAccessToken(params: {
   }
 
   return token;
+}
+
+type NajizFetchOptions = {
+  throttleKey?: string;
+  throttleMs?: number;
+  timeoutMs?: number;
+  maxAttempts?: number;
+};
+
+const throttleStoreKey = '__masar_najiz_throttle__';
+
+function getThrottleStore() {
+  const globalStore = globalThis as typeof globalThis & {
+    [throttleStoreKey]?: Map<string, number>;
+  };
+
+  if (!globalStore[throttleStoreKey]) {
+    globalStore[throttleStoreKey] = new Map<string, number>();
+  }
+
+  return globalStore[throttleStoreKey];
+}
+
+async function sleep(ms: number) {
+  if (!ms || ms <= 0) return;
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientStatus(status: number) {
+  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function parseRetryAfterSeconds(value: string | null) {
+  if (!value) return 0;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return seconds;
+  }
+  return 0;
+}
+
+export async function najizFetch(url: string, init: RequestInit, options: NajizFetchOptions = {}) {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  const throttleMs = options.throttleMs ?? 250;
+  const throttleKey = (options.throttleKey || '').trim() || (() => {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return 'najiz';
+    }
+  })();
+
+  const store = getThrottleStore();
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const now = Date.now();
+    const nextAllowedAt = store.get(throttleKey) ?? 0;
+    if (nextAllowedAt > now) {
+      await sleep(nextAllowedAt - now);
+    }
+    store.set(throttleKey, Date.now() + throttleMs);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
+
+      if (response.ok || !isTransientStatus(response.status) || attempt === maxAttempts) {
+        return response;
+      }
+
+      const retryAfter = parseRetryAfterSeconds(response.headers.get('retry-after'));
+      const baseDelay = retryAfter ? retryAfter * 1000 : 300;
+      const delay = Math.min(3_000, baseDelay * Math.pow(2, attempt - 1)) + Math.floor(Math.random() * 100);
+      await sleep(delay);
+      continue;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error;
+
+      const message = error instanceof Error ? error.message : '';
+      if (message.toLowerCase().includes('aborted')) {
+        if (attempt === maxAttempts) {
+          throw new Error('انتهت مهلة الاتصال بـ Najiz. حاول مرة أخرى.');
+        }
+      } else if (attempt === maxAttempts) {
+        throw new Error('تعذر الاتصال بـ Najiz. حاول مرة أخرى.');
+      }
+
+      const delay = Math.min(3_000, 300 * Math.pow(2, attempt - 1)) + Math.floor(Math.random() * 100);
+      await sleep(delay);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('تعذر الاتصال بـ Najiz.');
 }
 
 function normalizeBaseUrl(value: string) {

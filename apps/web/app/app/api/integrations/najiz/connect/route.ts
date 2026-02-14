@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { requireOwner } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
-import { encryptJson } from '@/lib/crypto';
+import { decryptJson, encryptJson } from '@/lib/crypto';
 import { testNajizOAuth } from '@/lib/integrations/najizClient';
 import { logError } from '@/lib/logger';
 
@@ -14,10 +14,16 @@ const bodySchema = z.object({
     errorMap: () => ({ message: 'بيئة Najiz غير صحيحة.' }),
   }),
   base_url: z.string().trim().url('رابط Najiz غير صحيح.'),
-  client_id: z.string().trim().min(1, 'معرّف العميل مطلوب.').max(200, 'معرّف العميل طويل جدًا.'),
-  client_secret: z.string().trim().min(1, 'سر العميل مطلوب.').max(500, 'سر العميل طويل جدًا.'),
+  client_id: z.string().trim().min(1, 'معرّف العميل مطلوب.').max(200, 'معرّف العميل طويل جدًا.').optional(),
+  client_secret: z.string().trim().min(1, 'سر العميل مطلوب.').max(500, 'سر العميل طويل جدًا.').optional(),
   scope_optional: z.string().trim().max(400, 'قيمة scope طويلة جدًا.').optional(),
 });
+
+type NajizSecrets = {
+  client_id: string;
+  client_secret: string;
+  scope?: string | null;
+};
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
@@ -45,47 +51,105 @@ export async function POST(request: NextRequest) {
     const { orgId, userId } = await requireOwner();
     const rls = createSupabaseServerRlsClient();
 
+    const { data: existing, error: existingError } = await rls
+      .from('org_integrations')
+      .select('id, status, config, secret_enc, updated_at')
+      .eq('org_id', orgId)
+      .eq('provider', 'najiz')
+      .maybeSingle();
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    const prevConfig =
+      existing && typeof (existing as any).config === 'object' && (existing as any).config
+        ? ((existing as any).config as Record<string, any>)
+        : {};
+
+    const existingSecrets = (existing as any)?.secret_enc
+      ? decryptJson<NajizSecrets>(String((existing as any).secret_enc))
+      : null;
+
+    const mergedClientId = parsed.data.client_id ?? existingSecrets?.client_id ?? '';
+    const mergedClientSecret = parsed.data.client_secret ?? existingSecrets?.client_secret ?? '';
+    const mergedScope =
+      typeof parsed.data.scope_optional === 'string'
+        ? parsed.data.scope_optional || null
+        : existingSecrets?.scope ?? null;
+
+    if (!mergedClientId || !mergedClientSecret) {
+      return NextResponse.json(
+        { error: 'أدخل بيانات OAuth (Client ID و Client Secret) لإعداد التكامل.' },
+        { status: 400 },
+      );
+    }
+
     const config = {
+      ...prevConfig,
       environment: parsed.data.environment,
       base_url: normalizeBaseUrl(parsed.data.base_url),
       last_error: null,
+      last_tested_at: new Date().toISOString(),
+      previous_status: (existing as any)?.status ?? null,
+      previous_updated_at: (existing as any)?.updated_at ?? null,
     };
 
-    const secret_enc = encryptJson({
-      client_id: parsed.data.client_id,
-      client_secret: parsed.data.client_secret,
-      scope: parsed.data.scope_optional ? parsed.data.scope_optional : null,
-    });
+    const shouldRotateSecrets = Boolean(parsed.data.client_id || parsed.data.client_secret || parsed.data.scope_optional);
+    const secret_enc = shouldRotateSecrets
+      ? encryptJson({
+          client_id: mergedClientId,
+          client_secret: mergedClientSecret,
+          scope: mergedScope,
+        })
+      : ((existing as any)?.secret_enc as string | null);
 
-    const { error: upsertError } = await rls
-      .from('org_integrations')
-      .upsert(
-        {
-          org_id: orgId,
-          provider: 'najiz',
-          status: 'disconnected',
-          config,
-          secret_enc,
-          created_by: userId,
-        },
-        { onConflict: 'org_id,provider' },
-      );
+    if (existing) {
+      const updatePayload: Record<string, any> = {
+        status: 'disconnected',
+        config,
+      };
 
-    if (upsertError) {
-      throw upsertError;
+      if (secret_enc) {
+        updatePayload.secret_enc = secret_enc;
+      }
+
+      const { error: updateError } = await rls
+        .from('org_integrations')
+        .update(updatePayload)
+        .eq('org_id', orgId)
+        .eq('provider', 'najiz');
+
+      if (updateError) {
+        throw updateError;
+      }
+    } else {
+      const { error: insertError } = await rls.from('org_integrations').insert({
+        org_id: orgId,
+        provider: 'najiz',
+        status: 'disconnected',
+        config,
+        secret_enc: secret_enc ?? encryptJson({ client_id: mergedClientId, client_secret: mergedClientSecret, scope: mergedScope }),
+        created_by: userId,
+      });
+
+      if (insertError) {
+        throw insertError;
+      }
     }
 
     const test = await testNajizOAuth({
       baseUrl: config.base_url,
-      clientId: parsed.data.client_id,
-      clientSecret: parsed.data.client_secret,
-      scope: parsed.data.scope_optional ? parsed.data.scope_optional : null,
+      clientId: mergedClientId,
+      clientSecret: mergedClientSecret,
+      scope: mergedScope,
     });
 
     const nextStatus = test.ok ? 'connected' : 'error';
     const nextConfig = {
       ...config,
       last_error: test.ok ? null : test.message,
+      ...(test.ok ? { last_connected_at: new Date().toISOString() } : {}),
     };
 
     const { error: updateError } = await rls
@@ -137,6 +201,9 @@ function toUserMessage(error: unknown) {
     return 'متغير INTEGRATION_ENCRYPTION_KEY غير مضبوط.';
   }
 
+  if (normalized.includes('unable to authenticate data') || normalized.includes('bad decrypt')) {
+    return 'تعذر فك تشفير بيانات التكامل. تحقق من INTEGRATION_ENCRYPTION_KEY ثم أعد حفظ الإعدادات.';
+  }
+
   return message || 'تعذر ربط التكامل. حاول مرة أخرى.';
 }
-

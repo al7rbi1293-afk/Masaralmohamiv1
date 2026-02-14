@@ -105,6 +105,9 @@ function toUserMessage(error: unknown) {
     return 'متغير INTEGRATION_ENCRYPTION_KEY غير مضبوط.';
   }
 
+  if (normalized.includes('unable to authenticate data') || normalized.includes('bad decrypt')) {
+    return 'تعذر فك تشفير بيانات التكامل. تحقق من INTEGRATION_ENCRYPTION_KEY ثم أعد حفظ الإعدادات.';
+  }
+
   return message || 'تعذر اختبار الاتصال. حاول مرة أخرى.';
 }
-

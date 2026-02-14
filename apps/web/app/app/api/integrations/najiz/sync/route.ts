@@ -4,9 +4,9 @@ import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateL
 import { requireOwner } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { decryptJson } from '@/lib/crypto';
-import { getNajizAccessToken } from '@/lib/integrations/najizClient';
+import { getNajizAccessToken, najizFetch } from '@/lib/integrations/najizClient';
 import { logAudit } from '@/lib/audit';
-import { logError } from '@/lib/logger';
+import { logError, logInfo } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -37,6 +37,7 @@ type ExternalCaseRow = {
 };
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
   const ip = getRequestIp(request);
   const limit = checkRateLimit({
     key: `integrations:najiz:sync:${ip}`,
@@ -62,6 +63,8 @@ export async function POST(request: NextRequest) {
   let orgId = '';
   let userId = '';
   let endpointPath = '';
+  let receivedCount = 0;
+  let importedCount = 0;
 
   try {
     const owner = await requireOwner();
@@ -125,19 +128,18 @@ export async function POST(request: NextRequest) {
     });
 
     const url = buildEndpointUrl(baseUrl, endpointPath);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15_000);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+    const response = await najizFetch(
+      url,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: 'no-store',
       },
-      cache: 'no-store',
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timeoutId));
+      { throttleKey: baseUrl, maxAttempts: 3, timeoutMs: 15_000 },
+    );
 
     if (!response.ok) {
       throw new Error(`فشل طلب المزامنة (${response.status}). تحقق من endpoint.`);
@@ -145,6 +147,7 @@ export async function POST(request: NextRequest) {
 
     const json = (await response.json().catch(() => null)) as any;
     const items = extractItems(json);
+    receivedCount = items.length;
 
     if (!items.length) {
       return NextResponse.json(
@@ -155,6 +158,7 @@ export async function POST(request: NextRequest) {
 
     const nowIso = new Date().toISOString();
     const normalized = normalizeExternalCases(items.slice(0, 200), orgId, nowIso);
+    importedCount = normalized.length;
 
     if (!normalized.length) {
       return NextResponse.json(
@@ -178,7 +182,7 @@ export async function POST(request: NextRequest) {
       provider: 'najiz',
       endpoint_path: endpointPath,
       status: 'completed',
-      imported_count: normalized.length,
+      imported_count: importedCount,
       error: null,
       created_by: userId,
     });
@@ -193,21 +197,34 @@ export async function POST(request: NextRequest) {
       action: 'najiz.sync_run',
       entityType: 'integration',
       entityId: null,
-      meta: { imported_count: normalized.length },
+      meta: { imported_count: importedCount },
       req: request,
+    });
+
+    logInfo('najiz_sync_completed', {
+      org_id: orgId,
+      imported_count: importedCount,
+      received_count: receivedCount,
+      duration_ms: Date.now() - startedAt,
     });
 
     return NextResponse.json(
       {
         ok: true,
-        imported_count: normalized.length,
-        received_count: items.length,
+        imported_count: importedCount,
+        received_count: receivedCount,
       },
       { status: 200 },
     );
   } catch (error) {
     const message = toUserMessage(error);
-    logError('najiz_sync_failed', { message });
+    logError('najiz_sync_failed', {
+      org_id: orgId || undefined,
+      imported_count: importedCount,
+      received_count: receivedCount,
+      duration_ms: Date.now() - startedAt,
+      message,
+    });
 
     if (orgId && userId && endpointPath) {
       await rls.from('najiz_sync_runs').insert({
@@ -336,11 +353,21 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 function toUserMessage(error: unknown) {
   if (error instanceof Error) {
     const message = error.message || '';
+    const normalized = message.toLowerCase();
+
     if (message.includes('aborted')) {
       return 'انتهت مهلة الاتصال بـ Najiz. حاول مرة أخرى.';
     }
+
+    if (message.includes('INTEGRATION_ENCRYPTION_KEY')) {
+      return 'متغير INTEGRATION_ENCRYPTION_KEY غير مضبوط.';
+    }
+
+    if (normalized.includes('unable to authenticate data') || normalized.includes('bad decrypt')) {
+      return 'تعذر فك تشفير بيانات التكامل. تحقق من INTEGRATION_ENCRYPTION_KEY ثم أعد حفظ الإعدادات.';
+    }
+
     return message;
   }
   return 'تعذر تنفيذ المزامنة. حاول مرة أخرى.';
 }
-

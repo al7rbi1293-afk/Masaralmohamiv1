@@ -106,16 +106,24 @@ export function NajizIntegrationClient({ initial, lastSync: initialLastSync }: N
     setError('');
 
     try {
+      const payload: Record<string, any> = {
+        environment,
+        base_url: baseUrl,
+        scope_optional: scope || undefined,
+      };
+
+      if (clientId.trim()) {
+        payload.client_id = clientId.trim();
+      }
+
+      if (clientSecret.trim()) {
+        payload.client_secret = clientSecret.trim();
+      }
+
       const response = await fetch('/app/api/integrations/najiz/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          environment,
-          base_url: baseUrl,
-          client_id: clientId,
-          client_secret: clientSecret,
-          scope_optional: scope || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const json = (await response.json().catch(() => ({}))) as any;
@@ -275,23 +283,25 @@ export function NajizIntegrationClient({ initial, lastSync: initialLastSync }: N
 
           <label className="block space-y-1 text-sm">
             <span className="font-medium text-slate-700 dark:text-slate-200">
-              Client ID <span className="text-red-600">*</span>
+              Client ID {!state.hasSecrets ? <span className="text-red-600">*</span> : null}
             </span>
             <input
               value={clientId}
               onChange={(event) => setClientId(event.target.value)}
+              required={!state.hasSecrets}
               className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
             />
           </label>
 
           <label className="block space-y-1 text-sm">
             <span className="font-medium text-slate-700 dark:text-slate-200">
-              Client Secret <span className="text-red-600">*</span>
+              Client Secret {!state.hasSecrets ? <span className="text-red-600">*</span> : null}
             </span>
             <input
               type="password"
               value={clientSecret}
               onChange={(event) => setClientSecret(event.target.value)}
+              required={!state.hasSecrets}
               className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
               placeholder={state.hasSecrets ? '•••••••• (أدخل من جديد للتحديث)' : ''}
             />
@@ -327,6 +337,11 @@ export function NajizIntegrationClient({ initial, lastSync: initialLastSync }: N
           <p className="text-xs text-slate-500 dark:text-slate-400 lg:col-span-2">
             يتم حفظ المفاتيح بشكل مشفر في قاعدة البيانات، ولا يتم عرضها مرة أخرى داخل المنصة.
           </p>
+          {state.hasSecrets ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400 lg:col-span-2">
+              إذا كنت تريد تحديث Base URL أو البيئة فقط، يمكنك ترك بيانات Client ID و Client Secret فارغة.
+            </p>
+          ) : null}
         </form>
       </div>
 

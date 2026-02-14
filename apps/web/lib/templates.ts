@@ -5,7 +5,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 
 export type TemplateStatus = 'active' | 'archived';
-export type TemplateType = 'docx' | 'pdf';
+export type TemplateType = 'docx';
 
 export type Template = {
   id: string;
@@ -20,11 +20,20 @@ export type Template = {
   updated_at: string;
 };
 
+export type TemplateVariableSource = 'client' | 'matter' | 'org' | 'user' | 'computed' | 'manual';
+export type TemplateVariableFormat = 'text' | 'date' | 'number' | 'id';
+export type TemplateVariableTransform = 'upper' | 'lower' | 'none';
+
 export type TemplateVersionVariable = {
   key: string;
   label_ar: string;
   required: boolean;
-  source: 'client' | 'matter' | 'manual';
+  source: TemplateVariableSource;
+  path?: string | null;
+  format?: TemplateVariableFormat | null;
+  transform?: TemplateVariableTransform | null;
+  defaultValue?: string | null;
+  help_ar?: string | null;
 };
 
 export type TemplateVersion = {
@@ -141,7 +150,6 @@ export async function getTemplateById(id: string): Promise<Template | null> {
 export type CreateTemplatePayload = {
   name: string;
   category?: string;
-  template_type?: TemplateType;
   description?: string | null;
 };
 
@@ -158,7 +166,7 @@ export async function createTemplate(payload: CreateTemplatePayload): Promise<Te
       org_id: orgId,
       name: payload.name,
       category: (payload.category ?? 'عام').trim() || 'عام',
-      template_type: payload.template_type ?? 'docx',
+      template_type: 'docx',
       description: payload.description ?? null,
       status: 'active',
       created_by: user.id,
@@ -220,4 +228,3 @@ function cleanQuery(value?: string) {
   if (!value) return '';
   return value.replaceAll(',', ' ').trim().slice(0, 120);
 }
-

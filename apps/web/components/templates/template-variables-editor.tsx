@@ -14,6 +14,9 @@ type TemplateVariablesEditorProps = {
 const sourceLabel: Record<TemplateVersionVariable['source'], string> = {
   client: 'موكل',
   matter: 'قضية',
+  org: 'مكتب',
+  user: 'مستخدم',
+  computed: 'محسوب',
   manual: 'يدوي',
 };
 
@@ -35,13 +38,29 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
   }, [latestVersion?.id, templateId]);
 
   const hasInvalid = useMemo(() => {
-    return variables.some((v) => !v.key.trim() || !v.label_ar.trim());
+    return variables.some((v) => {
+      if (!v.key.trim() || !v.label_ar.trim()) return true;
+      if (v.source === 'client' || v.source === 'matter' || v.source === 'org' || v.source === 'user') {
+        return !String(v.path ?? '').trim();
+      }
+      return false;
+    });
   }, [variables]);
 
   function addRow() {
     setVariables((prev) => [
       ...prev,
-      { key: '', label_ar: '', required: false, source: 'manual' },
+      {
+        key: '',
+        label_ar: '',
+        required: false,
+        source: 'manual',
+        path: '',
+        format: 'text',
+        transform: 'none',
+        defaultValue: '',
+        help_ar: '',
+      },
     ]);
   }
 
@@ -64,10 +83,28 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
       label_ar: v.label_ar.trim(),
       required: Boolean(v.required),
       source: v.source,
+      path: String(v.path ?? '').trim(),
+      format: (v.format ?? 'text') as any,
+      transform: (v.transform ?? 'none') as any,
+      defaultValue: String(v.defaultValue ?? '').trim(),
+      help_ar: String(v.help_ar ?? '').trim(),
     }));
 
-    if (normalized.some((v) => !v.key || !v.label_ar)) {
-      setError('يرجى تعبئة جميع حقول المتغيرات المطلوبة.');
+    const keyPattern = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/;
+    if (normalized.some((v) => !v.key || !v.label_ar || !keyPattern.test(v.key))) {
+      setError('يرجى تعبئة جميع الحقول والتأكد من صيغة المفتاح (مثل: client.name).');
+      return;
+    }
+
+    if (
+      normalized.some((v) => {
+        if (v.source === 'client' || v.source === 'matter' || v.source === 'org' || v.source === 'user') {
+          return !v.path;
+        }
+        return false;
+      })
+    ) {
+      setError('يرجى تحديد المسار (path) لمصادر الموكل/القضية/المكتب/المستخدم.');
       return;
     }
 
@@ -142,7 +179,12 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
               <th className="py-2 text-start font-medium">المفتاح</th>
               <th className="py-2 text-start font-medium">الاسم</th>
               <th className="py-2 text-start font-medium">المصدر</th>
+              <th className="py-2 text-start font-medium">المسار</th>
+              <th className="py-2 text-start font-medium">النوع</th>
+              <th className="py-2 text-start font-medium">تحويل</th>
               <th className="py-2 text-start font-medium">مطلوب؟</th>
+              <th className="py-2 text-start font-medium">افتراضي</th>
+              <th className="py-2 text-start font-medium">مساعدة</th>
               <th className="py-2 text-start font-medium">إجراءات</th>
             </tr>
           </thead>
@@ -171,7 +213,14 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
                       value={row.source}
                       onChange={(event) =>
                         updateRow(index, {
-                          source: event.target.value === 'client' || event.target.value === 'matter' ? (event.target.value as any) : 'manual',
+                          source:
+                            event.target.value === 'client' ||
+                            event.target.value === 'matter' ||
+                            event.target.value === 'org' ||
+                            event.target.value === 'user' ||
+                            event.target.value === 'computed'
+                              ? (event.target.value as any)
+                              : 'manual',
                         })
                       }
                       className="h-10 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
@@ -179,6 +228,41 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
                       <option value="manual">{sourceLabel.manual}</option>
                       <option value="client">{sourceLabel.client}</option>
                       <option value="matter">{sourceLabel.matter}</option>
+                      <option value="org">{sourceLabel.org}</option>
+                      <option value="user">{sourceLabel.user}</option>
+                      <option value="computed">{sourceLabel.computed}</option>
+                    </select>
+                  </td>
+                  <td className="py-2">
+                    <input
+                      value={String(row.path ?? '')}
+                      onChange={(event) => updateRow(index, { path: event.target.value })}
+                      placeholder={row.source === 'manual' || row.source === 'computed' ? '—' : 'مثال: name'}
+                      disabled={row.source === 'manual' || row.source === 'computed'}
+                      className="h-10 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950"
+                    />
+                  </td>
+                  <td className="py-2">
+                    <select
+                      value={(row.format as any) || 'text'}
+                      onChange={(event) => updateRow(index, { format: event.target.value as any })}
+                      className="h-10 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                    >
+                      <option value="text">نص</option>
+                      <option value="date">تاريخ</option>
+                      <option value="number">رقم</option>
+                      <option value="id">معرّف</option>
+                    </select>
+                  </td>
+                  <td className="py-2">
+                    <select
+                      value={(row.transform as any) || 'none'}
+                      onChange={(event) => updateRow(index, { transform: event.target.value as any })}
+                      className="h-10 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                    >
+                      <option value="none">بدون</option>
+                      <option value="upper">Upper</option>
+                      <option value="lower">Lower</option>
                     </select>
                   </td>
                   <td className="py-2">
@@ -193,6 +277,23 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
                     </label>
                   </td>
                   <td className="py-2">
+                    <input
+                      value={String(row.defaultValue ?? '')}
+                      onChange={(event) => updateRow(index, { defaultValue: event.target.value })}
+                      placeholder={row.source === 'manual' ? 'قيمة افتراضية' : '—'}
+                      disabled={row.source !== 'manual'}
+                      className="h-10 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950"
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      value={String(row.help_ar ?? '')}
+                      onChange={(event) => updateRow(index, { help_ar: event.target.value })}
+                      placeholder="نص مساعد (اختياري)"
+                      className="h-10 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                    />
+                  </td>
+                  <td className="py-2">
                     <Button type="button" variant="ghost" size="sm" onClick={() => removeRow(index)} disabled={busy}>
                       حذف
                     </Button>
@@ -201,7 +302,7 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="py-4 text-center text-slate-600 dark:text-slate-300">
+                <td colSpan={10} className="py-4 text-center text-slate-600 dark:text-slate-300">
                   لا توجد متغيرات بعد.
                 </td>
               </tr>

@@ -20,7 +20,6 @@ type TemplateDetailsPageProps = {
 
 const typeLabel: Record<TemplateType, string> = {
   docx: 'DOCX',
-  pdf: 'PDF',
 };
 
 const statusLabel: Record<TemplateStatus, string> = {

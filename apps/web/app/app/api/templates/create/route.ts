@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createTemplate } from '@/lib/templates';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 
 const createTemplateSchema = z.object({
   name: z
@@ -11,8 +12,8 @@ const createTemplateSchema = z.object({
     .min(2, 'اسم القالب مطلوب ويجب أن لا يقل عن حرفين.')
     .max(200, 'اسم القالب طويل جدًا.'),
   category: z.string().trim().max(80, 'التصنيف طويل جدًا.').optional().or(z.literal('')),
-  template_type: z.enum(['docx', 'pdf']).optional(),
   description: z.string().trim().max(2000, 'الوصف طويل جدًا.').optional().or(z.literal('')),
+  preset_code: z.string().trim().max(50, 'رمز القالب الجاهز طويل جدًا.').optional().or(z.literal('')),
 });
 
 export async function POST(request: Request) {
@@ -27,10 +28,27 @@ export async function POST(request: Request) {
       );
     }
 
+    const presetCode = parsed.data.preset_code ? parsed.data.preset_code.trim().toUpperCase() : '';
+    let presetVariables: any[] | null = null;
+    let presetCategory: string | null = null;
+
+    if (presetCode) {
+      const rls = createSupabaseServerRlsClient();
+      const { data } = await rls
+        .from('template_presets')
+        .select('category, variables')
+        .eq('code', presetCode)
+        .maybeSingle();
+
+      if (data) {
+        presetCategory = (data as any).category ? String((data as any).category) : null;
+        presetVariables = Array.isArray((data as any).variables) ? ((data as any).variables as any[]) : [];
+      }
+    }
+
     const created = await createTemplate({
       name: parsed.data.name,
-      category: parsed.data.category || 'عام',
-      template_type: parsed.data.template_type ?? 'docx',
+      category: (parsed.data.category || presetCategory || 'عام').trim() || 'عام',
       description: parsed.data.description ? parsed.data.description : null,
     });
 
@@ -41,13 +59,17 @@ export async function POST(request: Request) {
       meta: {
         template_type: created.template_type,
         category: created.category,
+        preset_code: presetCode || null,
       },
       req: request,
     });
 
     logInfo('template_created', { templateId: created.id });
 
-    return NextResponse.json({ template: created }, { status: 200 });
+    return NextResponse.json(
+      { template: created, presetVariables: presetVariables ?? undefined },
+      { status: 200 },
+    );
   } catch (error) {
     const message = toUserMessage(error);
     logError('template_create_failed', {
@@ -87,4 +109,3 @@ function toUserMessage(error: unknown) {
 
   return 'تعذر إنشاء القالب.';
 }
-

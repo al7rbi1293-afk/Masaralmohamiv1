@@ -20,7 +20,6 @@ type TemplatesPageProps = {
 
 const typeLabel: Record<TemplateType, string> = {
   docx: 'DOCX',
-  pdf: 'PDF',
 };
 
 export default async function TemplatesPage({ searchParams }: TemplatesPageProps) {
@@ -253,4 +252,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

@@ -6,12 +6,34 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
-const variableSchema = z.object({
-  key: z.string().trim().min(1, 'مفتاح المتغير مطلوب.').max(120, 'مفتاح المتغير طويل جدًا.'),
-  label_ar: z.string().trim().min(1, 'اسم المتغير مطلوب.').max(120, 'اسم المتغير طويل جدًا.'),
-  required: z.boolean().default(false),
-  source: z.enum(['client', 'matter', 'manual']),
-});
+const variableSchema = z
+  .object({
+    key: z
+      .string()
+      .trim()
+      .min(1, 'مفتاح المتغير مطلوب.')
+      .max(120, 'مفتاح المتغير طويل جدًا.')
+      .regex(/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/, 'صيغة المفتاح غير صحيحة. مثال: client.name'),
+    label_ar: z.string().trim().min(1, 'اسم المتغير مطلوب.').max(120, 'اسم المتغير طويل جدًا.'),
+    required: z.boolean().default(false),
+    source: z.enum(['client', 'matter', 'org', 'user', 'computed', 'manual']),
+    path: z.string().trim().max(120, 'المسار طويل جدًا.').optional().or(z.literal('')),
+    format: z.enum(['text', 'date', 'number', 'id']).optional().default('text'),
+    transform: z.enum(['upper', 'lower', 'none']).optional().default('none'),
+    defaultValue: z.string().trim().max(2000, 'القيمة الافتراضية طويلة جدًا.').optional().or(z.literal('')),
+    help_ar: z.string().trim().max(300, 'النص المساعد طويل جدًا.').optional().or(z.literal('')),
+  })
+  .superRefine((value, ctx) => {
+    if (value.source === 'client' || value.source === 'matter' || value.source === 'org' || value.source === 'user') {
+      if (!value.path || !value.path.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'المسار (path) مطلوب لهذا المصدر.',
+          path: ['path'],
+        });
+      }
+    }
+  });
 
 const commitSchema = z.object({
   template_id: z.string().uuid(),
@@ -42,6 +64,23 @@ export async function POST(request: Request) {
     }
 
     const rls = createSupabaseServerRlsClient();
+
+    const variables = (parsed.data.variables ?? []).map((v) => ({
+      key: v.key.trim(),
+      label_ar: v.label_ar.trim(),
+      required: Boolean(v.required),
+      source: v.source,
+      path: v.path ? String(v.path).trim() : '',
+      format: v.format ?? 'text',
+      transform: v.transform ?? 'none',
+      defaultValue: v.defaultValue ? String(v.defaultValue).trim() : '',
+      help_ar: v.help_ar ? String(v.help_ar).trim() : '',
+    }));
+
+    const keys = variables.map((v) => v.key.toLowerCase());
+    if (new Set(keys).size !== keys.length) {
+      return NextResponse.json({ error: 'يوجد تكرار في مفاتيح المتغيرات.' }, { status: 400 });
+    }
 
     const { data: template, error: templateError } = await rls
       .from('templates')
@@ -78,7 +117,7 @@ export async function POST(request: Request) {
       const { data: updated, error: updateError } = await rls
         .from('template_versions')
         .update({
-          variables: parsed.data.variables,
+          variables,
         })
         .eq('org_id', orgId)
         .eq('id', existing.id)
@@ -105,7 +144,7 @@ export async function POST(request: Request) {
           file_name: parsed.data.file_name,
           file_size: parsed.data.file_size,
           mime_type: emptyToNull(parsed.data.mime_type),
-          variables: parsed.data.variables,
+          variables,
           uploaded_by: user.id,
         })
         .select(
@@ -172,4 +211,3 @@ function toUserMessage(error?: unknown) {
   }
   return 'تعذر حفظ نسخة القالب.';
 }
-

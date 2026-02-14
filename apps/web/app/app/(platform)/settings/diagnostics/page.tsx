@@ -6,6 +6,7 @@ import { Container } from '@/components/ui/container';
 import { requireOwner } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { HealthCheck } from '@/components/diagnostics/health-check';
+import { getAppVersion } from '@/lib/version';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,7 @@ export default async function DiagnosticsPage() {
 
   const supabase = createSupabaseServerRlsClient();
 
-  const version = resolveVersion();
+  const version = getAppVersion();
 
   const [orgRes, subscriptionRes, auditRes, counts] = await Promise.all([
     supabase.from('organizations').select('id, name, created_at').eq('id', orgId).maybeSingle(),
@@ -257,15 +258,6 @@ function statusLabel(value: string) {
   }
 }
 
-function resolveVersion() {
-  return (
-    process.env.APP_VERSION?.trim() ||
-    process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
-    process.env.npm_package_version?.trim() ||
-    'dev'
-  );
-}
-
 function formatDate(value: string | null) {
   if (!value) return 'غير محدد';
   const date = new Date(value);
@@ -329,4 +321,3 @@ function CodeBlock({ value }: { value: string }) {
     </code>
   );
 }
-

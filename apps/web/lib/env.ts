@@ -20,6 +20,14 @@ export type SmtpEnv = {
   from: string;
 };
 
+export function getIntegrationEncryptionKey() {
+  const key = process.env.INTEGRATION_ENCRYPTION_KEY?.trim();
+  if (!key) {
+    throw missingEnvError('INTEGRATION_ENCRYPTION_KEY');
+  }
+  return key;
+}
+
 function missingEnvError(name: string) {
   return new Error(
     `متغير البيئة ${name} غير مضبوط. Missing required environment variable: ${name}.`,

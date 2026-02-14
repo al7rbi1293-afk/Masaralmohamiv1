@@ -90,6 +90,11 @@ export default async function SettingsPage() {
             البريد
           </Link>
         ) : null}
+        {isOwner ? (
+          <Link href="/app/settings/integrations/najiz" className={buttonVariants('outline', 'md')}>
+            التكاملات (Najiz)
+          </Link>
+        ) : null}
         <Link href="/app/settings/subscription" className={buttonVariants('outline', 'md')}>
           الاشتراك
         </Link>

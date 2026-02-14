@@ -73,6 +73,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0017_full_version_requests_type.sql`
   - `supabase/migrations/0018_templates.sql`
   - `supabase/migrations/0019_email_log.sql`
+  - `supabase/migrations/0020_integrations.sql`
 
 ## Run locally
 
@@ -119,6 +120,12 @@ SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
+### Integrations encryption (required for Najiz)
+
+```bash
+INTEGRATION_ENCRYPTION_KEY=YOUR_LONG_RANDOM_SECRET
+```
+
 ### SMTP (optional)
 
 To enable outbound emails:
@@ -149,6 +156,7 @@ SMTP_FROM=
    - `supabase/migrations/0013_search_indexes.sql` (اختياري)
    - `supabase/migrations/0018_templates.sql`
    - `supabase/migrations/0019_email_log.sql`
+   - `supabase/migrations/0020_integrations.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI

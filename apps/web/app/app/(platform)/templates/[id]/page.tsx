@@ -6,8 +6,11 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { TemplateVersionActions } from '@/components/templates/template-version-actions';
 import { TemplateVariablesEditor } from '@/components/templates/template-variables-editor';
+import { TemplateGenerateModal } from '@/components/templates/template-generate-modal';
 import { getTemplateById, listTemplateVersions, type TemplateStatus, type TemplateType } from '@/lib/templates';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { listClients } from '@/lib/clients';
+import { listMatters } from '@/lib/matters';
 import { archiveTemplateAction, restoreTemplateAction } from '../actions';
 
 type TemplateDetailsPageProps = {
@@ -26,10 +29,12 @@ const statusLabel: Record<TemplateStatus, string> = {
 };
 
 export default async function TemplateDetailsPage({ params, searchParams }: TemplateDetailsPageProps) {
-  const [template, versions, currentUser] = await Promise.all([
+  const [template, versions, currentUser, mattersResult, clientsResult] = await Promise.all([
     getTemplateById(params.id),
     listTemplateVersions(params.id).catch(() => []),
     getCurrentAuthUser(),
+    listMatters({ status: 'all', page: 1, limit: 50 }).catch(() => ({ data: [], page: 1, limit: 50, total: 0 })),
+    listClients({ status: 'active', page: 1, limit: 50 }).catch(() => ({ data: [], page: 1, limit: 50, total: 0 })),
   ]);
 
   if (!template) {
@@ -95,6 +100,24 @@ export default async function TemplateDetailsPage({ params, searchParams }: Temp
       <section className="grid gap-5 lg:grid-cols-2">
         <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
           <h2 className="font-semibold text-brand-navy dark:text-slate-100">إجراءات</h2>
+          <div className="mt-4">
+            <TemplateGenerateModal
+              templateId={template.id}
+              templateName={template.name}
+              variables={latest?.variables ?? []}
+              matters={mattersResult.data.map((matter) => ({
+                id: matter.id,
+                label: `${matter.title}${matter.client?.name ? ` — ${matter.client.name}` : ''}`,
+                client_id: matter.client_id,
+                client_label: matter.client?.name ?? '',
+              }))}
+              clients={clientsResult.data.map((client) => ({
+                id: client.id,
+                label: client.name,
+              }))}
+            />
+          </div>
+
           <div className="mt-4">
             <TemplateVersionActions
               templateId={template.id}
@@ -199,4 +222,3 @@ function formatBytes(value: number) {
   }
   return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
-

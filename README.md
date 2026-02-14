@@ -230,6 +230,7 @@ supabase db push
 - افتح `/app/templates`
 - أنشئ قالبًا جديدًا من `/app/templates/new`
 - افتح `/app/templates/[id]` لرفع نسخة (DOCX/PDF) وتعريف المتغيرات وتنزيل آخر نسخة
+- لإنشاء مستند من قالب DOCX: افتح القالب ثم اضغط "إنشاء مستند من القالب" وسيتم حفظه داخل `/app/documents`
 
 ### إنشاء Bucket للقوالب (Supabase Storage)
 

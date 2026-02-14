@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { TemplateVersionVariable } from '@/lib/templates';
@@ -20,6 +20,13 @@ type TemplateGenerateModalProps = {
   clients: SelectOption[];
 };
 
+type MissingField = {
+  key: string;
+  label_ar: string;
+  help_ar?: string;
+  format?: string;
+};
+
 export function TemplateGenerateModal({
   templateId,
   templateName,
@@ -32,6 +39,7 @@ export function TemplateGenerateModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [missing, setMissing] = useState<MissingField[]>([]);
 
   const [matterId, setMatterId] = useState('');
   const [clientId, setClientId] = useState('');
@@ -46,21 +54,32 @@ export function TemplateGenerateModal({
   const effectiveClientId = selectedMatter?.client_id ? String(selectedMatter.client_id) : clientId;
   const effectiveClientLabel = selectedMatter?.client_label || '';
 
-  const requiredInputs = useMemo(() => {
-    const needsClient = !effectiveClientId;
-    const needsMatter = !matterId;
+  const requiredClient = useMemo(
+    () => variables.some((v) => v.required && v.source === 'client'),
+    [variables],
+  );
+  const requiredMatter = useMemo(
+    () => variables.some((v) => v.required && v.source === 'matter'),
+    [variables],
+  );
 
-    return variables.filter((v) => {
-      if (v.source === 'manual') return true;
-      if (v.source === 'client') return needsClient;
-      if (v.source === 'matter') return needsMatter;
-      return false;
-    });
-  }, [variables, effectiveClientId, matterId]);
+  const manualVariables = useMemo(() => variables.filter((v) => v.source === 'manual'), [variables]);
 
-  const requiredKeys = useMemo(() => {
-    return new Set(requiredInputs.filter((v) => v.required).map((v) => v.key));
-  }, [requiredInputs]);
+  useEffect(() => {
+    if (!open) return;
+    // Prefill defaults for manual fields.
+    const defaults: Record<string, string> = {};
+    for (const v of manualVariables) {
+      const current = String(values[v.key] ?? '');
+      if (current) continue;
+      const def = String((v as any).defaultValue ?? '').trim();
+      if (def) defaults[v.key] = def;
+    }
+    if (Object.keys(defaults).length) {
+      setValues((prev) => ({ ...defaults, ...prev }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function updateValue(key: string, next: string) {
     setValues((prev) => ({ ...prev, [key]: next }));
@@ -73,6 +92,7 @@ export function TemplateGenerateModal({
     setValues({});
     setError('');
     setMessage('');
+    setMissing([]);
   }
 
   async function submit() {
@@ -80,20 +100,24 @@ export function TemplateGenerateModal({
     setMessage('');
 
     const trimmedTitle = outputTitle.trim();
+
+    if (requiredMatter && !matterId) {
+      setError('اختر قضية لإكمال إنشاء المستند.');
+      return;
+    }
+
+    if (requiredClient && !effectiveClientId) {
+      setError('اختر موكلًا لإكمال إنشاء المستند.');
+      return;
+    }
+
     const payloadValues: Record<string, string> = {};
-
-    for (const v of requiredInputs) {
-      const raw = String(values[v.key] ?? '');
-      const value = raw.trim();
-
-      if (requiredKeys.has(v.key) && !value) {
-        setError(`حقل "${v.label_ar}" مطلوب.`);
-        return;
-      }
-
-      if (value) {
-        payloadValues[v.key] = value;
-      }
+    for (const [key, value] of Object.entries(values)) {
+      const cleanKey = String(key || '').trim();
+      if (!cleanKey) continue;
+      const cleanValue = String(value ?? '').trim();
+      if (!cleanValue) continue;
+      payloadValues[cleanKey] = cleanValue;
     }
 
     setBusy(true);
@@ -105,11 +129,27 @@ export function TemplateGenerateModal({
           matter_id: matterId || null,
           client_id: effectiveClientId || null,
           output_title: trimmedTitle || null,
-          values: payloadValues,
+          manual_values: payloadValues,
         }),
       });
 
       const json = (await response.json().catch(() => ({}))) as any;
+      if (response.status === 422) {
+        const missingRequired = Array.isArray(json?.missingRequired) ? (json.missingRequired as string[]) : [];
+        const suggested = Array.isArray(json?.suggestedLabels) ? (json.suggestedLabels as any[]) : [];
+        const fields: MissingField[] = missingRequired.map((key) => {
+          const match = suggested.find((item) => String(item?.key ?? '') === key) ?? null;
+          return {
+            key,
+            label_ar: match?.label_ar ? String(match.label_ar) : key,
+            help_ar: match?.help_ar ? String(match.help_ar) : '',
+            format: match?.format ? String(match.format) : '',
+          };
+        });
+        setMissing(fields);
+        setError(String(json?.error ?? 'يرجى تعبئة الحقول المطلوبة.'));
+        return;
+      }
       if (!response.ok) {
         setError(String(json?.error ?? 'تعذر إنشاء المستند من القالب.'));
         return;
@@ -239,6 +279,14 @@ export function TemplateGenerateModal({
                 </label>
               </div>
 
+              <div className="rounded-lg border border-brand-border p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                <p className="font-semibold text-brand-navy dark:text-slate-100">التعبئة التلقائية</p>
+                <p className="mt-2 leading-7">
+                  سيتم تعبئة بيانات المكتب، واسم المستخدم، وتاريخ اليوم تلقائيًا. أدخل فقط الحقول اليدوية أو أي حقول
+                  يطلبها النظام لإكمال إنشاء المستند.
+                </p>
+              </div>
+
               <label className="block space-y-1 text-sm">
                 <span className="font-medium text-slate-700 dark:text-slate-200">عنوان المستند (اختياري)</span>
                 <input
@@ -249,17 +297,15 @@ export function TemplateGenerateModal({
                 />
               </label>
 
-              {requiredInputs.length ? (
+              {manualVariables.length ? (
                 <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
-                  <h4 className="font-semibold text-brand-navy dark:text-slate-100">القيم المطلوبة</h4>
+                  <h4 className="font-semibold text-brand-navy dark:text-slate-100">حقول يدوية</h4>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    {effectiveClientId && matterId
-                      ? 'سيتم تعبئة بعض البيانات تلقائيًا من الموكل والقضية. أدخل القيم اليدوية المتبقية.'
-                      : 'اختر الموكل/القضية لتعبئة القيم تلقائيًا، أو أدخل القيم يدويًا هنا.'}
+                    هذه الحقول لا تُعبّأ تلقائيًا. أدخل ما يلزم منها ثم أنشئ المستند.
                   </p>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {requiredInputs.map((v) => (
+                    {manualVariables.map((v) => (
                       <label key={v.key} className="block space-y-1 text-sm">
                         <span className="font-medium text-slate-700 dark:text-slate-200">
                           {v.label_ar} {v.required ? <span className="text-red-600">*</span> : null}
@@ -268,9 +314,10 @@ export function TemplateGenerateModal({
                           value={values[v.key] ?? ''}
                           onChange={(event) => updateValue(v.key, event.target.value)}
                           placeholder={v.key}
+                          type={v.format === 'number' ? 'number' : v.format === 'date' ? 'date' : 'text'}
                           className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                         />
-                        <p className="text-xs text-slate-500">{v.key}</p>
+                        {v.help_ar ? <p className="text-xs text-slate-500">{v.help_ar}</p> : null}
                       </label>
                     ))}
                   </div>
@@ -280,6 +327,32 @@ export function TemplateGenerateModal({
                   لا توجد متغيرات مطلوبة يدويًا. يمكنك إنشاء المستند مباشرة.
                 </p>
               )}
+
+              {missing.length ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/25">
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-100">حقول مطلوبة لإكمال الإنشاء</h4>
+                  <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+                    بعض الحقول المطلوبة لم تُعبّأ تلقائيًا. املأها ثم أعد المحاولة.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {missing.map((field) => (
+                      <label key={field.key} className="block space-y-1 text-sm">
+                        <span className="font-medium text-amber-900 dark:text-amber-100">
+                          {field.label_ar} <span className="text-red-600">*</span>
+                        </span>
+                        <input
+                          value={values[field.key] ?? ''}
+                          onChange={(event) => updateValue(field.key, event.target.value)}
+                          placeholder={field.key}
+                          type={field.format === 'number' ? 'number' : field.format === 'date' ? 'date' : 'text'}
+                          className="h-11 w-full rounded-lg border border-amber-200 bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-amber-900/40 dark:bg-slate-950"
+                        />
+                        {field.help_ar ? <p className="text-xs text-amber-800/80 dark:text-amber-200/80">{field.help_ar}</p> : null}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-6 flex flex-wrap justify-end gap-2">
@@ -312,4 +385,3 @@ export function TemplateGenerateModal({
     </>
   );
 }
-

@@ -103,8 +103,8 @@ export async function resolveTemplateContext(args: ResolveTemplateContextArgs): 
   const computed = computeBuiltInValues(org as OrgRow);
 
   // Start with computed helper values so templates can use them even if not declared.
-  const values: Record<string, string> = { ...computed.values };
-  const missingRequired: string[] = [...computed.missingKeys];
+  const values: Record<string, string> = { ...computed };
+  const missingRequired: string[] = [];
 
   const usedSources = {
     client: Boolean(client),
@@ -192,13 +192,19 @@ export async function resolveTemplateContext(args: ResolveTemplateContextArgs): 
           break;
         }
         case 'computed':
-          raw = computed.values[key] ?? '';
+          raw = computed[key] ?? '';
           break;
         case 'manual':
           raw = normalizedManual[key] ?? variable.defaultValue ?? '';
           break;
         default:
           raw = '';
+      }
+
+      // Allow manual overrides for any key (useful when a structured field is missing).
+      const override = normalizedManual[key];
+      if (override) {
+        raw = override;
       }
 
       const formatted = applyFormatting(String(raw ?? ''), variable.format, variable.transform);
@@ -244,16 +250,14 @@ function computeBuiltInValues(org: OrgRow) {
     'doc.serial': '',
     'org.name': String(org.name ?? ''),
   };
-
-  const missingKeys: string[] = [];
-
   try {
     values['date.hijri_today'] = formatHijriArabic(now);
   } catch {
-    missingKeys.push('date.hijri_today');
+    // Optional: only required if a template marks it as required. We'll leave it empty when unavailable.
+    values['date.hijri_today'] = '';
   }
 
-  return { values, missingKeys };
+  return values;
 }
 
 function getPathValue(obj: unknown, path?: string | null) {
@@ -309,4 +313,3 @@ function formatHijriArabic(date: Date) {
   // Uses built-in Intl Hijri calendar if available.
   return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
 }
-

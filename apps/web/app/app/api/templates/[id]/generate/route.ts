@@ -8,13 +8,19 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { CircuitOpenError, TimeoutError, withCircuitBreaker, withTimeout } from '@/lib/runtime-safety';
+import { resolveTemplateContext } from '@/lib/templateResolver';
 
 export const runtime = 'nodejs';
 
 const generateSchema = z.object({
   matter_id: z.string().uuid().optional().or(z.literal('')).transform((v) => (v ? v : undefined)),
   client_id: z.string().uuid().optional().or(z.literal('')).transform((v) => (v ? v : undefined)),
-  values: z.record(z.string(), z.string().max(5000, 'قيمة المتغير طويلة جدًا.')).optional().default({}),
+  manual_values: z
+    .record(z.string(), z.string().max(5000, 'قيمة المتغير طويلة جدًا.'))
+    .optional()
+    .default({}),
+  // Backwards-compat: older UI used `values`.
+  values: z.record(z.string(), z.string().max(5000, 'قيمة المتغير طويلة جدًا.')).optional(),
   output_title: z.string().trim().max(200, 'عنوان المستند طويل جدًا.').optional().or(z.literal('')),
 });
 
@@ -88,6 +94,8 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'لا توجد نسخة مرفوعة لهذا القالب.' }, { status: 400 });
     }
 
+    const manualValues = (parsed.data.manual_values ?? parsed.data.values ?? {}) as Record<string, string>;
+
     const matter = parsed.data.matter_id
       ? await fetchMatter(rls, orgId, parsed.data.matter_id).catch(() => null)
       : null;
@@ -108,14 +116,43 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'الموكل غير موجود أو لا تملك صلاحية الوصول.' }, { status: 404 });
     }
 
+    const resolved = await resolveTemplateContext({
+      orgId,
+      userId: user.id,
+      clientId: effectiveClientId,
+      matterId: parsed.data.matter_id ?? null,
+      manualValues,
+      variables: Array.isArray((latestVersion as any).variables) ? ((latestVersion as any).variables as any[]) : [],
+    });
+
+    if (resolved.missingRequired.length) {
+      const defs = Array.isArray((latestVersion as any).variables) ? ((latestVersion as any).variables as any[]) : [];
+      const suggestedLabels = resolved.missingRequired.map((key) => {
+        const match = defs.find((v) => String(v?.key ?? '').trim() === key) ?? null;
+        return {
+          key,
+          label_ar: match?.label_ar ? String(match.label_ar) : key,
+          help_ar: match?.help_ar ? String(match.help_ar) : '',
+          format: match?.format ? String(match.format) : '',
+        };
+      });
+
+      return NextResponse.json(
+        {
+          error: 'يرجى تعبئة الحقول المطلوبة لإكمال إنشاء المستند.',
+          missingRequired: resolved.missingRequired,
+          suggestedLabels,
+        },
+        { status: 422 },
+      );
+    }
+
     const templateBuffer = await downloadTemplateFile(latestVersion.storage_path);
 
-    const contextData = buildContext({
-      templateName: String(template.name ?? ''),
-      matter,
-      client: resolvedClient,
-      values: parsed.data.values ?? {},
-    });
+    const contextData: Record<string, unknown> = { template: { name: String(template.name ?? '') } };
+    for (const [key, value] of Object.entries(resolved.values)) {
+      setNested(contextData as any, key, value);
+    }
 
     const generated = renderDocx(templateBuffer, contextData);
 

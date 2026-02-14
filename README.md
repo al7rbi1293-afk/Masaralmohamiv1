@@ -28,6 +28,9 @@ Next.js (App Router) + Supabase.
   - `/app/documents` (List + Search + Filter + Pagination)
   - `/app/documents/new`
   - `/app/documents/[id]` (Versions + Upload new version + Share + Download)
+  - `/app/templates` (Templates library)
+  - `/app/templates/new`
+  - `/app/templates/[id]` (Versions + Variables + Download)
   - `/app/tasks` (List + Filters + Create/Edit + Done/Cancel)
   - `/app/billing/invoices` (Invoices + Payments + PDF)
   - `/app/billing/invoices/new`
@@ -60,6 +63,7 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0011_org_invitations.sql`
   - `supabase/migrations/0013_search_indexes.sql` (اختياري)
   - `supabase/migrations/0017_full_version_requests_type.sql`
+  - `supabase/migrations/0018_templates.sql`
 
 ## Run locally
 
@@ -122,6 +126,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - `supabase/migrations/0008_billing_audit.sql`
    - `supabase/migrations/0011_org_invitations.sql`
    - `supabase/migrations/0013_search_indexes.sql` (اختياري)
+   - `supabase/migrations/0018_templates.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -217,6 +222,19 @@ supabase db push
 
 1. في Supabase Dashboard -> Storage
 2. أنشئ Bucket باسم: `documents`
+3. اجعله **Private**
+
+## Templates module (Phase 10.1.0)
+
+بعد تطبيق migration `0018_templates.sql`:
+- افتح `/app/templates`
+- أنشئ قالبًا جديدًا من `/app/templates/new`
+- افتح `/app/templates/[id]` لرفع نسخة (DOCX/PDF) وتعريف المتغيرات وتنزيل آخر نسخة
+
+### إنشاء Bucket للقوالب (Supabase Storage)
+
+1. في Supabase Dashboard -> Storage
+2. أنشئ Bucket باسم: `templates`
 3. اجعله **Private**
 
 > ملاحظة: في الـ MVP، لا نعتمد على Storage RLS. الرفع/التنزيل يتم عبر روابط موقعة (Signed URLs) يتم توليدها من السيرفر.

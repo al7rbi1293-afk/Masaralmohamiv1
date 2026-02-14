@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { TemplateVersion, TemplateVersionVariable } from '@/lib/templates';
+import { loadDraftVariables } from '@/components/templates/template-draft-storage';
 
 type TemplateVersionActionsProps = {
   templateId: string;
@@ -18,6 +19,9 @@ export function TemplateVersionActions({ templateId, latestVersion, defaultVaria
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const draftVariables = useMemo(() => loadDraftVariables(templateId), [templateId]);
+  const effectiveVariables = defaultVariables.length ? defaultVariables : draftVariables;
 
   async function downloadLatest() {
     if (!latestVersion?.storage_path) return;
@@ -67,7 +71,7 @@ export function TemplateVersionActions({ templateId, latestVersion, defaultVaria
           file_name: uploadFile.name,
           file_size: uploadFile.size,
           mime_type: uploadFile.type,
-          variables: defaultVariables,
+          variables: effectiveVariables,
         }),
       });
 
@@ -121,7 +125,7 @@ export function TemplateVersionActions({ templateId, latestVersion, defaultVaria
           file_name: uploadFile.name,
           file_size: uploadFile.size,
           mime_type: uploadFile.type,
-          variables: defaultVariables,
+          variables: effectiveVariables,
         }),
       });
 
@@ -176,4 +180,3 @@ export function TemplateVersionActions({ templateId, latestVersion, defaultVaria
     </div>
   );
 }
-

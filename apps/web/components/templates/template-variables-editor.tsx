@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import type { TemplateVersion, TemplateVersionVariable } from '@/lib/templates';
+import { clearDraftVariables, loadDraftVariables, saveDraftVariables } from '@/components/templates/template-draft-storage';
 
 type TemplateVariablesEditorProps = {
   templateId: string;
@@ -24,10 +25,14 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setVariables(Array.isArray(latestVersion?.variables) ? latestVersion!.variables : []);
-  }, [latestVersion?.id]);
+    if (latestVersion) {
+      setVariables(Array.isArray(latestVersion.variables) ? latestVersion.variables : []);
+      clearDraftVariables(templateId);
+      return;
+    }
 
-  const canEdit = !!latestVersion;
+    setVariables(loadDraftVariables(templateId));
+  }, [latestVersion?.id, templateId]);
 
   const hasInvalid = useMemo(() => {
     return variables.some((v) => !v.key.trim() || !v.label_ar.trim());
@@ -51,7 +56,6 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
   }
 
   async function save() {
-    if (!latestVersion) return;
     setError('');
     setMessage('');
 
@@ -71,6 +75,13 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
     const unique = new Set(keys);
     if (unique.size !== keys.length) {
       setError('يوجد تكرار في مفاتيح المتغيرات.');
+      return;
+    }
+
+    // Draft mode: save to local storage until the first version is uploaded.
+    if (!latestVersion) {
+      saveDraftVariables(templateId, normalized);
+      setMessage('تم حفظ المتغيرات. سيتم تطبيقها عند رفع النسخة الأولى.');
       return;
     }
 
@@ -105,16 +116,14 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
     }
   }
 
-  if (!canEdit) {
-    return (
-      <p className="text-sm text-slate-600 dark:text-slate-300">
-        ارفع نسخة من القالب أولًا لتتمكن من تعريف المتغيرات.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-3">
+      {!latestVersion ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          لم يتم رفع نسخة بعد. يمكنك تجهيز المتغيرات الآن وسيتم حفظها محليًا ثم تطبيقها عند رفع النسخة الأولى.
+        </p>
+      ) : null}
+
       {message ? (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
           {message}
@@ -212,4 +221,3 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
     </div>
   );
 }
-

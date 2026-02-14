@@ -238,6 +238,24 @@ supabase db push
 2. أنشئ Bucket باسم: `templates`
 3. اجعله **Private**
 
+### Starter templates (Phase 10.1.2)
+
+يوجد حزمة قوالب تجريبية (placeholders فقط) داخل:
+- `seed/templates/`
+
+لرفعها إلى مكتب (org) محدد:
+
+```bash
+ORG_ID=... \
+NEXT_PUBLIC_SUPABASE_URL=... \
+SUPABASE_SERVICE_ROLE_KEY=... \
+tsx scripts/seed-starter-templates.ts
+```
+
+### Presets للمتغيرات
+
+في صفحة إنشاء القالب `/app/templates/new` يمكنك اختيار preset (وكالة/لائحة دعوى/مذكرة/إنذار) ليتم تعبئة المتغيرات تلقائيًا.
+
 > ملاحظة: في الـ MVP، لا نعتمد على Storage RLS. الرفع/التنزيل يتم عبر روابط موقعة (Signed URLs) يتم توليدها من السيرفر.
 
 ### تدفق الرفع (مختصر)

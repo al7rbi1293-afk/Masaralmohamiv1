@@ -157,6 +157,7 @@ SMTP_FROM=
    - `supabase/migrations/0018_templates.sql`
    - `supabase/migrations/0019_email_log.sql`
    - `supabase/migrations/0020_integrations.sql`
+   - `supabase/migrations/0021_najiz_sync.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI
@@ -177,6 +178,13 @@ supabase db push
    - Logged-in user with no org/trial yet -> `status: "none"`
 
 ## Start trial flow
+
+## Najiz sync (MVP)
+
+1. (Owner) افتح: `/app/settings/integrations/najiz`
+2. اضبط بيانات OAuth (Base URL + Client ID + Client Secret) ثم احفظ.
+3. ضع مسار الـ Endpoint (حسب وثائق ناجز الرسمية) ثم اضغط "مزامنة الآن".
+4. لمراجعة النتائج افتح: `/app/external/najiz`
 
 1. Open `http://localhost:3000/#trial`.
 2. Fill the 14-day trial form.

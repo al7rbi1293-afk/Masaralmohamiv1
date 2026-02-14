@@ -202,6 +202,45 @@ export async function testNajizOAuth(params: {
   return { ok: true, message: 'تم الاتصال بنجاح.' };
 }
 
+export async function getNajizAccessToken(params: {
+  baseUrl: string;
+  clientId: string;
+  clientSecret: string;
+  scope?: string | null;
+}): Promise<string> {
+  const tokenUrl = buildTokenUrl(params.baseUrl);
+
+  const body = new URLSearchParams();
+  body.set('grant_type', 'client_credentials');
+  body.set('client_id', params.clientId);
+  body.set('client_secret', params.clientSecret);
+  if (params.scope) {
+    body.set('scope', params.scope);
+  }
+
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+    },
+    body,
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`فشل الحصول على رمز الوصول (${response.status}).`);
+  }
+
+  const json = (await response.json().catch(() => null)) as any;
+  const token = json?.access_token;
+  if (!token || typeof token !== 'string') {
+    throw new Error('تعذر قراءة رمز الوصول من Najiz.');
+  }
+
+  return token;
+}
+
 function normalizeBaseUrl(value: string) {
   const trimmed = String(value || '').trim();
   return trimmed.replace(/\/+$/, '');

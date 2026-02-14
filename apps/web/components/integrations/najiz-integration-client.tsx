@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 
 type NajizEnvironment = 'sandbox' | 'production';
 type NajizStatus = 'disconnected' | 'connected' | 'error';
+type NajizSyncStatus = 'completed' | 'failed';
 
 type NajizIntegrationState = {
   status: NajizStatus;
@@ -13,12 +15,21 @@ type NajizIntegrationState = {
     environment?: NajizEnvironment;
     base_url?: string;
     last_error?: string | null;
+    sync_path?: string;
   };
   hasSecrets: boolean;
 };
 
+type NajizLastSync = {
+  status: NajizSyncStatus;
+  imported_count: number;
+  endpoint_path: string;
+  created_at: string;
+};
+
 type NajizIntegrationClientProps = {
   initial: NajizIntegrationState;
+  lastSync?: NajizLastSync | null;
 };
 
 const statusLabel: Record<NajizStatus, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' }> = {
@@ -27,20 +38,67 @@ const statusLabel: Record<NajizStatus, { label: string; variant: 'default' | 'su
   error: { label: 'خطأ', variant: 'danger' },
 };
 
-export function NajizIntegrationClient({ initial }: NajizIntegrationClientProps) {
+export function NajizIntegrationClient({ initial, lastSync: initialLastSync }: NajizIntegrationClientProps) {
   const [state, setState] = useState<NajizIntegrationState>(initial);
   const [environment, setEnvironment] = useState<NajizEnvironment>(initial.config.environment ?? 'sandbox');
   const [baseUrl, setBaseUrl] = useState(initial.config.base_url ?? '');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [scope, setScope] = useState('');
+  const [syncPath, setSyncPath] = useState(initial.config.sync_path ?? '');
+  const [lastSync, setLastSync] = useState<NajizLastSync | null>(initialLastSync ?? null);
   const [loading, setLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   const badge = statusLabel[state.status];
 
   const isConfigured = useMemo(() => Boolean((state.config.base_url ?? '').trim() && state.hasSecrets), [state]);
+
+  async function syncNow() {
+    setSyncLoading(true);
+    setMessage('');
+    setError('');
+
+    try {
+      const response = await fetch('/app/api/integrations/najiz/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint_path: syncPath || undefined,
+        }),
+      });
+
+      const json = (await response.json().catch(() => ({}))) as any;
+      if (!response.ok) {
+        setError(String(json?.error ?? json?.message ?? 'تعذر تنفيذ المزامنة.'));
+        return;
+      }
+
+      const nextPath = syncPath.trim();
+      const imported = Number(json?.imported_count ?? 0);
+      setMessage(`تمت المزامنة. تم استيراد ${imported} عنصر.`);
+
+      setState((prev) => ({
+        ...prev,
+        status: 'connected',
+        config: { ...prev.config, sync_path: nextPath || prev.config.sync_path, last_error: null },
+      }));
+      setSyncPath(nextPath);
+
+      setLastSync({
+        status: 'completed',
+        imported_count: imported,
+        endpoint_path: nextPath || (state.config.sync_path ?? ''),
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      setError('تعذر تنفيذ المزامنة.');
+    } finally {
+      setSyncLoading(false);
+    }
+  }
 
   async function connect() {
     setLoading(true);
@@ -271,7 +329,61 @@ export function NajizIntegrationClient({ initial }: NajizIntegrationClientProps)
           </p>
         </form>
       </div>
+
+      <div className="rounded-lg border border-brand-border bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-brand-navy dark:text-slate-100">المزامنة</h3>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              أدخل مسار الـ endpoint من وثائق Najiz ثم اضغط مزامنة الآن.
+            </p>
+          </div>
+          <Link href="/app/external/najiz" className={buttonVariants('outline', 'sm')}>
+            عرض البيانات المستوردة
+          </Link>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <label className="block space-y-1 text-sm lg:col-span-2">
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              مسار Endpoint <span className="text-red-600">*</span>
+            </span>
+            <input
+              value={syncPath}
+              onChange={(event) => setSyncPath(event.target.value)}
+              className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              placeholder="/api/v1/cases"
+            />
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2 lg:col-span-2">
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              disabled={loading || syncLoading || !isConfigured || !syncPath.trim()}
+              onClick={syncNow}
+            >
+              {syncLoading ? 'جارٍ المزامنة...' : 'مزامنة الآن'}
+            </Button>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              يتم حفظ المسار داخل إعدادات التكامل تلقائيًا.
+            </p>
+          </div>
+        </div>
+
+        {lastSync ? (
+          <div className="mt-4 rounded-lg border border-brand-border bg-brand-background px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <p className="font-medium">آخر مزامنة</p>
+            <p className="mt-1">
+              الحالة: {lastSync.status === 'completed' ? 'ناجحة' : 'فاشلة'} • العناصر: {lastSync.imported_count} •{' '}
+              {new Date(lastSync.created_at).toLocaleString('ar-SA')}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">لم يتم تنفيذ مزامنة بعد.</p>
+        )}
+      </div>
     </div>
   );
 }
-

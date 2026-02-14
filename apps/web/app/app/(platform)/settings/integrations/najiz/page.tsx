@@ -12,6 +12,13 @@ type IntegrationRow = {
   secret_enc: string | null;
 };
 
+type LastSyncRow = {
+  status: 'completed' | 'failed';
+  imported_count: number;
+  endpoint_path: string;
+  created_at: string;
+};
+
 export default async function NajizIntegrationPage() {
   let orgId = '';
 
@@ -40,6 +47,14 @@ export default async function NajizIntegrationPage() {
   const status = row?.status ?? 'disconnected';
   const config = (row?.config ?? {}) as any;
   const hasSecrets = Boolean(row?.secret_enc);
+  const { data: lastSync } = await supabase
+    .from('najiz_sync_runs')
+    .select('status, imported_count, endpoint_path, created_at')
+    .eq('org_id', orgId)
+    .eq('provider', 'najiz')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (error) {
     return (
@@ -72,8 +87,8 @@ export default async function NajizIntegrationPage() {
           config,
           hasSecrets,
         }}
+        lastSync={(lastSync as LastSyncRow | null) ?? null}
       />
     </Card>
   );
 }
-

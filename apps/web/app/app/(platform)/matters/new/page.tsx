@@ -8,11 +8,12 @@ import { listClients } from '@/lib/clients';
 import { createMatterAction } from '../actions';
 
 type MatterNewPageProps = {
-  searchParams?: { error?: string };
+  searchParams?: { error?: string; title?: string };
 };
 
 export default async function MatterNewPage({ searchParams }: MatterNewPageProps) {
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
+  const initialTitle = searchParams?.title ? safeDecode(searchParams.title).slice(0, 200) : '';
   const clientsResult = await listClients({
     status: 'active',
     page: 1,
@@ -70,6 +71,7 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
             required
             minLength={2}
             name="title"
+            defaultValue={initialTitle}
             className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
           />
         </label>

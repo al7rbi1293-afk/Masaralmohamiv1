@@ -245,7 +245,7 @@ export async function GET(request: Request, context: { params: { id: string } })
       ),
     );
 
-    let buffer: Buffer;
+    let buffer: any;
     try {
       buffer = await withCircuitBreaker(
         'pdf.invoice_export',

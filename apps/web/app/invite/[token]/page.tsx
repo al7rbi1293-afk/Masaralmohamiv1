@@ -220,7 +220,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
     action: 'team.invite_accepted',
     entity_type: 'org_invitation',
     entity_id: row.id,
-    meta: { invitedEmail, role: row.role },
+    meta: { role: row.role },
     ip: ip === 'unknown' ? null : ip,
     user_agent: userAgent,
   });

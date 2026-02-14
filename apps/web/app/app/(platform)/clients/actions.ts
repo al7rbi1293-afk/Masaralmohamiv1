@@ -2,7 +2,8 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createClient, setClientStatus, updateClient } from '@/lib/clients';
+import { createClient, getClientById, setClientStatus, updateClient } from '@/lib/clients';
+import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
 const clientSchema = z.object({
@@ -31,6 +32,12 @@ export async function createClientAction(formData: FormData) {
 
   try {
     const created = await createClient(normalize(parsed.data));
+    await logAudit({
+      action: 'client.created',
+      entityType: 'client',
+      entityId: created.id,
+      meta: { type: created.type },
+    });
     logInfo('client_created', { clientId: created.id });
     redirect(`/app/clients/${created.id}?success=${encodeURIComponent('تم إنشاء العميل.')}`);
   } catch (error) {
@@ -47,7 +54,17 @@ export async function updateClientAction(id: string, formData: FormData) {
   }
 
   try {
-    await updateClient(id, normalize(parsed.data));
+    const before = await getClientById(id).catch(() => null);
+    const updated = await updateClient(id, normalize(parsed.data));
+
+    const changed = diffClientFields(before, updated);
+    await logAudit({
+      action: 'client.updated',
+      entityType: 'client',
+      entityId: updated.id,
+      meta: { changed },
+    });
+
     logInfo('client_updated', { clientId: id });
     redirect(`/app/clients/${id}?success=${encodeURIComponent('تم تحديث بيانات العميل.')}`);
   } catch (error) {
@@ -60,6 +77,12 @@ export async function updateClientAction(id: string, formData: FormData) {
 export async function archiveClientAction(id: string, redirectTo = '/app/clients') {
   try {
     await setClientStatus(id, 'archived');
+    await logAudit({
+      action: 'client.archived',
+      entityType: 'client',
+      entityId: id,
+      meta: { changed: ['status'] },
+    });
     logInfo('client_archived', { clientId: id });
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة العميل.'));
   } catch (error) {
@@ -72,6 +95,12 @@ export async function archiveClientAction(id: string, redirectTo = '/app/clients
 export async function restoreClientAction(id: string, redirectTo = '/app/clients') {
   try {
     await setClientStatus(id, 'active');
+    await logAudit({
+      action: 'client.restored',
+      entityType: 'client',
+      entityId: id,
+      meta: { changed: ['status'] },
+    });
     logInfo('client_restored', { clientId: id });
     redirect(withToast(redirectTo, 'success', 'تمت استعادة العميل.'));
   } catch (error) {
@@ -133,4 +162,14 @@ function toUserMessage(error: unknown) {
 function withToast(path: string, key: 'success' | 'error', message: string) {
   const [pathname] = path.split('?');
   return `${pathname}?${key}=${encodeURIComponent(message)}`;
+}
+
+function diffClientFields(before: Awaited<ReturnType<typeof getClientById>>, after: Awaited<ReturnType<typeof updateClient>>): string[] {
+  if (!before || !after) return [];
+  const keys = ['type', 'name', 'identity_no', 'commercial_no', 'email', 'phone', 'notes', 'status'] as const;
+  const changed: string[] = [];
+  for (const key of keys) {
+    if ((before as any)[key] !== (after as any)[key]) changed.push(key);
+  }
+  return changed;
 }

@@ -257,7 +257,6 @@ export async function createInvitation(
     entityType: 'org_invitation',
     entityId: String(inserted.id),
     meta: {
-      email,
       role: inserted.role,
       expires_at: inserted.expires_at,
     },

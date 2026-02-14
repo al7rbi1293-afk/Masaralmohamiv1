@@ -6,6 +6,7 @@ import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getPublicSiteUrl } from '@/lib/env';
+import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
 const shareSchema = z.object({
@@ -94,6 +95,15 @@ export async function POST(request: NextRequest) {
 
       const shareUrl = `${siteUrl}/share/${token}`;
       logInfo('document_shared', { documentId: parsed.data.document_id });
+
+      await logAudit({
+        action: 'document.shared',
+        entityType: 'document',
+        entityId: parsed.data.document_id,
+        meta: { expires_in: parsed.data.expires_in, expires_at: expiresAt.toISOString() },
+        req: request,
+      });
+
       return NextResponse.json({ shareUrl }, { status: 201 });
     }
 

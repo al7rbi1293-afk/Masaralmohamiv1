@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { CircuitOpenError, TimeoutError, withCircuitBreaker, withTimeout } from '@/lib/runtime-safety';
 
@@ -73,6 +74,13 @@ export async function POST(request: Request) {
     }
 
     logInfo('document_download_signed', { storagePath: parsed.data.storage_path });
+    await logAudit({
+      action: 'document.download_signed',
+      entityType: 'document_version',
+      entityId: String((version as any).id),
+      meta: { document_id: String((version as any).document_id) },
+      req: request,
+    });
     return NextResponse.json({ signedDownloadUrl: signedUrl }, { status: 200 });
   } catch (error) {
     logError('document_download_signed_failed', {

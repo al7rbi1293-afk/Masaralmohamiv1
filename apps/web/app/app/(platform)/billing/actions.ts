@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createInvoice, createQuote, itemsSchema, updateInvoice, updateQuote } from '@/lib/billing';
+import { createInvoice, createQuote, getInvoiceById, itemsSchema, updateInvoice, updateQuote } from '@/lib/billing';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
@@ -160,6 +160,7 @@ export async function updateInvoiceAction(id: string, formData: FormData) {
   }
 
   try {
+    const before = await getInvoiceById(id).catch(() => null);
     const updated = await updateInvoice(id, {
       client_id: parsed.data.client_id,
       matter_id: emptyToNull(parsed.data.matter_id),
@@ -173,7 +174,10 @@ export async function updateInvoiceAction(id: string, formData: FormData) {
       action: 'invoice.updated',
       entityType: 'invoice',
       entityId: updated.id,
-      meta: { number: updated.number },
+      meta: {
+        number: updated.number,
+        changed: diffInvoiceFields(before, updated),
+      },
     });
 
     logInfo('invoice_updated', { invoiceId: updated.id });
@@ -256,4 +260,29 @@ function toUserMessage(error: unknown) {
   }
 
   return message || 'تعذر الحفظ. حاول مرة أخرى.';
+}
+
+function diffInvoiceFields(
+  before: Awaited<ReturnType<typeof getInvoiceById>>,
+  after: Awaited<ReturnType<typeof updateInvoice>>,
+): string[] {
+  if (!before || !after) return [];
+  const changed: string[] = [];
+
+  if (before.client_id !== after.client_id) changed.push('client_id');
+  if (before.matter_id !== after.matter_id) changed.push('matter_id');
+  if (before.due_at !== after.due_at) changed.push('due_at');
+  if (String(before.tax) !== String(after.tax)) changed.push('tax');
+  if (before.status !== after.status) changed.push('status');
+
+  try {
+    const beforeItems = JSON.stringify(before.items ?? null);
+    const afterItems = JSON.stringify(after.items ?? null);
+    if (beforeItems !== afterItems) changed.push('items');
+  } catch {
+    // If items aren't comparable, still mark as changed conservatively.
+    changed.push('items');
+  }
+
+  return changed;
 }

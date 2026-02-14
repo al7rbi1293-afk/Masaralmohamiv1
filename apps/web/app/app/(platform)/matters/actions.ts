@@ -2,8 +2,9 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { archiveMatter, createMatter, restoreMatter, updateMatter } from '@/lib/matters';
+import { archiveMatter, createMatter, getMatterById, restoreMatter, updateMatter } from '@/lib/matters';
 import { createMatterEvent, createMatterEventSchema } from '@/lib/matterEvents';
+import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
 const matterSchema = z.object({
@@ -24,6 +25,12 @@ export async function createMatterAction(formData: FormData) {
 
   try {
     const created = await createMatter(normalize(parsed.data));
+    await logAudit({
+      action: 'matter.created',
+      entityType: 'matter',
+      entityId: created.id,
+      meta: { is_private: created.is_private },
+    });
     logInfo('matter_created', { matterId: created.id });
     redirect(`/app/matters/${created.id}?success=${encodeURIComponent('تم إنشاء القضية.')}`);
   } catch (error) {
@@ -42,7 +49,17 @@ export async function updateMatterAction(id: string, formData: FormData) {
   }
 
   try {
-    await updateMatter(id, normalize(parsed.data));
+    const before = await getMatterById(id).catch(() => null);
+    const updated = await updateMatter(id, normalize(parsed.data));
+    const changed = diffMatterFields(before, updated);
+
+    await logAudit({
+      action: 'matter.updated',
+      entityType: 'matter',
+      entityId: updated.id,
+      meta: { changed },
+    });
+
     logInfo('matter_updated', { matterId: id });
     redirect(`/app/matters/${id}?success=${encodeURIComponent('تم تحديث القضية.')}`);
   } catch (error) {
@@ -55,6 +72,12 @@ export async function updateMatterAction(id: string, formData: FormData) {
 export async function archiveMatterAction(id: string, redirectTo = '/app/matters') {
   try {
     await archiveMatter(id);
+    await logAudit({
+      action: 'matter.archived',
+      entityType: 'matter',
+      entityId: id,
+      meta: { changed: ['status'] },
+    });
     logInfo('matter_archived', { matterId: id });
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة القضية.'));
   } catch (error) {
@@ -67,6 +90,12 @@ export async function archiveMatterAction(id: string, redirectTo = '/app/matters
 export async function restoreMatterAction(id: string, redirectTo = '/app/matters') {
   try {
     await restoreMatter(id);
+    await logAudit({
+      action: 'matter.restored',
+      entityType: 'matter',
+      entityId: id,
+      meta: { changed: ['status'] },
+    });
     logInfo('matter_restored', { matterId: id });
     redirect(withToast(redirectTo, 'success', 'تمت استعادة القضية.'));
   } catch (error) {
@@ -181,4 +210,17 @@ function toEventUserMessage(error: unknown) {
   }
 
   return 'تعذر إضافة الحدث.';
+}
+
+function diffMatterFields(
+  before: Awaited<ReturnType<typeof getMatterById>>,
+  after: Awaited<ReturnType<typeof updateMatter>>,
+): string[] {
+  if (!before || !after) return [];
+  const keys = ['title', 'status', 'summary', 'client_id', 'is_private', 'assigned_user_id'] as const;
+  const changed: string[] = [];
+  for (const key of keys) {
+    if ((before as any)[key] !== (after as any)[key]) changed.push(key);
+  }
+  return changed;
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { CircuitOpenError, TimeoutError, withCircuitBreaker, withTimeout } from '@/lib/runtime-safety';
 
@@ -98,6 +99,14 @@ export async function POST(request: Request) {
       documentId: parsed.data.document_id,
       versionNo: nextVersionNo,
       fileSize: parsed.data.file_size,
+    });
+
+    await logAudit({
+      action: 'document.upload_url_issued',
+      entityType: 'document',
+      entityId: parsed.data.document_id,
+      meta: { version_no: nextVersionNo, file_size: parsed.data.file_size },
+      req: request,
     });
 
     return NextResponse.json(

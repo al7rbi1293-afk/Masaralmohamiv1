@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
 const commitSchema = z.object({
@@ -75,6 +76,18 @@ export async function POST(request: Request) {
     logInfo('document_version_committed', {
       documentId: parsed.data.document_id,
       versionNo: parsed.data.version_no,
+    });
+
+    await logAudit({
+      action: 'document.version_committed',
+      entityType: 'document_version',
+      entityId: String((version as any).id),
+      meta: {
+        document_id: parsed.data.document_id,
+        version_no: parsed.data.version_no,
+        file_size: parsed.data.file_size,
+      },
+      req: request,
     });
 
     return NextResponse.json({ version }, { status: 201 });

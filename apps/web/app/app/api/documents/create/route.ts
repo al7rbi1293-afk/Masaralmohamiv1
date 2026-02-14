@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
 const createDocumentSchema = z.object({
@@ -47,6 +48,17 @@ export async function POST(request: Request) {
       logError('document_create_failed', { message: error?.message ?? 'unknown' });
       return NextResponse.json({ error: 'تعذر إنشاء المستند.' }, { status: 400 });
     }
+
+    await logAudit({
+      action: 'document.created',
+      entityType: 'document',
+      entityId: String(data.id),
+      meta: {
+        has_matter: Boolean((data as any).matter_id),
+        has_client: Boolean((data as any).client_id),
+      },
+      req: request,
+    });
 
     logInfo('document_created', { documentId: data.id });
     return NextResponse.json({ document: data }, { status: 201 });

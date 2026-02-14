@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createTemplate } from '@/lib/templates';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
-import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { TEMPLATE_PRESETS } from '@/lib/templatePresets';
 
 const createTemplateSchema = z.object({
   name: z
@@ -33,16 +33,10 @@ export async function POST(request: Request) {
     let presetCategory: string | null = null;
 
     if (presetCode) {
-      const rls = createSupabaseServerRlsClient();
-      const { data } = await rls
-        .from('template_presets')
-        .select('category, variables')
-        .eq('code', presetCode)
-        .maybeSingle();
-
-      if (data) {
-        presetCategory = (data as any).category ? String((data as any).category) : null;
-        presetVariables = Array.isArray((data as any).variables) ? ((data as any).variables as any[]) : [];
+      const preset = TEMPLATE_PRESETS.find((p) => String(p.code || '').toUpperCase() === presetCode) ?? null;
+      if (preset) {
+        presetCategory = String(preset.category ?? '').trim() || null;
+        presetVariables = Array.isArray(preset.variables) ? (preset.variables as any[]) : [];
       }
     }
 

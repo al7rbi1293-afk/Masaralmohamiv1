@@ -1,0 +1,400 @@
+[
+  {
+    "code": "WAKALA",
+    "name_ar": "وكالة شرعية",
+    "category": "وكالة",
+    "variables": [
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "اسم منشأتك/مكتب المحاماة" },
+      { "key": "org.city", "label_ar": "المدينة", "required": false, "source": "org", "path": "city", "format": "text", "transform": "none", "help_ar": "مدينة المكتب" },
+      { "key": "client.name", "label_ar": "اسم الموكل", "required": true, "source": "client", "path": "name", "format": "text", "transform": "none", "help_ar": "الاسم الكامل للموكل" },
+      { "key": "client.identity_no", "label_ar": "رقم الهوية", "required": true, "source": "client", "path": "identity_no", "format": "id", "transform": "none", "help_ar": "هوية وطنية/إقامة" },
+      { "key": "client.phone", "label_ar": "رقم الجوال", "required": false, "source": "client", "path": "phone", "format": "text", "transform": "none", "help_ar": "يفضل بصيغة +966" },
+      { "key": "client.address", "label_ar": "العنوان", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "العنوان الوطني أو عنوان مختصر" },
+      { "key": "lawyer.name", "label_ar": "اسم الوكيل/المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "اسم المستخدم الحالي أو اسم الوكيل" },
+      { "key": "lawyer.license_no", "label_ar": "رقم رخصة المحاماة", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "إن وجد" },
+      { "key": "wakala.scope", "label_ar": "نطاق الوكالة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "حدود الصلاحيات: الترافع/التنازل/الصلح..." },
+      { "key": "wakala.to", "label_ar": "الجهة/المحكمة/اللجنة", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: المحكمة العامة بالرياض" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم (ميلادي)", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "يملأ تلقائياً" },
+      { "key": "date.hijri_today", "label_ar": "تاريخ اليوم (هجري)", "required": false, "source": "computed", "format": "date", "transform": "none", "help_ar": "اختياري إن توفر التحويل" }
+    ]
+  },
+  {
+    "code": "PETITION",
+    "name_ar": "لائحة دعوى",
+    "category": "لائحة دعوى",
+    "variables": [
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "court.name", "label_ar": "اسم المحكمة/اللجنة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: المحكمة العمالية" },
+      { "key": "court.city", "label_ar": "مدينة المحكمة", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "court.circuit", "label_ar": "الدائرة", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رقم/اسم الدائرة إن وجد" },
+      { "key": "matter.title", "label_ar": "عنوان القضية", "required": true, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "يُسحب من القضية" },
+      { "key": "matter.number", "label_ar": "رقم القضية", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "إذا متوفر" },
+      { "key": "matter.case_type", "label_ar": "نوع القضية", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: عمالية/تجارية/أحوال..." },
+      { "key": "client.name", "label_ar": "اسم المدعي/المدعية", "required": true, "source": "client", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "client.identity_no", "label_ar": "هوية المدعي", "required": false, "source": "client", "path": "identity_no", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "client.phone", "label_ar": "جوال المدعي", "required": false, "source": "client", "path": "phone", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "defendant.name", "label_ar": "اسم المدعى عليه", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "فرد/شركة" },
+      { "key": "defendant.id_or_cr", "label_ar": "هوية/سجل المدعى عليه", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "defendant.address", "label_ar": "عنوان المدعى عليه", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "claim.facts", "label_ar": "الوقائع", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "اكتب الوقائع بشكل نقاط" },
+      { "key": "claim.requests", "label_ar": "الطلبات", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: إلزام/تعويض/فسخ..." },
+      { "key": "claim.legal_basis", "label_ar": "الساند النظامي", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مواد نظامية/سوابق" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.license_no", "label_ar": "رقم الرخصة", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم (ميلادي)", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+  {
+    "code": "MEMO",
+    "name_ar": "مذكرة",
+    "category": "مذكرة",
+    "variables": [
+      { "key": "court.name", "label_ar": "اسم المحكمة/اللجنة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "matter.number", "label_ar": "رقم القضية", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "matter.title", "label_ar": "عنوان القضية", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party.role", "label_ar": "صفة مقدم المذكرة", "required": true, "source": "manual", "defaultValue": "المدعى عليه", "format": "text", "transform": "none", "help_ar": "مثال: المدعى عليه/المدعي" },
+      { "key": "party.name", "label_ar": "اسم مقدم المذكرة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "memo.subject", "label_ar": "موضوع المذكرة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رد على لائحة دعوى/اعتراض..." },
+      { "key": "memo.points", "label_ar": "نقاط الرد", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "نقاط مرقمة" },
+      { "key": "memo.attachments", "label_ar": "المرفقات", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "إن وجد" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+  {
+    "code": "NOTICE",
+    "name_ar": "إنذار / مطالبة",
+    "category": "إنذار",
+    "variables": [
+      { "key": "client.name", "label_ar": "اسم المرسل (الموكل)", "required": true, "source": "client", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "client.identity_no", "label_ar": "هوية المرسل", "required": false, "source": "client", "path": "identity_no", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "recipient.name", "label_ar": "اسم المرسل إليه", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "recipient.address", "label_ar": "عنوان المرسل إليه", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "notice.subject", "label_ar": "موضوع الإنذار", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "notice.body", "label_ar": "نص الإنذار", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "اكتب نص الإنذار بشكل رسمي" },
+      { "key": "notice.deadline_days", "label_ar": "مدة المهلة (بالأيام)", "required": false, "source": "manual", "defaultValue": "7", "format": "number", "transform": "none", "help_ar": "مثال: 7 أو 15" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+  {
+    "code": "CONTRACT",
+    "name_ar": "عقد / اتفاقية",
+    "category": "عقود",
+    "variables": [
+      { "key": "contract.title", "label_ar": "عنوان العقد", "required": true, "source": "manual", "defaultValue": "عقد", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party1.name", "label_ar": "الطرف الأول", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party1.id", "label_ar": "هوية/سجل الطرف الأول", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party2.name", "label_ar": "الطرف الثاني", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party2.id", "label_ar": "هوية/سجل الطرف الثاني", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "contract.scope", "label_ar": "موضوع العقد", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "نطاق العمل/الخدمة/البيع..." },
+      { "key": "contract.amount", "label_ar": "قيمة العقد", "required": false, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "contract.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "contract.start_date", "label_ar": "تاريخ البداية", "required": false, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "contract.end_date", "label_ar": "تاريخ النهاية", "required": false, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "RECEIPT_ACK", "name_ar": "إقرار واستلام", "category": "إقرارات",
+    "variables": [
+      { "key": "ack.title", "label_ar": "عنوان الإقرار", "required": true, "source": "manual", "defaultValue": "إقرار واستلام", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "ack.person_name", "label_ar": "اسم المُقِر", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "الشخص الذي يقر بالاستلام" },
+      { "key": "ack.person_id", "label_ar": "هوية المُقِر", "required": false, "source": "manual", "defaultValue": "", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "ack.person_address", "label_ar": "عنوان المُقِر", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "ack.received_from", "label_ar": "تم الاستلام من", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "اسم الطرف الآخر" },
+      { "key": "ack.item_description", "label_ar": "وصف المستلَم", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مبلغ/مستند/سلعة..." },
+      { "key": "ack.amount", "label_ar": "المبلغ (إن وجد)", "required": false, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "ack.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "sign.place", "label_ar": "مكان التوقيع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "SETTLEMENT_RELEASE", "name_ar": "مخالصة نهائية", "category": "مخالصات",
+    "variables": [
+      { "key": "release.title", "label_ar": "عنوان المخالصة", "required": true, "source": "manual", "defaultValue": "مخالصة نهائية", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party1.name", "label_ar": "الطرف الأول", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party1.id", "label_ar": "هوية/سجل الطرف الأول", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party2.name", "label_ar": "الطرف الثاني", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party2.id", "label_ar": "هوية/سجل الطرف الثاني", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "release.reason", "label_ar": "سبب المخالصة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: انتهاء علاقة عمل/سداد مستحقات/توريد..." },
+      { "key": "release.amount", "label_ar": "المبلغ الإجمالي", "required": false, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "release.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "release.date", "label_ar": "تاريخ المخالصة", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "sign.place", "label_ar": "مكان التوقيع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "RECONCILIATION_MINUTES", "name_ar": "محضر صلح", "category": "صلح",
+    "variables": [
+      { "key": "minutes.title", "label_ar": "عنوان المحضر", "required": true, "source": "manual", "defaultValue": "محضر صلح", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "session.place", "label_ar": "مكان انعقاد الصلح", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مكتب/محكمة/منصة..." },
+      { "key": "session.date", "label_ar": "تاريخ الجلسة", "required": true, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "party1.name", "label_ar": "الطرف الأول", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party2.name", "label_ar": "الطرف الثاني", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "minutes.summary", "label_ar": "ملخص النزاع", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "minutes.terms", "label_ar": "بنود الصلح", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "اكتب البنود مرقمة" },
+      { "key": "minutes.payment_terms", "label_ar": "شروط السداد (إن وجدت)", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم الميسر/المحامي", "required": false, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ التحرير", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "REPRESENTATION_LETTER", "name_ar": "خطاب تفويض / تمثيل", "category": "خطابات",
+    "variables": [
+      { "key": "letter.to", "label_ar": "الجهة الموجّه لها الخطاب", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: شركة/جهة حكومية/محكمة" },
+      { "key": "letter.subject", "label_ar": "الموضوع", "required": true, "source": "manual", "defaultValue": "تفويض وتمثيل", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "client.name", "label_ar": "اسم المفوِّض (الموكل)", "required": true, "source": "client", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "client.identity_no", "label_ar": "هوية المفوِّض", "required": false, "source": "client", "path": "identity_no", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "representative.name", "label_ar": "اسم الممثل/المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "representative.license_no", "label_ar": "رقم الرخصة", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "letter.scope", "label_ar": "نطاق التفويض", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "التوقيع/المتابعة/الاستلام..." },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "MEETING_MINUTES", "name_ar": "محضر اجتماع", "category": "محاضر",
+    "variables": [
+      { "key": "meeting.title", "label_ar": "عنوان الاجتماع", "required": true, "source": "manual", "defaultValue": "محضر اجتماع", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "meeting.date", "label_ar": "تاريخ الاجتماع", "required": true, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "meeting.time", "label_ar": "وقت الاجتماع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "meeting.location", "label_ar": "مكان الاجتماع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "attendees.list", "label_ar": "الحضور", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "أسماء الحضور (سطر لكل اسم)" },
+      { "key": "meeting.agenda", "label_ar": "جدول الأعمال", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "meeting.decisions", "label_ar": "القرارات/النتائج", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "نقاط مرقمة" },
+      { "key": "meeting.action_items", "label_ar": "بنود المتابعة", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "المحرر/المحامي", "required": false, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ التحرير", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "HANDOVER_REPORT", "name_ar": "محضر استلام وتسليم", "category": "محاضر",
+    "variables": [
+      { "key": "handover.title", "label_ar": "عنوان المحضر", "required": true, "source": "manual", "defaultValue": "محضر استلام وتسليم", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "handover.date", "label_ar": "تاريخ المحضر", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "handover.from_name", "label_ar": "المسلِّم", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "handover.to_name", "label_ar": "المستلم", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "handover.items", "label_ar": "بنود الاستلام/التسليم", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "قائمة البنود" },
+      { "key": "handover.notes", "label_ar": "ملاحظات", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "sign.place", "label_ar": "مكان التوقيع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "FINANCIAL_DEMAND", "name_ar": "خطاب مطالبة مالية", "category": "مطالبات",
+    "variables": [
+      { "key": "demand.to", "label_ar": "الجهة/الشخص الموجه له الخطاب", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "demand.subject", "label_ar": "موضوع الخطاب", "required": true, "source": "manual", "defaultValue": "مطالبة مالية", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "client.name", "label_ar": "اسم المطالب (الموكل)", "required": true, "source": "client", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "demand.amount", "label_ar": "قيمة المطالبة", "required": true, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "demand.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "demand.reason", "label_ar": "سبب المطالبة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "demand.deadline_days", "label_ar": "مهلة السداد (بالأيام)", "required": false, "source": "manual", "defaultValue": "7", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "UNDERTAKING", "name_ar": "تعهد", "category": "تعهدات",
+    "variables": [
+      { "key": "undertaking.title", "label_ar": "عنوان التعهد", "required": true, "source": "manual", "defaultValue": "تعهد", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "undertaking.person_name", "label_ar": "اسم المتعهد", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "undertaking.person_id", "label_ar": "هوية المتعهد", "required": false, "source": "manual", "defaultValue": "", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "undertaking.text", "label_ar": "نص التعهد", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "صياغة التعهد" },
+      { "key": "undertaking.deadline_date", "label_ar": "تاريخ الالتزام/الاستحقاق", "required": false, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "sign.place", "label_ar": "مكان التوقيع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "TERMINATION_LETTER", "name_ar": "خطاب إنهاء علاقة", "category": "خطابات",
+    "variables": [
+      { "key": "letter.to", "label_ar": "الجهة/الشخص الموجه له الخطاب", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "letter.subject", "label_ar": "الموضوع", "required": true, "source": "manual", "defaultValue": "إشعار إنهاء", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "party.name", "label_ar": "اسم الطرف المُنهي", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "شركة/فرد" },
+      { "key": "termination.reason", "label_ar": "سبب الإنهاء", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "termination.effective_date", "label_ar": "تاريخ سريان الإنهاء", "required": true, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "termination.notice_period", "label_ar": "مدة الإشعار (اختياري)", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: 30 يوم" },
+      { "key": "contract.ref", "label_ar": "مرجع العقد (اختياري)", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رقم/تاريخ العقد" },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "STATEMENT_CERTIFICATE", "name_ar": "إفادة / شهادة", "category": "إفادات",
+    "variables": [
+      { "key": "certificate.title", "label_ar": "عنوان الإفادة/الشهادة", "required": true, "source": "manual", "defaultValue": "إفادة", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "certificate.issued_to", "label_ar": "موجهة إلى", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "جهة/شخص" },
+      { "key": "subject.name", "label_ar": "اسم صاحب الإفادة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "subject.id", "label_ar": "هوية صاحب الإفادة", "required": false, "source": "manual", "defaultValue": "", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "certificate.body", "label_ar": "نص الإفادة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "اكتب النص بشكل رسمي" },
+      { "key": "certificate.purpose", "label_ar": "الغرض", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "matter.title", "label_ar": "مرجع القضية (اختياري)", "required": false, "source": "matter", "path": "title", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": false, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "LABOR_RELEASE", "name_ar": "مخالصة عمالية", "category": "عمالي",
+    "variables": [
+      { "key": "release.title", "label_ar": "عنوان المخالصة", "required": true, "source": "manual", "defaultValue": "مخالصة عمالية", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employee.name", "label_ar": "اسم العامل/الموظف", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employee.id", "label_ar": "هوية/إقامة العامل", "required": false, "source": "manual", "defaultValue": "", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "employee.nationality", "label_ar": "الجنسية", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employer.name", "label_ar": "اسم صاحب العمل/الشركة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employer.cr", "label_ar": "السجل التجاري (إن وجد)", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employment.start_date", "label_ar": "تاريخ بداية العمل", "required": false, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "employment.end_date", "label_ar": "تاريخ نهاية العمل", "required": false, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "release.total_amount", "label_ar": "إجمالي المستحقات المسددة", "required": false, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "release.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "release.details", "label_ar": "تفاصيل المستحقات", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: رواتب/بدلات/إجازات/مكافأة" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "sign.place", "label_ar": "مكان التوقيع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "LABOR_DUES_ACK", "name_ar": "إقرار استلام مستحقات", "category": "عمالي",
+    "variables": [
+      { "key": "ack.title", "label_ar": "عنوان الإقرار", "required": true, "source": "manual", "defaultValue": "إقرار استلام مستحقات", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employee.name", "label_ar": "اسم العامل/الموظف", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employee.id", "label_ar": "هوية/إقامة العامل", "required": false, "source": "manual", "defaultValue": "", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "employer.name", "label_ar": "اسم صاحب العمل/الشركة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "dues.amount", "label_ar": "قيمة المستحقات المستلمة", "required": true, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "dues.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "dues.method", "label_ar": "طريقة السداد", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "تحويل/نقدي/شيك" },
+      { "key": "dues.reference", "label_ar": "مرجع السداد (إن وجد)", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رقم حوالة/شيك" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "sign.place", "label_ar": "مكان التوقيع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "LABOR_NOTICE", "name_ar": "إنذار عمالي", "category": "عمالي",
+    "variables": [
+      { "key": "notice.to", "label_ar": "الجهة/الشخص المرسل إليه", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "الشركة/صاحب العمل" },
+      { "key": "notice.subject", "label_ar": "موضوع الإنذار", "required": true, "source": "manual", "defaultValue": "إنذار عمالي", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employee.name", "label_ar": "اسم العامل/الموظف", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "employee.id", "label_ar": "هوية/إقامة العامل", "required": false, "source": "manual", "defaultValue": "", "format": "id", "transform": "none", "help_ar": "" },
+      { "key": "notice.facts", "label_ar": "الوقائع", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: تأخير رواتب/فصل/حرمان إجازة" },
+      { "key": "notice.request", "label_ar": "المطالبة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "ما المطلوب تصحيحه/سداد" },
+      { "key": "notice.deadline_days", "label_ar": "المهلة (بالأيام)", "required": false, "source": "manual", "defaultValue": "7", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "NOTICE_BEFORE_TERMINATION", "name_ar": "إشعار قبل فسخ عقد", "category": "تجاري",
+    "variables": [
+      { "key": "notice.to", "label_ar": "الطرف المرسل إليه", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "contract.ref", "label_ar": "مرجع العقد", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رقم/تاريخ العقد" },
+      { "key": "breach.description", "label_ar": "وصف الإخلال", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: عدم توريد/عدم سداد" },
+      { "key": "cure.period_days", "label_ar": "مهلة المعالجة (بالأيام)", "required": false, "source": "manual", "defaultValue": "10", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "sender.name", "label_ar": "اسم المرسل", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "شركة/فرد" },
+      { "key": "sender.id", "label_ar": "سجل/هوية المرسل", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب", "required": true, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": true, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "BREACH_NOTICE", "name_ar": "إشعار إخلال بالعقد", "category": "تجاري",
+    "variables": [
+      { "key": "notice.to", "label_ar": "الطرف المرسل إليه", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "contract.ref", "label_ar": "مرجع العقد", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "breach.items", "label_ar": "بنود الإخلال", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "نقاط مرقمة" },
+      { "key": "breach.request", "label_ar": "المطلوب", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "معالجة/سداد/تعويض" },
+      { "key": "breach.deadline_days", "label_ar": "المهلة (بالأيام)", "required": false, "source": "manual", "defaultValue": "10", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "sender.name", "label_ar": "اسم المرسل", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "PAYMENT_DEMAND_NOTICE", "name_ar": "إنذار سداد", "category": "تجاري",
+    "variables": [
+      { "key": "notice.to", "label_ar": "المدين/الجهة المرسل إليها", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "debt.amount", "label_ar": "المبلغ المطلوب", "required": true, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "debt.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "debt.reason", "label_ar": "سبب الدين", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "فاتورة/توريد/عقد..." },
+      { "key": "debt.due_date", "label_ar": "تاريخ الاستحقاق", "required": false, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "notice.deadline_days", "label_ar": "مهلة السداد (بالأيام)", "required": false, "source": "manual", "defaultValue": "7", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "sender.name", "label_ar": "اسم الدائن/المرسل", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب (اختياري)", "required": false, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي (اختياري)", "required": false, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "EVICTION_NOTICE", "name_ar": "إشعار إخلاء", "category": "إيجارات",
+    "variables": [
+      { "key": "landlord.name", "label_ar": "اسم المؤجر", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "tenant.name", "label_ar": "اسم المستأجر", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lease.property_desc", "label_ar": "وصف العين المؤجرة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "العنوان/الوحدة" },
+      { "key": "lease.contract_ref", "label_ar": "مرجع عقد الإيجار", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رقم/تاريخ" },
+      { "key": "eviction.reason", "label_ar": "سبب الإخلاء", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "انتهاء العقد/عدم سداد..." },
+      { "key": "eviction.deadline_date", "label_ar": "تاريخ الإخلاء المطلوب", "required": true, "source": "manual", "defaultValue": "", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "sign.place", "label_ar": "مكان التوقيع", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "RENT_ARREARS_DEMAND", "name_ar": "مطالبة متأخرات إيجار", "category": "إيجارات",
+    "variables": [
+      { "key": "landlord.name", "label_ar": "اسم المؤجر", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "tenant.name", "label_ar": "اسم المستأجر", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lease.property_desc", "label_ar": "وصف العين المؤجرة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lease.contract_ref", "label_ar": "مرجع عقد الإيجار", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "arrears.amount", "label_ar": "قيمة المتأخرات", "required": true, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "arrears.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "arrears.period", "label_ar": "فترة المتأخرات", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: من 2025-01 إلى 2025-03" },
+      { "key": "notice.deadline_days", "label_ar": "مهلة السداد (بالأيام)", "required": false, "source": "manual", "defaultValue": "7", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "PRE_ENFORCEMENT_NOTICE", "name_ar": "إنذار قبل التنفيذ", "category": "تنفيذي",
+    "variables": [
+      { "key": "notice.to", "label_ar": "اسم المنذر/المدين", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "claimant.name", "label_ar": "اسم الدائن", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "enforcement.instrument", "label_ar": "السند التنفيذي", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثال: حكم/سند لأمر/عقد موثق" },
+      { "key": "enforcement.instrument_ref", "label_ar": "مرجع السند", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رقم/تاريخ" },
+      { "key": "debt.amount", "label_ar": "المبلغ المطلوب", "required": true, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "debt.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "notice.deadline_days", "label_ar": "مهلة السداد (بالأيام)", "required": false, "source": "manual", "defaultValue": "5", "format": "number", "transform": "none", "help_ar": "مهلة قصيرة قبل اتخاذ إجراءات" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" },
+      { "key": "org.name", "label_ar": "اسم المكتب (اختياري)", "required": false, "source": "org", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي (اختياري)", "required": false, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" }
+    ]
+  },
+
+  { "code": "ENFORCEMENT_PETITION", "name_ar": "مذكرة/طلب تنفيذ", "category": "تنفيذي",
+    "variables": [
+      { "key": "authority.name", "label_ar": "جهة التنفيذ", "required": true, "source": "manual", "defaultValue": "محكمة التنفيذ", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "authority.city", "label_ar": "مدينة جهة التنفيذ", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "claimant.name", "label_ar": "اسم طالب التنفيذ (الدائن)", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "claimant.id", "label_ar": "هوية/سجل طالب التنفيذ", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "debtor.name", "label_ar": "اسم المنفذ ضده (المدين)", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "debtor.id", "label_ar": "هوية/سجل المنفذ ضده", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "instrument.type", "label_ar": "نوع السند التنفيذي", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "حكم/سند لأمر/شيك/عقد موثق..." },
+      { "key": "instrument.ref", "label_ar": "مرجع السند", "required": false, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "رقم/تاريخ/جهة إصدار" },
+      { "key": "claim.amount", "label_ar": "مبلغ الطلب", "required": true, "source": "manual", "defaultValue": "", "format": "number", "transform": "none", "help_ar": "" },
+      { "key": "claim.currency", "label_ar": "العملة", "required": false, "source": "manual", "defaultValue": "SAR", "format": "text", "transform": "upper", "help_ar": "" },
+      { "key": "petition.facts", "label_ar": "الوقائع المختصرة", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "petition.requests", "label_ar": "الطلبات التنفيذية", "required": true, "source": "manual", "defaultValue": "", "format": "text", "transform": "none", "help_ar": "مثل: الحجز/الإفصاح/المنع من السفر..." },
+      { "key": "lawyer.name", "label_ar": "اسم المحامي", "required": false, "source": "user", "path": "name", "format": "text", "transform": "none", "help_ar": "" },
+      { "key": "date.today", "label_ar": "تاريخ اليوم", "required": true, "source": "computed", "format": "date", "transform": "none", "help_ar": "" }
+    ]
+  }
+]

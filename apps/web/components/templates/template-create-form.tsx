@@ -47,7 +47,7 @@ export function TemplateCreateForm() {
 
     async function loadPresets() {
       try {
-        const response = await fetch('/app/api/templates/presets', { method: 'GET' });
+        const response = await fetch('/api/templates/presets', { method: 'GET' });
         const json = (await response.json().catch(() => ({}))) as any;
         if (!response.ok) return;
         if (!cancelled) {

@@ -40,7 +40,7 @@ function circuits() {
   return globalThis.__MASAR_CIRCUITS__;
 }
 
-export async function withTimeout<T>(promise: Promise<T>, ms: number, message?: string): Promise<T> {
+export async function withTimeout<T>(promise: PromiseLike<T>, ms: number, message?: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const timeoutPromise = new Promise<never>((_resolve, reject) => {
@@ -48,7 +48,8 @@ export async function withTimeout<T>(promise: Promise<T>, ms: number, message?: 
   });
 
   try {
-    return (await Promise.race([promise, timeoutPromise])) as T;
+    const work = Promise.resolve(promise);
+    return (await Promise.race([work, timeoutPromise])) as T;
   } finally {
     if (timer) clearTimeout(timer);
   }
@@ -85,4 +86,3 @@ export async function withCircuitBreaker<T>(
     throw error;
   }
 }
-

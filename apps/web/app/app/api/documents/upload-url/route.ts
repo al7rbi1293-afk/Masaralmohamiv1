@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
-import { logError, logInfo } from '@/lib/logger';
+import { logError, logInfo, logWarn } from '@/lib/logger';
+import { CircuitOpenError, TimeoutError, withCircuitBreaker, withTimeout } from '@/lib/runtime-safety';
 
 const uploadUrlSchema = z.object({
   document_id: z.string().uuid(),
@@ -61,9 +62,32 @@ export async function POST(request: Request) {
     const storagePath = buildStoragePath(orgId, parsed.data.document_id, nextVersionNo, safeFileName);
 
     const service = createSupabaseServerClient();
-    const { data: signed, error: signError } = await service.storage
-      .from('documents')
-      .createSignedUploadUrl(storagePath);
+    let signed: { signedUrl: string; token: string } | null = null;
+    let signError: { message?: string } | null = null;
+    try {
+      const result = (await withCircuitBreaker(
+        'storage.signed_upload_url',
+        { failureThreshold: 3, cooldownMs: 30_000 },
+        () =>
+          withTimeout(
+            service.storage.from('documents').createSignedUploadUrl(storagePath),
+            8_000,
+            'تعذر تجهيز رابط الرفع. حاول مرة أخرى.',
+          ),
+      )) as { data: { signedUrl: string; token: string } | null; error: { message?: string } | null };
+      signed = result.data;
+      signError = result.error;
+    } catch (error) {
+      if (error instanceof TimeoutError || error instanceof CircuitOpenError) {
+        logWarn('document_upload_sign_transient', { message: error.message });
+        return NextResponse.json(
+          { error: 'الخدمة غير متاحة مؤقتًا. حاول مرة أخرى بعد قليل.' },
+          { status: 503 },
+        );
+      }
+
+      throw error;
+    }
 
     if (signError || !signed) {
       logError('document_upload_sign_failed', { message: signError?.message ?? 'unknown' });

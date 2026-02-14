@@ -103,32 +103,37 @@ export async function listDocuments(params: ListDocumentsParams = {}): Promise<P
     };
   }
 
-  const ids = docs.map((doc) => doc.id);
-  const { data: versions, error: versionsError } = await supabase
-    .from('document_versions')
-    .select('document_id, version_no, file_name, created_at, storage_path, file_size, mime_type, uploaded_by')
-    .eq('org_id', orgId)
-    .in('document_id', ids)
-    .order('version_no', { ascending: false });
+  // Avoid over-fetching: fetch only the latest version for each document (bounded by page size).
+  const latestEntries = await mapWithConcurrency(docs, 6, async (doc) => {
+    const { data: latest, error: versionsError } = await supabase
+      .from('document_versions')
+      .select('version_no, file_name, created_at, storage_path, file_size, mime_type, uploaded_by')
+      .eq('org_id', orgId)
+      .eq('document_id', doc.id)
+      .order('version_no', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (versionsError) {
-    throw versionsError;
-  }
+    if (versionsError) {
+      throw versionsError;
+    }
 
-  const latestByDoc = new Map<string, DocumentWithLatest['latestVersion']>();
-  for (const row of (versions as any[] | null) ?? []) {
-    const documentId = String(row.document_id);
-    if (latestByDoc.has(documentId)) continue;
-    latestByDoc.set(documentId, {
-      version_no: Number(row.version_no),
-      file_name: String(row.file_name),
-      created_at: String(row.created_at),
-      storage_path: String(row.storage_path),
-      file_size: Number(row.file_size),
-      mime_type: row.mime_type ? String(row.mime_type) : null,
-      uploaded_by: String(row.uploaded_by),
-    });
-  }
+    const normalized = latest
+      ? {
+          version_no: Number((latest as any).version_no),
+          file_name: String((latest as any).file_name),
+          created_at: String((latest as any).created_at),
+          storage_path: String((latest as any).storage_path),
+          file_size: Number((latest as any).file_size),
+          mime_type: (latest as any).mime_type ? String((latest as any).mime_type) : null,
+          uploaded_by: String((latest as any).uploaded_by),
+        }
+      : null;
+
+    return [doc.id, normalized] as const;
+  });
+
+  const latestByDoc = new Map<string, DocumentWithLatest['latestVersion']>(latestEntries);
 
   return {
     data: docs.map((doc) => ({
@@ -196,4 +201,26 @@ function normalizeDoc(value: DocumentRow): Document {
 function cleanQuery(value?: string) {
   if (!value) return '';
   return value.replaceAll(',', ' ').trim().slice(0, 120);
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  let cursor = 0;
+
+  const workers = Array.from({ length: limit }, async () => {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index]);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
 }

@@ -4,7 +4,8 @@ import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { computeInvoicePaidAmount } from '@/lib/billing';
 import { logAudit } from '@/lib/audit';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
+import { CircuitOpenError, TimeoutError, withCircuitBreaker, withTimeout } from '@/lib/runtime-safety';
 
 let fontsRegistered = false;
 
@@ -244,7 +245,28 @@ export async function GET(request: Request, context: { params: { id: string } })
       ),
     );
 
-    const buffer = await pdf(PdfDocument).toBuffer();
+    let buffer: Buffer;
+    try {
+      buffer = await withCircuitBreaker(
+        'pdf.invoice_export',
+        { failureThreshold: 3, cooldownMs: 30_000 },
+        () =>
+          withTimeout(
+            pdf(PdfDocument).toBuffer(),
+            8_000,
+            'تعذر تصدير PDF. حاول مرة أخرى.',
+          ),
+      );
+    } catch (error) {
+      if (error instanceof TimeoutError || error instanceof CircuitOpenError) {
+        logWarn('invoice_pdf_export_transient', { message: error.message });
+        return NextResponse.json(
+          { error: 'الخدمة غير متاحة مؤقتًا. حاول مرة أخرى بعد قليل.' },
+          { status: 503 },
+        );
+      }
+      throw error;
+    }
 
     await logAudit({
       action: 'invoice.pdf_export',

@@ -52,18 +52,18 @@ export function ContactForm({ defaultMessage = '' }: ContactFormProps) {
     setStatus('submitting');
 
     try {
-      const response = await fetch('/api/contact-request', {
+      const response = await fetch('/api/leads', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          full_name: form.fullName || undefined,
+          name: form.fullName || 'زائر',
           email: form.email,
           phone: form.phone || undefined,
           firm_name: form.firmName || undefined,
           message: form.message || undefined,
-          source: 'contact',
+          topic: 'contact',
           website: form.website,
         }),
       });

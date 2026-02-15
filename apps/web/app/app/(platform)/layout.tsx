@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
@@ -5,6 +6,10 @@ import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { SentryClientInit } from '@/components/observability/sentry-client-init';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 type PlatformLayoutProps = {
   children: React.ReactNode;

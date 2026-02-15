@@ -1,114 +1,88 @@
-# Masar Al-Muhami (Web)
+# Masar Al-Muhami (مسار المحامي)
 
-Next.js App Router codebase for:
+## Overview
 
-- Marketing pages: `/`, `/security`, `/privacy`, `/terms`, `/contact`
-- Trial platform pages under `/app` (protected)
+Masar Al-Muhami is a comprehensive legal practice management platform designed for Saudi law firms. It includes:
 
-## Trial platform routes (Phase 3 + 4 + 5 + 6 readiness)
+- **Client Portal**: Marketing website (`/`) and contact forms.
+- **App Platform**: Secure legal workspace (`/app`) for case management, tasks, and billing.
+- **Admin Control Center**: Super-admin dashboard (`/admin`) for platform management.
 
-- `/signin`
-- `/signup`
-- `/app` (Dashboard)
-- `/app/settings`
-- `/app/billing`
-- `/app/expired`
-- `GET /app/api/trial-status` (debug)
-- `POST /api/start-trial` (landing trial provisioning)
-- `POST /api/contact-request` (activation/contact requests)
+## Tech Stack
 
-## Trial gating behavior
+- **Framework**: Next.js 14 (App Router)
+- **Database**: Supabase (PostgreSQL)
+- **Auth**: Supabase Auth
+- **Styling**: Tailwind CSS + Shadcn UI
+- **Deployment**: Vercel
 
-- If trial is expired, `/app`, `/app/settings`, `/app/billing` redirect to `/app/expired`.
-- If no org/trial exists, dashboard stays accessible and shows activation CTA.
-- Trial is provisioned per organization and starts at 14 days.
+## Project Structure
 
-## Local run
+- `apps/web`: Main Next.js application
+- `apps/web/app/admin`: Admin Control Center routes
+- `apps/web/app/app`: SaaS Platform routes
+- `apps/web/lib`: Shared utilities and business logic
+- `supabase/migrations`: Database schema definitions
 
-From repo root:
+## Getting Started
 
-```bash
-npm install
-npm run dev --workspace @masar/web
-```
+### 1. Prerequisites
 
-Then open [http://localhost:3000](http://localhost:3000).
+- Node.js 18+
+- Supabase Project
 
-## Build
+### 2. Environment Variables
 
-From repo root:
+Create `.env.local` in `apps/web`:
 
 ```bash
-npm run build --workspace @masar/web
-```
-
-## E2E smoke tests
-
-```bash
-npm run test:e2e:install --workspace @masar/web
-npm run test:e2e --workspace @masar/web
-```
-
-## Required environment variables
-
-Create `apps/web/.env.local`:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-## Apply migrations
-
-### Option 1: Supabase SQL Editor
-
-Copy/paste `supabase/migrations/0001_init.sql` into SQL Editor and run it.
-Then run `supabase/migrations/0002_full_version_requests.sql`.
-
-### Option 2: Supabase CLI
+### 3. Installation
 
 ```bash
-supabase db push
+npm install
 ```
 
-## Test trial-status endpoint
+### 4. Database Setup
 
-1. Sign in at `/signin`
-2. Open `/app/api/trial-status`
-3. If no organization/trial exists yet, response should include:
-   - `status: "none"`
+Run migrations from `supabase/migrations` starting from `0001_init.sql` through `0028_admin_center.sql`.
 
-## Start-trial flow
+### 5. Run Development Server
 
-1. Open landing section `/#trial`.
-2. Submit form (name, email, password, optional phone/firm name).
-3. Server route `/api/start-trial`:
-   - Inserts `leads` row.
-   - Signs in or creates auth user then signs in.
-   - Provisions organization + owner membership if needed.
-   - Creates 14-day trial if none exists.
-4. Redirects to `/app` (or `/app/expired` when trial is expired).
+```bash
+npm run dev
+```
 
-## Contact-request flow
+Visit [http://localhost:3000](http://localhost:3000).
 
-1. Submit activation/contact form on:
-   - `/contact`
-   - `/app/expired`
-2. Route `POST /api/contact-request` validates and inserts into:
-   - `public.full_version_requests`
+## Admin Setup
 
-## Security + operations docs
+To access the Admin Control Center (`/admin`), you must seed an admin user:
 
-- `QA_CHECKLIST.md`
-- `OBSERVABILITY.md`
-- `SECURITY.md`
-- `PILOT_PLAYBOOK.md`
-- `apps/web/lib/rateLimit.md`
+1. Sign up a new user via `/signup`.
+2. Run the following SQL in Supabase:
+
+```sql
+INSERT INTO public.app_admins (user_id)
+SELECT id FROM auth.users WHERE email = 'your-admin-email@example.com';
+```
 
 ## Deployment
 
-Deployment runbook:
+Deploy to Vercel:
 
-- `/DEPLOYMENT.md`
+```bash
+vercel --prod
+```
+
+Ensure all environment variables are set in the Vercel project settings.
+
+## Documentation
+
+- [HANDOVER.md](./HANDOVER.md): Detailed system architecture and handover notes.
+- [SECURITY.md](./SECURITY.md): Security practices.

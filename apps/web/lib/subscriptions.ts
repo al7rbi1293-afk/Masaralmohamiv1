@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser, requireOwner } from '@/lib/org';
 
 export type Plan = {
@@ -70,7 +70,7 @@ export async function getOrgSubscription(): Promise<Subscription | null> {
 
 export async function ensureSubscriptionRowExists(): Promise<Subscription> {
   const { orgId } = await requireOwner();
-  const supabase = createSupabaseServerRlsClient();
+  const supabase = createSupabaseServerClient();
 
   const { data: existing, error: existingError } = await supabase
     .from('subscriptions')

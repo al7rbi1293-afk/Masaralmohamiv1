@@ -75,15 +75,17 @@ export async function signUpAction(formData: FormData) {
     const { sendEmail } = await import('@/lib/email');
     const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
 
-    // Run in background (fire and forget) to not block the flow
-    sendEmail({
+    // Await the email to ensure it sends before the serverless function terminates.
+    // In Vercel, background promises without waitUntil can be killed immediately.
+    await sendEmail({
       to: email,
       subject: WELCOME_EMAIL_SUBJECT,
       text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
       html: WELCOME_EMAIL_HTML(fullName),
-    }).catch(e => console.error('Failed to send welcome email:', e));
+    });
   } catch (error) {
     console.error('Failed to send welcome email setup:', error);
+    // Continue flow even if email fails - but log it.
   }
 
   let session = signUpData?.session ?? null;

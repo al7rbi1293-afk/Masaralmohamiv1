@@ -98,8 +98,9 @@ export async function ensureSubscriptionRowExists(): Promise<Subscription> {
     .single();
 
   if (error || !data) {
+    console.error('Subscription creation failed:', error);
     // Common case: migrations not applied or missing default plan.
-    throw new Error('تعذر إنشاء سجل الاشتراك. تأكد من تطبيق مِجريشن الاشتراكات (Phase 8.0).');
+    throw new Error(`تعذر إنشاء سجل الاشتراك. تفاصيل الخطأ: ${error?.message || 'غير معروف'} (Phase 8.0)`);
   }
 
   return data as Subscription;

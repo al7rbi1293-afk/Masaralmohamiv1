@@ -44,14 +44,20 @@ export function BankTransferForm({
                         <dd className="font-medium text-slate-900 dark:text-slate-100">مصرف الراجحي</dd>
                     </div>
                     <div className="flex justify-between">
+                        <dt>اسم المستفيد:</dt>
+                        <dd className="font-medium text-slate-900 dark:text-slate-100">عبدالعزيز فهد عطية الحازمي</dd>
+                    </div>
+                    <div className="flex justify-between">
                         <dt>الآيبان:</dt>
-                        <dd className="font-mono font-medium text-slate-900 dark:text-slate-100">
-                            SA00 0000 0000 0000 0000 0000
+                        <dd className="font-mono font-medium text-slate-900 dark:text-slate-100" dir="ltr">
+                            SA05 8000 0598 6080 1002 7488
                         </dd>
                     </div>
                     <div className="flex justify-between">
-                        <dt>اسم المستفيد:</dt>
-                        <dd className="font-medium text-slate-900 dark:text-slate-100">مسار المحامي لتقنية المعلومات</dd>
+                        <dt>رقم الحساب:</dt>
+                        <dd className="font-mono font-medium text-slate-900 dark:text-slate-100">
+                            598000010006080027488
+                        </dd>
                     </div>
                     <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700">
                         <div className="flex justify-between text-base font-bold text-brand-emerald">

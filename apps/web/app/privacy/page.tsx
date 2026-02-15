@@ -15,20 +15,20 @@ export default function PrivacyPage() {
   return (
     <Section
       title="سياسة الخصوصية"
-      subtitle="تاريخ آخر تحديث: [ضع التاريخ هنا]"
+      subtitle="تاريخ آخر تحديث: 15 فبراير 2025"
     >
       <div className="space-y-6 rounded-xl2 border border-brand-border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <article>
           <h2 className="text-lg font-semibold text-brand-navy dark:text-slate-100">من نحن</h2>
           <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
-            مسار المحامي منصة سحابية لإدارة مكاتب المحاماة. نلتزم بحماية بيانات عملائنا والتعامل معها وفق أفضل الممارسات المهنية.
+            مسار المحامي منصة سحابية لإدارة مكتب المحاماة. نلتزم بحماية بيانات عملائنا والتعامل معها وفق أفضل الممارسات المهنية.
           </p>
         </article>
 
         <article>
           <h2 className="text-lg font-semibold text-brand-navy dark:text-slate-100">البيانات التي نجمعها</h2>
           <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
-            نجمع بيانات الحساب الأساسية، بيانات الاستخدام الفنية، والبيانات التي يضيفها المكتب داخل النظام مثل العملاء والقضايا والمستندات والمهام.
+            نجمع بيانات الحساب الأساسية، بيانات الاستخدام الفنية،لأغراض الصيانة و التحسينات.
           </p>
         </article>
 

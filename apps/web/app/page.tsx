@@ -287,17 +287,60 @@ export default function HomePage() {
       </Section>
 
       <Section title="لمن صُمم مسار المحامي؟">
-        <div className="grid gap-4 md:grid-cols-3">
-          {['محامي مستقل', 'مكتب صغير (1–5)', 'مكتب متوسط (6–25)'].map((item) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: 'محامي مستقل',
+              price: '250 ريال',
+              period: 'شهرياً',
+              desc: 'انطلاقة قوية لممارستك المستقلة. نظّم قضاياك وعملائك في مكان واحد بمهنية عالية.',
+            },
+            {
+              title: 'مكتب صغير (1-5)',
+              price: '500 ريال',
+              period: 'شهرياً',
+              desc: 'أسس مكتبك على قواعد صحيحة. تعاون مع فريقك وتابع المهام بدقة وسلاسة.',
+            },
+            {
+              title: 'مكتب متوسط (6-25)',
+              price: '750 ريال',
+              period: 'شهرياً',
+              desc: 'تحكم كامل في النمو. صلاحيات متقدمة وتقارير أداء لضبط سير العمل.',
+            },
+            {
+              title: 'مكتب كبير أو شركة محاماة',
+              price: 'تواصل معنا',
+              period: '',
+              desc: 'حلول مخصصة للمؤسسات الكبرى. دعم خاص وتكاملات متقدمة.',
+              action: 'email',
+            },
+          ].map((item) => (
             <article
-              key={item}
+              key={item.title}
               className="rounded-xl2 border border-brand-border bg-white p-6 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"
             >
               <Users className="mx-auto text-brand-emerald" size={20} />
-              <h3 className="mt-3 text-lg font-semibold text-brand-navy dark:text-slate-100">{item}</h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                تجربة مرنة وسهلة تبني فريقك عليها بشكل تدريجي وواضح.
+              <h3 className="mt-3 text-lg font-semibold text-brand-navy dark:text-slate-100">{item.title}</h3>
+
+              <div className="mt-4 flex items-end justify-center gap-1">
+                <span className={`text-2xl font-bold ${item.action === 'email' ? 'text-lg' : 'text-brand-navy dark:text-slate-100'}`}>
+                  {item.price}
+                </span>
+                {item.period && <span className="text-sm text-slate-500 mb-1">{item.period}</span>}
+              </div>
+
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {item.desc}
               </p>
+
+              {item.action === 'email' && (
+                <a
+                  href="mailto:Masar.almohami@outlook.sa"
+                  className="mt-4 inline-block text-sm font-medium text-brand-emerald hover:underline"
+                >
+                  Masar.almohami@outlook.sa
+                </a>
+              )}
             </article>
           ))}
         </div>

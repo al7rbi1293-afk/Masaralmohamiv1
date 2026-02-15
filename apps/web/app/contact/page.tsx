@@ -15,19 +15,9 @@ export const metadata: Metadata = {
 
 const contactCards = [
   {
-    title: 'الدعم العام',
-    email: 'masar.almohami@outlook.sa',
+    title: 'للتواصل والدعم الفني',
+    email: 'Masar.almohami@outlook.sa',
     icon: <Mail size={18} className="text-brand-emerald" />,
-  },
-  {
-    title: 'الأمان',
-    email: 'masar.almohami@outlook.sa',
-    icon: <Shield size={18} className="text-brand-emerald" />,
-  },
-  {
-    title: 'الخصوصية',
-    email: 'masar.almohami@outlook.sa',
-    icon: <Lock size={18} className="text-brand-emerald" />,
   },
 ];
 
@@ -58,7 +48,7 @@ export default function ContactPage({ searchParams }: ContactPageProps) {
       title="تواصل معنا"
       subtitle="يسعدنا الرد على أسئلتك حول المنصة، الأمان، أو الانضمام للنسخة الأولى."
     >
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="mx-auto max-w-md">
         {contactCards.map((card) => (
           <article
             key={card.email}

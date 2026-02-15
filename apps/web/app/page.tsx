@@ -138,10 +138,10 @@ export default function HomePage() {
   return (
     <>
       <Section className="pb-8 pt-16 sm:pt-24">
-        <Container className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <Container className="flex flex-col items-center text-center">
           <div>
             <p className="mb-3 inline-flex items-center rounded-full border border-brand-border bg-white px-3 py-1 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              SaaS عربي لمكاتب المحاماة
+              نظام سحابي لمكاتب المحاماة
             </p>
             <h1 className="text-4xl font-extrabold leading-tight text-brand-navy sm:text-5xl dark:text-slate-100">
               مسار المحامي
@@ -149,11 +149,11 @@ export default function HomePage() {
             <p className="mt-3 text-xl font-semibold text-slate-700 dark:text-slate-200">
               إدارة مكتب المحاماة… على مسار واحد.
             </p>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 dark:text-slate-300">
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600 dark:text-slate-300">
               نظام سحابي عربي يلمّ شغل المكتب في مكان واحد: عملاء • قضايا • مستندات • مهام • فواتير —
               بواجهة بسيطة وصلاحيات وسجل تدقيق يحمي المكتب.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link href="#trial" className={buttonVariants('primary', 'lg')}>
                 برمج مكتبك الآن
               </Link>
@@ -165,26 +165,8 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-              بدون بطاقة — إعداد خلال دقائق — عربي RTL
+              بدون بطاقة — إعداد خلال دقائق — واجهة عربية
             </p>
-          </div>
-
-          <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-            <h2 className="text-lg font-semibold text-brand-navy dark:text-slate-100">ملخص المكتب الآن</h2>
-            <div className="mt-5 space-y-3">
-              <div className="flex items-center justify-between rounded-lg bg-brand-background px-4 py-3 dark:bg-slate-800">
-                <span className="text-sm text-slate-600 dark:text-slate-300">المهام المتأخرة</span>
-                <span className="text-lg font-bold text-brand-navy dark:text-slate-100">4</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-brand-background px-4 py-3 dark:bg-slate-800">
-                <span className="text-sm text-slate-600 dark:text-slate-300">قضايا تحتاج متابعة</span>
-                <span className="text-lg font-bold text-brand-navy dark:text-slate-100">7</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-brand-background px-4 py-3 dark:bg-slate-800">
-                <span className="text-sm text-slate-600 dark:text-slate-300">فواتير غير مسددة</span>
-                <span className="text-lg font-bold text-brand-navy dark:text-slate-100">12</span>
-              </div>
-            </div>
           </div>
         </Container>
       </Section>

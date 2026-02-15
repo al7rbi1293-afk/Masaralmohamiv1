@@ -41,10 +41,12 @@ export async function signUpAction(formData: FormData) {
     | null = null;
 
   try {
+    const { getPublicSiteUrl } = await import('@/lib/env');
     const result = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: `${getPublicSiteUrl()}/auth/callback`,
         data: {
           full_name: fullName,
           phone: phone || null,
@@ -64,6 +66,24 @@ export async function signUpAction(formData: FormData) {
     redirect(
       `/signup?error=${encodeURIComponent(toArabicAuthError(signUpError.message))}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
     );
+  }
+
+  // Send Welcome Email immediately after successful signup
+  // We do this before attempting sign-in, because if email confirmation is required,
+  // sign-in will fail and redirect, preventing the welcome email from sending.
+  try {
+    const { sendEmail } = await import('@/lib/email');
+    const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
+
+    // Run in background (fire and forget) to not block the flow
+    sendEmail({
+      to: email,
+      subject: WELCOME_EMAIL_SUBJECT,
+      text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
+      html: WELCOME_EMAIL_HTML(fullName),
+    }).catch(e => console.error('Failed to send welcome email:', e));
+  } catch (error) {
+    console.error('Failed to send welcome email setup:', error);
   }
 
   let session = signUpData?.session ?? null;
@@ -91,7 +111,7 @@ export async function signUpAction(formData: FormData) {
 
     if (signInError || !signInData?.session) {
       redirect(
-        `/signin?error=${encodeURIComponent('تم إنشاء الحساب. سجّل الدخول للمتابعة.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+        `/signin?error=${encodeURIComponent('تم إنشاء الحساب. يرجى تفعيل البريد الإلكتروني ثم تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
       );
     }
 
@@ -110,22 +130,6 @@ export async function signUpAction(formData: FormData) {
 
   if (token && isSafeToken(token)) {
     redirect(`/invite/${token}`);
-  }
-
-  // Send Welcome Email
-  try {
-    const { sendEmail } = await import('@/lib/email');
-    const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
-
-    await sendEmail({
-      to: email,
-      subject: WELCOME_EMAIL_SUBJECT,
-      text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
-      html: WELCOME_EMAIL_HTML(fullName),
-    });
-  } catch (error) {
-    console.error('Failed to send welcome email:', error);
-    // Don't block redirect on email failure
   }
 
   redirect('/app');

@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
         to: email,
         subject: WELCOME_EMAIL_SUBJECT,
         text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
-        html: WELCOME_EMAIL_HTML,
+        html: WELCOME_EMAIL_HTML(fullName),
       });
     } catch (error) {
       logWarn('welcome_email_failed', {

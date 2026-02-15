@@ -245,13 +245,12 @@ export async function POST(request: NextRequest) {
     // Send Welcome Email
     try {
       const { sendEmail } = await import('@/lib/email');
-      const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
-
+      const { getPublicSiteUrl } = await import('@/lib/env');
       await sendEmail({
         to: email,
         subject: WELCOME_EMAIL_SUBJECT,
         text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
-        html: WELCOME_EMAIL_HTML(fullName),
+        html: WELCOME_EMAIL_HTML(fullName, `${getPublicSiteUrl()}/app`),
       });
     } catch (error) {
       logWarn('welcome_email_failed', {

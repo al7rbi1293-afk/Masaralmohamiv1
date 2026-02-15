@@ -26,6 +26,77 @@ function isBypassedPath(pathname: string) {
   if (pathname === '/app/expired' || pathname.startsWith('/app/expired/')) {
     return true;
   }
+  // Suspended page is always accessible.
+  if (pathname === '/app/suspended' || pathname.startsWith('/app/suspended/')) {
+    return true;
+  }
+  return false;
+}
+
+async function isAdmin(params: {
+  supabaseUrl: string;
+  supabaseAnon: string;
+  accessToken: string;
+  userId: string;
+}): Promise<boolean> {
+  const { supabaseUrl, supabaseAnon, accessToken, userId } = params;
+  const supabase = createClient(supabaseUrl, supabaseAnon, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  });
+
+  const { data } = await supabase
+    .from('app_admins')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return !!data;
+}
+
+async function isAccountSuspended(params: {
+  supabaseUrl: string;
+  supabaseAnon: string;
+  accessToken: string;
+  userId: string;
+}): Promise<boolean> {
+  const { supabaseUrl, supabaseAnon, accessToken, userId } = params;
+  const supabase = createClient(supabaseUrl, supabaseAnon, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  });
+
+  // Check profile status
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('status')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (profile && (profile as any).status === 'suspended') {
+    return true;
+  }
+
+  // Check org status
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('org_id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (membership) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('status')
+      .eq('id', (membership as any).org_id)
+      .maybeSingle();
+
+    if (org && (org as any).status === 'suspended') {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -174,6 +245,7 @@ async function shouldLockApp(params: {
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const pathname = request.nextUrl.pathname;
 
   if (!supabaseUrl || !supabaseAnon) {
     return missingEnvResponse();
@@ -230,6 +302,84 @@ export async function middleware(request: NextRequest) {
     // Propagate the access token so server components/handlers can perform RLS queries.
     requestHeaders.set('x-masar-access-token', tokenForRls);
 
+    // --- Admin route protection ---
+    if (pathname.startsWith('/admin')) {
+      const adminCheck = await isAdmin({
+        supabaseUrl,
+        supabaseAnon,
+        accessToken: tokenForRls,
+        userId,
+      }).catch(() => false);
+
+      if (!adminCheck) {
+        let response: NextResponse;
+        if (pathname.startsWith('/admin/api/')) {
+          response = NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
+        } else {
+          response = NextResponse.redirect(new URL('/app', request.url));
+        }
+        if (refreshedSession) {
+          response.cookies.set(ACCESS_COOKIE_NAME, refreshedSession.access_token, {
+            ...SESSION_COOKIE_OPTIONS,
+            maxAge: refreshedSession.expires_in,
+          });
+          response.cookies.set(REFRESH_COOKIE_NAME, refreshedSession.refresh_token, {
+            ...SESSION_COOKIE_OPTIONS,
+            maxAge: 60 * 60 * 24 * 30,
+          });
+        }
+        return response;
+      }
+
+      // Admin is verified — proceed
+      let response = NextResponse.next({ request: { headers: requestHeaders } });
+      if (refreshedSession) {
+        response.cookies.set(ACCESS_COOKIE_NAME, refreshedSession.access_token, {
+          ...SESSION_COOKIE_OPTIONS,
+          maxAge: refreshedSession.expires_in,
+        });
+        response.cookies.set(REFRESH_COOKIE_NAME, refreshedSession.refresh_token, {
+          ...SESSION_COOKIE_OPTIONS,
+          maxAge: 60 * 60 * 24 * 30,
+        });
+      }
+      return response;
+    }
+
+    // --- Suspended account check (for /app routes) ---
+    if (pathname.startsWith('/app') && !isBypassedPath(pathname)) {
+      const suspended = await isAccountSuspended({
+        supabaseUrl,
+        supabaseAnon,
+        accessToken: tokenForRls,
+        userId,
+      }).catch(() => false);
+
+      if (suspended) {
+        if (pathname === '/app/suspended') {
+          // Already on suspended page, allow through
+        } else if (pathname.startsWith('/app/api/')) {
+          return NextResponse.json(
+            { error: 'تم تعليق الحساب. تواصل مع الإدارة.' },
+            { status: 403 },
+          );
+        } else {
+          const response = NextResponse.redirect(new URL('/app/suspended', request.url));
+          if (refreshedSession) {
+            response.cookies.set(ACCESS_COOKIE_NAME, refreshedSession.access_token, {
+              ...SESSION_COOKIE_OPTIONS,
+              maxAge: refreshedSession.expires_in,
+            });
+            response.cookies.set(REFRESH_COOKIE_NAME, refreshedSession.refresh_token, {
+              ...SESSION_COOKIE_OPTIONS,
+              maxAge: 60 * 60 * 24 * 30,
+            });
+          }
+          return response;
+        }
+      }
+    }
+
     const locked = await shouldLockApp({
       request,
       supabaseUrl,
@@ -238,7 +388,7 @@ export async function middleware(request: NextRequest) {
       userId,
     });
 
-    const isApi = request.nextUrl.pathname.startsWith('/app/api/');
+    const isApi = pathname.startsWith('/app/api/');
     let response: NextResponse;
 
     if (locked && isApi) {
@@ -275,5 +425,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*'],
+  matcher: ['/app/:path*', '/admin/:path*'],
 };

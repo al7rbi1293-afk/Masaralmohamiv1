@@ -113,7 +113,7 @@ export async function signUpAction(formData: FormData) {
 
     if (signInError || !signInData?.session) {
       redirect(
-        `/signin?error=${encodeURIComponent('تم إنشاء الحساب. يرجى تفعيل البريد الإلكتروني ثم تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+        `/signup?error=${encodeURIComponent('هذا البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
       );
     }
 

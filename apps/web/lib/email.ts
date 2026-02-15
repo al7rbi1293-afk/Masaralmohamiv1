@@ -55,7 +55,7 @@ export async function sendEmail(params: SendEmailParams) {
   const { transport, env } = getTransport();
 
   await transport.sendMail({
-    from: env.from,
+    from: `"مسار المحامي" <${env.from}>`,
     to: params.to,
     subject: params.subject,
     text: params.text,

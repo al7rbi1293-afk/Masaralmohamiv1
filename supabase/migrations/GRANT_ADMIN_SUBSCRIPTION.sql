@@ -1,5 +1,5 @@
 -- ============================================================
--- Grant Unlimited Subscription to Admin
+-- Grant Unlimited Subscription to Admin (Robust Version)
 -- Usage: Run this in Supabase SQL Editor
 -- ============================================================
 DO $$
@@ -12,16 +12,21 @@ WHERE email = 'Masar.almohami@outlook.sa';
 IF v_user_id IS NULL THEN RAISE EXCEPTION 'User Masar.almohami@outlook.sa not found';
 END IF;
 -- 2. Find an organization owned by this user
--- We take the first one found if multiple exist
 SELECT org_id INTO v_org_id
 FROM public.memberships
 WHERE user_id = v_user_id
     AND role = 'owner'
 LIMIT 1;
-IF v_org_id IS NULL THEN RAISE NOTICE 'No organization found for this user. Creating subscription anyway is not possible without an org.';
-RETURN;
+-- 3. If no organization, create one!
+IF v_org_id IS NULL THEN RAISE NOTICE 'No organization found. Creating "Admin HQ" organization...';
+INSERT INTO public.organizations (name)
+VALUES ('مكتب الإدارة')
+RETURNING id INTO v_org_id;
+-- Add user as owner
+INSERT INTO public.memberships (user_id, org_id, role)
+VALUES (v_user_id, v_org_id, 'owner');
 END IF;
--- 3. Upsert subscription with ENTERPRISE plan and expiry in 2076 (50 years)
+-- 4. Upsert subscription with ENTERPRISE plan and expiry in 2076 (50 years)
 INSERT INTO public.org_subscriptions (
         org_id,
         plan,

@@ -59,6 +59,31 @@ export async function getTrialStatusForCurrentUser(): Promise<TrialStatus> {
 
   const orgId = membership.org_id;
 
+  const { data: subData } = await supabase
+    .from('org_subscriptions')
+    .select('current_period_end, status, plan')
+    .eq('org_id', orgId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (subData) {
+    const isEnterprise = subData.plan === 'ENTERPRISE';
+    const endsAt = subData.current_period_end;
+    const now = Date.now();
+    const endsAtTime = new Date(endsAt).getTime();
+    const msInDay = 24 * 60 * 60 * 1000;
+    // For Enterprise, show a large number or distinct status, but for now 'active' works.
+    const daysLeft = Math.max(0, Math.ceil((endsAtTime - now) / msInDay));
+
+    return {
+      orgId,
+      endsAt,
+      daysLeft,
+      isExpired: false,
+      status: 'active',
+    };
+  }
+
   const { data: trialData, error: trialError } = await supabase
     .from('trial_subscriptions')
     .select('ends_at, status')

@@ -80,6 +80,7 @@ export async function signUpAction(formData: FormData) {
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email,
+      password,
       options: {
         redirectTo: `${getPublicSiteUrl()}/auth/callback`,
       },

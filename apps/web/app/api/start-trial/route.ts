@@ -240,6 +240,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
+
+
+    // Send Welcome Email
+    try {
+      const { sendEmail } = await import('@/lib/email');
+      const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
+
+      await sendEmail({
+        to: email,
+        subject: WELCOME_EMAIL_SUBJECT,
+        text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
+        html: WELCOME_EMAIL_HTML,
+      });
+    } catch (error) {
+      logWarn('welcome_email_failed', {
+        requestId,
+        email,
+        error: toErrorMessage(error),
+      });
+    }
+
     return buildSessionSuccessResponse(destination, session, requestId, rate);
   } catch (error) {
     logError('trial_start_failed', {

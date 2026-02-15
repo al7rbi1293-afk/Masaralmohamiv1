@@ -112,6 +112,22 @@ export async function signUpAction(formData: FormData) {
     redirect(`/invite/${token}`);
   }
 
+  // Send Welcome Email
+  try {
+    const { sendEmail } = await import('@/lib/email');
+    const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
+
+    await sendEmail({
+      to: email,
+      subject: WELCOME_EMAIL_SUBJECT,
+      text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
+      html: WELCOME_EMAIL_HTML,
+    });
+  } catch (error) {
+    console.error('Failed to send welcome email:', error);
+    // Don't block redirect on email failure
+  }
+
   redirect('/app');
 }
 

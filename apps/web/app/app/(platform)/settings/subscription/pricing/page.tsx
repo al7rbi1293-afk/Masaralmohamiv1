@@ -1,8 +1,10 @@
-import Link from 'next/link';
-import { Card } from '@/components/ui/card';
-import { buttonVariants } from '@/components/ui/button';
-import { StripeCheckoutClient } from '@/components/subscription/stripe-checkout-client';
+// This needs to be a Client Component to manage state (Monthly/Yearly toggle)
+// But the current file is server component. We will make a wrapper.
+import { PricingClient } from '@/components/subscription/pricing-client';
 import { ensureSubscriptionRowExists, listPlans } from '@/lib/subscriptions';
+import { Card } from '@/components/ui/card';
+import Link from 'next/link';
+import { buttonVariants } from '@/components/ui/button';
 
 export default async function SubscriptionPricingPage() {
   let plans: Awaited<ReturnType<typeof listPlans>> = [];
@@ -36,7 +38,7 @@ export default async function SubscriptionPricingPage() {
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">خطط الاشتراك</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            اختر الخطة المناسبة وابدأ الاشتراك عبر الدفع الإلكتروني.
+            اختر الخطة المناسبة وابدأ الاشتراك. يتوفر خصم خاص للاشتراك السنوي.
           </p>
         </div>
         <Link href="/app/settings/subscription" className={buttonVariants('outline', 'sm')}>
@@ -53,53 +55,11 @@ export default async function SubscriptionPricingPage() {
       {!plans.length ? (
         <p className="text-sm text-slate-600 dark:text-slate-300">لا توجد خطط حالياً.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => {
-            const isContactSales = !plan.price_monthly;
-            const isStripeEligible = !isContactSales && ['SOLO', 'TEAM'].includes(plan.code);
-            return (
-              <div
-                key={plan.code}
-                className="rounded-lg border border-brand-border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">
-                      {plan.name_ar}
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{plan.code}</p>
-                  </div>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {plan.price_monthly ? `${plan.price_monthly} ${plan.currency}` : 'تواصل معنا'}
-                  </p>
-                </div>
-
-                <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
-                  {plan.seat_limit ? `حد المقاعد: ${plan.seat_limit}` : 'حد المقاعد: حسب الاتفاق'}
-                </p>
-
-                <div className="mt-4">
-                  {isStripeEligible ? (
-                    <StripeCheckoutClient planCode={plan.code} />
-                  ) : (
-                    <a
-                      className={buttonVariants('outline', 'sm')}
-                      href={`mailto:masar.almohami@outlook.sa?subject=${encodeURIComponent(
-                        `طلب اشتراك - ${plan.code}`,
-                      )}`}
-                    >
-                      تواصل معنا
-                    </a>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <PricingClient plans={plans} />
       )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        ملاحظة: إذا كانت التجربة منتهية، يمكنك ترقية الخطة ثم سيُفتح الوصول تلقائيًا بعد نجاح الدفع.
+        ملاحظة: إذا كانت التجربة منتهية، يمكنك ترقية الخطة ثم سيُفتح الوصول تلقائيًا بعد مراجعة الدفع.
       </p>
     </Card>
   );

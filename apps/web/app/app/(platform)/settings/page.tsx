@@ -41,11 +41,11 @@ export default async function SettingsPage() {
 
   const { data: membership } = orgId
     ? await supabase
-        .from('memberships')
-        .select('role')
-        .eq('org_id', orgId)
-        .eq('user_id', user.id)
-        .maybeSingle()
+      .from('memberships')
+      .select('role')
+      .eq('org_id', orgId)
+      .eq('user_id', user.id)
+      .maybeSingle()
     : { data: null };
 
   const isOwner = Boolean((membership as any)?.role === 'owner');
@@ -68,7 +68,7 @@ export default async function SettingsPage() {
         <div className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
           <dt className="text-slate-500 dark:text-slate-400">حالة المنظمة</dt>
           <dd className="mt-1 font-medium text-slate-800 dark:text-slate-100">
-            {trial.orgId ?? 'غير مفعّل'}
+            {statusLabel(trial.status)}
           </dd>
         </div>
 

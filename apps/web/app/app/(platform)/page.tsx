@@ -45,7 +45,7 @@ export default async function DashboardPage() {
           <div>
             <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">لوحة التحكم</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              أساسيات المنصة تحت <code>/app</code>.
+              أساسيات المنصة وإعدادات المكتب.
             </p>
           </div>
           <Badge variant={label.variant}>{label.text}</Badge>
@@ -72,10 +72,22 @@ export default async function DashboardPage() {
 
           <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-brand-navy dark:text-slate-100">الخطوات التالية</h3>
-            <ul className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
-              <li>جهّز الإعدادات الأساسية.</li>
-              <li>ابدأ بإضافة بيانات المكتب عند إطلاق المزايا.</li>
-            </ul>
+            <div className="mt-3 space-y-2">
+              <Link
+                href="/app/settings"
+                className="flex items-center justify-between rounded-md p-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <span>🚀 جهّز الإعدادات الهوية للمكتب</span>
+                <span className="text-xs text-brand-emerald">ابدأ الآن &larr;</span>
+              </Link>
+              <Link
+                href="/app/settings/team"
+                className="flex items-center justify-between rounded-md p-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <span>👥 أضف فريق العمل والمحامين</span>
+                <span className="text-xs text-brand-emerald">إضافة &larr;</span>
+              </Link>
+            </div>
           </div>
         </div>
 

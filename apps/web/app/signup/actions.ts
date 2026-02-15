@@ -69,23 +69,37 @@ export async function signUpAction(formData: FormData) {
   }
 
   // Send Welcome Email immediately after successful signup
-  // We do this before attempting sign-in, because if email confirmation is required,
-  // sign-in will fail and redirect, preventing the welcome email from sending.
   try {
+    const { createSupabaseServerClient } = await import('@/lib/supabase/server');
+    const { getPublicSiteUrl } = await import('@/lib/env');
     const { sendEmail } = await import('@/lib/email');
     const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
 
-    // Await the email to ensure it sends before the serverless function terminates.
-    // In Vercel, background promises without waitUntil can be killed immediately.
+    // Use Admin client to generate a signup link that works in production
+    const supabaseAdmin = createSupabaseServerClient();
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'signup',
+      email,
+      options: {
+        redirectTo: `${getPublicSiteUrl()}/auth/callback`,
+      },
+    });
+
+    if (linkError) {
+      console.error('Failed to generate verification link:', linkError);
+      // Fallback: just send welcome email without link or with generic app link
+    }
+
+    const verificationLink = linkData?.properties?.action_link || `${getPublicSiteUrl()}/app`;
+
     await sendEmail({
       to: email,
       subject: WELCOME_EMAIL_SUBJECT,
-      text: 'مرحباً بك في مسار المحامي. لقد تم إنشاء حسابك بنجاح.',
-      html: WELCOME_EMAIL_HTML(fullName),
+      text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
+      html: WELCOME_EMAIL_HTML(fullName, verificationLink),
     });
   } catch (error) {
     console.error('Failed to send welcome email setup:', error);
-    // Continue flow even if email fails - but log it.
   }
 
   let session = signUpData?.session ?? null;
@@ -107,11 +121,13 @@ export async function signUpAction(formData: FormData) {
       signInError = result.error;
     } catch {
       redirect(
-        `/signin?error=${encodeURIComponent('تم إنشاء الحساب لكن تعذّر تسجيل الدخول. استخدم صفحة تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+        `/signup?error=${encodeURIComponent('هذا البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
       );
     }
 
     if (signInError || !signInData?.session) {
+      // If sign in fails after sign up, it usually means the user already exists 
+      // or email confirmation is required.
       redirect(
         `/signup?error=${encodeURIComponent('هذا البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
       );

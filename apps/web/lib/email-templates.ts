@@ -1,6 +1,6 @@
 export const WELCOME_EMAIL_SUBJECT = 'مرحباً بك في مسار المحامي - خطواتك الأولى';
 
-export const WELCOME_EMAIL_HTML = (name: string) => `
+export const WELCOME_EMAIL_HTML = (name: string, verificationLink: string) => `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -31,11 +31,16 @@ export const WELCOME_EMAIL_HTML = (name: string) => `
             <p>أهلاً بك 👋 ${name}</p>
             <p>سعداء جداً بانضمامك لعائلة "مسار المحامي". لقد خطوت الخطوة الأولى نحو تنظيم مكتبك بطريقة احترافية وعصرية.</p>
 
+            <div class="section" style="text-align: center; padding: 20px; background-color: #ecfdf5; border-radius: 12px; border: 1px solid #10b981;">
+                <h2 style="color: #065f46;">تفعيل حسابك</h2>
+                <p>يرجى الضغط على الزر أدناه لتأكيد بريدك الإلكتروني والدخول إلى النظام:</p>
+                <a href="${verificationLink}" class="btn">تفعيل الحساب والدخول</a>
+            </div>
+
             <div class="section">
                 <h2>تجربتك تبدأ الآن</h2>
                 <p>تم تفعيل نسختك التجريبية كاملة المزايا. فلسفتنا بسيطة: <strong>"جرّب الآن، واقتنع، ثم ادفع لاحقاً"</strong>.</p>
                 <p>استكشف النظام، أضف قضاياك، وجرّب سهولة الإدارة. نحن واثقون أن "مسار" سيكون شريكك الأفضل.</p>
-                <a href="https://masaralmohamiproject-pied.vercel.app/app" class="btn">الدخول إلى المنصة</a>
             </div>
 
             <div class="section">

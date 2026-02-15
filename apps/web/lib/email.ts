@@ -1,12 +1,13 @@
 import 'server-only';
 
 import nodemailer from 'nodemailer';
-import { getSmtpEnv, type SmtpEnv } from '@/lib/env';
+import { getSmtpEnv, type SmtpEnv, isSmtpConfigured } from '@/lib/env';
+import { WELCOME_EMAIL_HTML, INVOICE_EMAIL_HTML } from './email-templates';
 
 export type SendEmailParams = {
   to: string;
   subject: string;
-  text: string;
+  text?: string;
   html?: string;
   attachments?: Array<{
     filename: string;
@@ -19,8 +20,6 @@ let cachedTransport: nodemailer.Transporter | null = null;
 let cachedEnvKey = '';
 
 function envCacheKey(env: SmtpEnv) {
-  // Do not include the password in the key. We only want to rebuild the transport if
-  // host/port/user/from changes.
   return `${env.host}:${env.port}:${env.user}:${env.from}`;
 }
 
@@ -49,6 +48,10 @@ function getTransport() {
 }
 
 export async function sendEmail(params: SendEmailParams) {
+  if (!isSmtpConfigured()) {
+    console.warn('SMTP not configured, skipping email to', params.to);
+    return;
+  }
   const { transport, env } = getTransport();
 
   await transport.sendMail({
@@ -57,11 +60,51 @@ export async function sendEmail(params: SendEmailParams) {
     subject: params.subject,
     text: params.text,
     html: params.html,
-    attachments: params.attachments?.map((att) => ({
-      filename: att.filename,
-      content: att.content,
-      contentType: att.contentType,
-    })),
+    attachments: params.attachments,
   });
 }
 
+export async function sendWelcomeEmail(to: string, name: string) {
+  if (!isSmtpConfigured()) return;
+
+  try {
+    await sendEmail({
+      to,
+      subject: 'أهلاً بك في مسار المحامي',
+      html: WELCOME_EMAIL_HTML(name),
+    });
+  } catch (e) {
+    console.error('Failed to send welcome email', e);
+  }
+}
+
+export async function sendInvoiceEmail(
+  to: string,
+  name: string,
+  planName: string,
+  amount: string,
+  pdfBuffer: Buffer,
+) {
+  if (!isSmtpConfigured()) {
+    console.log('Skipping invoice email (SMTP not configured)');
+    return;
+  }
+
+  try {
+    await sendEmail({
+      to,
+      subject: 'فاتورة الاشتراك - مسار المحامي',
+      html: INVOICE_EMAIL_HTML(name, planName, amount),
+      attachments: [
+        {
+          filename: 'invoice.pdf',
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+    console.log(`Invoice email sent to ${to}`);
+  } catch (error) {
+    console.error('Failed to send invoice email:', error);
+  }
+}

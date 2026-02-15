@@ -6,6 +6,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { SentryClientInit } from '@/components/observability/sentry-client-init';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { isAppAdmin } from '@/lib/admin';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -36,7 +37,15 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   if (!user) {
     redirect('/signin');
   }
-  const navItems = [...navItemsBase];
+
+  // Create a mutable copy of nav items
+  const navItems: { href: string; label: string }[] = [...navItemsBase];
+
+  // Add Admin Panel link if user is an admin
+  const isAdmin = await isAppAdmin();
+  if (isAdmin) {
+    navItems.unshift({ href: '/admin', label: 'لوحة الإدارة 🛡️' });
+  }
 
   return (
     <Container className="py-8 sm:py-10">

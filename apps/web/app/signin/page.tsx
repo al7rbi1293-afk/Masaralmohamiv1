@@ -62,7 +62,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
           <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">تسجيل الدخول</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            أدخل البريد وكلمة المرور للوصول إلى منصة المكتب تحت <code>/app</code>.
+            أدخل البريد وكلمة المرور للوصول إلى منصة المكتب.
           </p>
 
           {inviteBanner ? (

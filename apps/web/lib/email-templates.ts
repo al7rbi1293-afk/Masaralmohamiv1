@@ -1,6 +1,6 @@
 export const WELCOME_EMAIL_SUBJECT = 'مرحباً بك في مسار المحامي - خطواتك الأولى';
 
-export const WELCOME_EMAIL_HTML = `
+export const WELCOME_EMAIL_HTML = (name: string) => `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -28,7 +28,7 @@ export const WELCOME_EMAIL_HTML = `
         </div>
         
         <div class="content">
-            <p>أهلاً بك زميلنا العزيز،</p>
+            <p>أهلاً بك 👋 ${name}</p>
             <p>سعداء جداً بانضمامك لعائلة "مسار المحامي". لقد خطوت الخطوة الأولى نحو تنظيم مكتبك بطريقة احترافية وعصرية.</p>
 
             <div class="section">
@@ -58,7 +58,6 @@ export const WELCOME_EMAIL_HTML = `
                     <li>ارفع إيصال التحويل عبر المنصة.</li>
                     <li>سيتم تفعيل اشتراكك فوراً بعد مراجعة الإيصال (خلال ساعات العمل).</li>
                 </ol>
-                <p><em>قريباً: الدفع الفوري عبر Visa، Mada، و Apple Pay للتجديد التلقائي.</em></p>
             </div>
 
             <p>نحن هنا لدعمك في أي وقت. لا تتردد في مراسلتنا.</p>
@@ -69,6 +68,28 @@ export const WELCOME_EMAIL_HTML = `
             <p>&copy; 2025 مسار المحامي. جميع الحقوق محفوظة.</p>
             <p>Masar.almohami@outlook.sa</p>
         </div>
+    </div>
+</body>
+</html>
+`;
+
+export const INVOICE_EMAIL_HTML = (name: string, planName: string, amount: string) => `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة الاشتراك - مسار المحامي</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; text-align: right; direction: rtl;">
+    <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h2 style="color: #0f172a; margin-bottom: 15px;">شكراً لثقتك، ${name} 👋</h2>
+        <p>تم استلام دفعتك بنجاح وتفعيل اشتراكك في باقة <strong>${planName}</strong>.</p>
+        <p>مرفق في هذا البريد فاتورة الاشتراك الرسمية بقيمة <strong>${amount}</strong>.</p>
+    </div>
+
+    <div style="margin-top: 30px; text-align: center; font-size: 14px; color: #64748b;">
+        <p>نسعد بخدمتك دائماً.</p>
+        <p>فريق مسار المحامي</p>
     </div>
 </body>
 </html>

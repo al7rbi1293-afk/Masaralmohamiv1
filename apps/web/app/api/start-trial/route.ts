@@ -246,6 +246,7 @@ export async function POST(request: NextRequest) {
     try {
       const { sendEmail } = await import('@/lib/email');
       const { getPublicSiteUrl } = await import('@/lib/env');
+      const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
       await sendEmail({
         to: email,
         subject: WELCOME_EMAIL_SUBJECT,

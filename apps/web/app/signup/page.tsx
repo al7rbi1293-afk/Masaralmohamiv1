@@ -99,7 +99,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
               <span className="font-medium text-slate-700 dark:text-slate-200">كلمة المرور</span>
               <input
                 required
-                minLength={8}
+                minLength={7}
                 name="password"
                 type="password"
                 className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"

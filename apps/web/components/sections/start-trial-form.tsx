@@ -73,7 +73,7 @@ export function StartTrialForm() {
           <span className="font-medium text-slate-700 dark:text-slate-200">كلمة المرور</span>
           <input
             required
-            minLength={8}
+            minLength={7}
             name="password"
             type="password"
             className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
@@ -114,7 +114,7 @@ export function StartTrialForm() {
       ) : null}
 
       <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'جارٍ إنشاء التجربة...' : 'ابدأ التجربة الآن'}
+        {isSubmitting ? 'جارٍ تسجيل الدخول...' : 'ابدأ مسارك الآن'}
       </Button>
     </form>
   );

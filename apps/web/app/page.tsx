@@ -155,7 +155,7 @@ export default function HomePage() {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link href="#trial" className={buttonVariants('primary', 'lg')}>
-                جرّب مجانًا 14 يوم
+                برمج مكتبك الآن
               </Link>
               <Link
                 href="/signin"
@@ -206,7 +206,7 @@ export default function HomePage() {
 
       <Section
         id="trial"
-        title="ابدأ التجربة المجانية لمدة 14 يوم"
+        title="نسخة كاملة… ادفع لاحقاً"
         subtitle="سجّل بياناتك وسيتم نقلك مباشرة إلى المنصة التجريبية."
         className="scroll-mt-28 bg-white dark:bg-slate-950"
       >
@@ -348,10 +348,9 @@ export default function HomePage() {
 
       <Section className="bg-white dark:bg-slate-950">
         <div className="rounded-xl2 border border-brand-border p-8 dark:border-slate-700">
-          <h2 className="text-2xl font-bold text-brand-navy dark:text-slate-100">تجربة مجانية 14 يوم</h2>
+          <h2 className="text-2xl font-bold text-brand-navy dark:text-slate-100">جرّب الآن وادفع لاحقاً</h2>
           <p className="mt-3 max-w-3xl text-sm leading-8 text-slate-600 dark:text-slate-300">
-            الخطط والأسعار النهائية تُعلن قريبًا. إذا تبغى تكون من أوائل المستخدمين: احجز مقعد النسخة
-            الأولى.
+            إذا غيّر الموقع حياتك المهنية للأفضل، كمل معنا. نسخة كاملة المزايا لتختبر الفائدة بنفسك.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/signin" className={buttonVariants('primary', 'md')}>

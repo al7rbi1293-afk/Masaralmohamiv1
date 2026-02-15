@@ -17,9 +17,17 @@ export async function signUpAction(formData: FormData) {
   const phone = String(formData.get('phone') ?? '').trim();
   const firmName = String(formData.get('firm_name') ?? '').trim();
 
-  if (!fullName || !email || password.length < 8) {
+  // Password complexity regex:
+  // At least 7 characters
+  // At least one uppercase
+  // At least one lowercase
+  // At least one number
+  // At least one symbol
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{7,}$/;
+
+  if (!fullName || !email || !passwordRegex.test(password)) {
     redirect(
-      `/signup?error=${encodeURIComponent('تحقق من الاسم والبريد وكلمة المرور (8 أحرف على الأقل).')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+      `/signup?error=${encodeURIComponent('كلمة المرور يجب أن تكون 7 خانات على الأقل وتحتوي على حرف كبير، صغير، رقم، ورمز.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
     );
   }
 
@@ -119,7 +127,7 @@ function toArabicAuthError(message?: string) {
   }
 
   if (normalized.includes('password')) {
-    return 'كلمة المرور ضعيفة. استخدم 8 أحرف على الأقل.';
+    return 'كلمة المرور ضعيفة. يجب أن تكون 7 خانات، حرف كبير، صغير، رقم، ورمز.';
   }
 
   return 'تعذر إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى.';

@@ -45,9 +45,21 @@ export async function POST(request: NextRequest) {
     return redirectWithError(request, toArabicAuthError(error?.message), parsed.data.email, parsed.data.next);
   }
 
+  // Check if user is an admin to potentially redirect to /admin
+  let defaultRedirect = '/app';
+  const { data: adminRecord } = await supabase
+    .from('app_admins')
+    .select('user_id')
+    .eq('user_id', data.session.user.id)
+    .maybeSingle();
+
+  if (adminRecord) {
+    defaultRedirect = '/admin';
+  }
+
   // Some users might come with old bookmarked routes (e.g. legacy /app/[tenantId] pages).
   // Only allow returning to the current trial platform pages.
-  const destination = safeNextPath(parsed.data.next) ?? '/app';
+  const destination = safeNextPath(parsed.data.next) ?? defaultRedirect;
   const response = NextResponse.redirect(new URL(destination, request.url), 303);
 
   response.cookies.set(ACCESS_COOKIE_NAME, data.session.access_token, {
@@ -119,6 +131,14 @@ function safeNextPath(raw?: string) {
   if (value.startsWith('/app')) {
     // Disallow returning to API endpoints.
     if (value.startsWith('/app/api')) {
+      return null;
+    }
+    return value;
+  }
+
+  // Allow returning to admin panel.
+  if (value.startsWith('/admin')) {
+    if (value.startsWith('/admin/api')) {
       return null;
     }
     return value;

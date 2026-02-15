@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
+import { createSupabaseServerAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
@@ -46,8 +46,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if user is an admin to potentially redirect to /admin
+  // Use service role client to bypass RLS and ensure we can read the table regardless of auth context.
   let defaultRedirect = '/app';
-  const { data: adminRecord } = await supabase
+  const adminDb = createSupabaseServerClient();
+  const { data: adminRecord } = await adminDb
     .from('app_admins')
     .select('user_id')
     .eq('user_id', data.session.user.id)

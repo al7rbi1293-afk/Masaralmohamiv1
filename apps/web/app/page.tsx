@@ -273,58 +273,83 @@ export default function HomePage() {
           {[
             {
               title: 'محامي مستقل',
+              code: 'SOLO',
               price: '250 ريال',
               period: 'شهرياً',
+              billing_period: 'monthly',
               desc: 'انطلاقة قوية لممارستك المستقلة. نظّم قضاياك وعملائك في مكان واحد بمهنية عالية.',
             },
             {
               title: 'مكتب صغير (1-5)',
+              code: 'SMALL_OFFICE',
               price: '500 ريال',
               period: 'شهرياً',
+              billing_period: 'monthly',
               desc: 'أسس مكتبك على قواعد صحيحة. تعاون مع فريقك وتابع المهام بدقة وسلاسة.',
             },
             {
               title: 'مكتب متوسط (6-25)',
+              code: 'MEDIUM_OFFICE',
               price: '750 ريال',
               period: 'شهرياً',
+              billing_period: 'monthly',
               desc: 'تحكم كامل في النمو. صلاحيات متقدمة وتقارير أداء لضبط سير العمل.',
             },
             {
               title: 'مكتب كبير أو شركة محاماة',
+              code: 'ENTERPRISE',
               price: 'تواصل معنا',
               period: '',
               desc: 'حلول مخصصة للمؤسسات الكبرى. دعم خاص وتكاملات متقدمة.',
               action: 'email',
             },
-          ].map((item) => (
-            <article
-              key={item.title}
-              className="rounded-xl2 border border-brand-border bg-white p-6 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"
-            >
-              <Users className="mx-auto text-brand-emerald" size={20} />
-              <h3 className="mt-3 text-lg font-semibold text-brand-navy dark:text-slate-100">{item.title}</h3>
+          ].map((item) => {
+            const CardContent = (
+              <article
+                className={`h-full rounded-xl2 border border-brand-border bg-white p-6 text-center shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-900 ${item.action !== 'email' ? 'cursor-pointer hover:border-brand-emerald/50' : ''}`}
+              >
+                <Users className="mx-auto text-brand-emerald" size={20} />
+                <h3 className="mt-3 text-lg font-semibold text-brand-navy dark:text-slate-100">{item.title}</h3>
 
-              <div className="mt-4 flex items-end justify-center gap-1">
-                <span className={`text-2xl font-bold ${item.action === 'email' ? 'text-lg' : 'text-brand-navy dark:text-slate-100'}`}>
-                  {item.price}
-                </span>
-                {item.period && <span className="text-sm text-slate-500 mb-1">{item.period}</span>}
-              </div>
+                <div className="mt-4 flex items-end justify-center gap-1">
+                  <span className={`text-2xl font-bold ${item.action === 'email' ? 'text-lg' : 'text-brand-navy dark:text-slate-100'}`}>
+                    {item.price}
+                  </span>
+                  {item.period && <span className="text-sm text-slate-500 mb-1">{item.period}</span>}
+                </div>
 
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {item.desc}
-              </p>
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {item.desc}
+                </p>
 
-              {item.action === 'email' && (
-                <a
-                  href="mailto:Masar.almohami@outlook.sa"
-                  className="mt-4 inline-block text-sm font-medium text-brand-emerald hover:underline"
-                >
-                  Masar.almohami@outlook.sa
+                {item.action === 'email' && (
+                  <span
+                    className="mt-4 inline-block text-sm font-medium text-brand-emerald hover:underline"
+                  >
+                    Masar.almohami@outlook.sa
+                  </span>
+                )}
+              </article>
+            );
+
+            if (item.action === 'email') {
+              return (
+                <a key={item.title} href="mailto:Masar.almohami@outlook.sa" className="block h-full">
+                  {CardContent}
                 </a>
-              )}
-            </article>
-          ))}
+              );
+            }
+
+            return (
+              <Link
+                key={item.title}
+                href={`/app/settings/subscription/pricing?plan=${item.code}&period=${item.billing_period || 'yearly'}`}
+                className="block h-full"
+              >
+                {CardContent}
+              </Link>
+            );
+          })}
         </div>
       </Section>
 

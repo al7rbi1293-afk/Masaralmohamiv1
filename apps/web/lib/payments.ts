@@ -75,10 +75,10 @@ export async function listPendingPaymentRequests() {
 export async function approvePaymentRequest(requestId: string, adminUserId: string) {
     const supabase = createSupabaseServerClient(); // Service Role
 
-    // 1. Get request
+    // 1. Get request with user details
     const { data: request, error: fetchError } = await supabase
         .from('payment_requests')
-        .select('*')
+        .select('*, user:users(email, raw_user_meta_data)')
         .eq('id', requestId)
         .single();
 
@@ -121,6 +121,8 @@ export async function approvePaymentRequest(requestId: string, adminUserId: stri
         .eq('id', requestId);
 
     if (updateError) throw updateError;
+
+    return request;
 }
 
 export async function rejectPaymentRequest(requestId: string, adminUserId: string, reason: string) {

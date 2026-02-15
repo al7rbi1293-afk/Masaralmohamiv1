@@ -68,10 +68,11 @@ export async function sendWelcomeEmail(to: string, name: string) {
   if (!isSmtpConfigured()) return;
 
   try {
+    const { getPublicSiteUrl } = await import('@/lib/env');
     await sendEmail({
       to,
       subject: 'أهلاً بك في مسار المحامي',
-      html: WELCOME_EMAIL_HTML(name),
+      html: WELCOME_EMAIL_HTML(name, `${getPublicSiteUrl()}/app`),
     });
   } catch (e) {
     console.error('Failed to send welcome email', e);

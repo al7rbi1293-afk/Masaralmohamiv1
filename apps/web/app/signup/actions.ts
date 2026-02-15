@@ -152,7 +152,7 @@ function toArabicAuthError(message?: string) {
     return 'كلمة المرور ضعيفة. يجب أن تكون 7 خانات، حرف كبير، صغير، رقم، ورمز.';
   }
 
-  return 'تعذر إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى.';
+  return `تعذر إنشاء الحساب. (${message})`;
 }
 
 function isSafeToken(value: string) {

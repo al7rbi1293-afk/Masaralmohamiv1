@@ -65,16 +65,27 @@ export function getSupabaseServiceEnv(): SupabaseServiceEnv {
 }
 
 export function getPublicSiteUrl() {
-  const rawValue = process.env.NEXT_PUBLIC_SITE_URL?.trim() || LOCAL_SITE_URL;
+  const rawValue =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
+    process.env.NEXT_PUBLIC_VERCEL_URL?.trim() ||
+    process.env.VERCEL_URL?.trim() ||
+    LOCAL_SITE_URL;
 
   try {
-    const normalized = new URL(rawValue);
+    let url = rawValue;
+    // Vercel URLs don't include protocol, so we need to add it
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+
+    const normalized = new URL(url);
     normalized.hash = '';
     normalized.search = '';
     return normalized.toString().replace(/\/$/, '');
   } catch {
     throw new Error(
-      `قيمة NEXT_PUBLIC_SITE_URL غير صحيحة. NEXT_PUBLIC_SITE_URL must be a valid absolute URL.`,
+      `قيمة NEXT_PUBLIC_SITE_URL غير صحيحة. NEXT_PUBLIC_SITE_URL or Vercel URLs must be valid. Received: ${rawValue}`,
     );
   }
 }
@@ -116,10 +127,10 @@ export function getStripePriceId(planCode: string) {
 export function isSmtpConfigured() {
   return Boolean(
     process.env.SMTP_HOST?.trim() &&
-      process.env.SMTP_PORT?.trim() &&
-      process.env.SMTP_USER?.trim() &&
-      process.env.SMTP_PASS?.trim() &&
-      process.env.SMTP_FROM?.trim(),
+    process.env.SMTP_PORT?.trim() &&
+    process.env.SMTP_USER?.trim() &&
+    process.env.SMTP_PASS?.trim() &&
+    process.env.SMTP_FROM?.trim(),
   );
 }
 

@@ -38,7 +38,7 @@ export default async function SubscriptionPricingPage() {
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">خطط الاشتراك</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            اختر الخطة المناسبة وابدأ الاشتراك. يتوفر خصم خاص للاشتراك السنوي.
+            اختر الخطة المناسبة حسب حجم المكتب وابدأ الاشتراك مباشرة.
           </p>
         </div>
         <Link href="/app/settings/subscription" className={buttonVariants('outline', 'sm')}>
@@ -64,4 +64,3 @@ export default async function SubscriptionPricingPage() {
     </Card>
   );
 }
-

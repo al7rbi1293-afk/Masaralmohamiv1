@@ -78,10 +78,10 @@ export default async function SubscriptionSettingsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/app/settings/subscription/pricing" className={buttonVariants('primary', 'sm')}>
+          <Link href="/app/settings/subscription/pricing" className={buttonVariants('primary', 'md')}>
             ترقية عبر الدفع الإلكتروني
           </Link>
-          <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>
+          <Link href="/app/settings" className={buttonVariants('outline', 'md')}>
             رجوع
           </Link>
         </div>

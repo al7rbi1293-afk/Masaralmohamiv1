@@ -31,65 +31,42 @@ export async function signUpAction(formData: FormData) {
     );
   }
 
-  /* 
-   * REFACTORED: Use Admin API to create user and send ONLY one custom email.
-   * This prevents Supabase from sending its default confirmation email.
-   */
-
-  // 1. Create User via Admin API
+  // Generate one activation link and send one welcome email.
   const { createSupabaseServerClient } = await import('@/lib/supabase/server');
   const supabaseAdmin = createSupabaseServerClient();
-
-  // Check if user exists first to provide better error
-  // (Optional, but createUser returns specific error if exists)
-
-  const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: false, // User must verify email
-    user_metadata: {
-      full_name: fullName,
-      phone: phone || null,
-      firm_name: firmName || null,
-    },
-  });
-
-  if (createError) {
-    redirect(
-      `/signup?error=${encodeURIComponent(toArabicAuthError(createError.message))}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
-    );
-  }
-
-  // 2. Generate Verification Link
   const { getPublicSiteUrl } = await import('@/lib/env');
+  const nextPath = token && isSafeToken(token) ? `/invite/${token}` : '/app';
+  const redirectTo = `${getPublicSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'signup',
     email,
     password,
     options: {
-      redirectTo: `${getPublicSiteUrl()}/auth/callback`,
+      redirectTo,
+      data: {
+        full_name: fullName,
+        phone: phone || null,
+        firm_name: firmName || null,
+      },
     },
   });
 
   if (linkError) {
-    console.error('Failed to generate verification link:', linkError);
-    // Even if link fails, we created the user. Redirect to signin with warning?
-    // Or try to resend? For now, we redirect to error.
     redirect(
-      `/signup?error=${encodeURIComponent('حدث خطأ أثناء إنشاء رابط التفعيل. يرجى المحاولة لاحقاً.')}`,
+      `/signup?error=${encodeURIComponent(toArabicAuthError(linkError.message))}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
     );
   }
 
   const verificationLink = linkData?.properties?.action_link;
 
   if (!verificationLink) {
-    console.error('No action_link returned from generateLink');
     redirect(
       `/signup?error=${encodeURIComponent('حدث خطأ أثناء إنشاء رابط التفعيل.')}`,
     );
   }
 
-  // 3. Send Custom Welcome Email
+  // Send welcome + activation email
   try {
     const { sendEmail } = await import('@/lib/email');
     const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
@@ -102,15 +79,9 @@ export async function signUpAction(formData: FormData) {
     });
   } catch (error) {
     console.error('Failed to send welcome email:', error);
-    // User created, link generated (but not sent). 
-    // This is a critical edge case. 
-    // We should probably redirect to a page saying "Check your email" but warn that email might have failed?
-    // Or just fail? 
-    // Since we can't revert the user creation easily here without deleting (which might be risky),
-    // we'll proceed but log it.
   }
 
-  // 4. Redirect to Verification Pending Page
+  // Redirect to verification pending page.
   redirect('/auth/verify');
 }
 

@@ -1,20 +1,98 @@
 import { NextResponse } from 'next/server';
+import type { EmailOtpType } from '@supabase/supabase-js';
+import {
+  ACCESS_COOKIE_NAME,
+  REFRESH_COOKIE_NAME,
+  SESSION_COOKIE_OPTIONS,
+} from '@/lib/supabase/constants';
 import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
-    const code = searchParams.get('code');
-    // if "next" is in param, use it as the redirect URL
-    const next = searchParams.get('next') ?? '/app';
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get('code');
+  const tokenHash = searchParams.get('token_hash');
+  const otpType = toEmailOtpType(searchParams.get('type'));
+  const nextPath = safeNextPath(searchParams.get('next')) ?? '/app';
 
-    if (code) {
-        const supabase = createSupabaseServerAuthClient();
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (!error) {
-            return NextResponse.redirect(`${origin}${next}`);
-        }
+  const supabase = createSupabaseServerAuthClient();
+
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error && data.session) {
+      return withSessionRedirect(origin, nextPath, data.session);
     }
+  }
 
-    // return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/signin?error=${encodeURIComponent('رابط التحقق غير صالح أو انتهت صلاحيته. حاول تسجيل الدخول.')}`);
+  if (tokenHash && otpType) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      type: otpType,
+      token_hash: tokenHash,
+    });
+
+    if (!error && data.session) {
+      return withSessionRedirect(origin, nextPath, data.session);
+    }
+  }
+
+  return NextResponse.redirect(
+    `${origin}/signin?error=${encodeURIComponent('رابط التفعيل غير صالح أو منتهي. اطلب رابطًا جديدًا أو سجّل الدخول.')}`,
+  );
+}
+
+function withSessionRedirect(origin: string, nextPath: string, session: {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+}) {
+  const response = NextResponse.redirect(`${origin}${nextPath}`);
+  response.cookies.set(ACCESS_COOKIE_NAME, session.access_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: session.expires_in,
+  });
+  response.cookies.set(REFRESH_COOKIE_NAME, session.refresh_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  return response;
+}
+
+function toEmailOtpType(value: string | null): EmailOtpType | null {
+  if (!value) {
+    return null;
+  }
+
+  if (
+    value === 'signup' ||
+    value === 'invite' ||
+    value === 'magiclink' ||
+    value === 'recovery' ||
+    value === 'email_change' ||
+    value === 'email'
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function safeNextPath(raw: string | null) {
+  if (!raw) {
+    return null;
+  }
+
+  const value = raw.trim();
+
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return null;
+  }
+
+  if (value.includes('\n') || value.includes('\r')) {
+    return null;
+  }
+
+  if (value.startsWith('/app') || value.startsWith('/invite/') || value.startsWith('/admin')) {
+    return value;
+  }
+
+  return null;
 }

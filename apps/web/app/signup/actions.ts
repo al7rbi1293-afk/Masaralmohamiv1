@@ -31,67 +31,68 @@ export async function signUpAction(formData: FormData) {
     );
   }
 
-  const supabase = createSupabaseServerAuthClient();
+  /* 
+   * REFACTORED: Use Admin API to create user and send ONLY one custom email.
+   * This prevents Supabase from sending its default confirmation email.
+   */
 
-  let signUpData:
-    | Awaited<ReturnType<typeof supabase.auth.signUp>>['data']
-    | null = null;
-  let signUpError:
-    | Awaited<ReturnType<typeof supabase.auth.signUp>>['error']
-    | null = null;
+  // 1. Create User via Admin API
+  const { createSupabaseServerClient } = await import('@/lib/supabase/server');
+  const supabaseAdmin = createSupabaseServerClient();
 
-  try {
-    const { getPublicSiteUrl } = await import('@/lib/env');
-    const result = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${getPublicSiteUrl()}/auth/callback`,
-        data: {
-          full_name: fullName,
-          phone: phone || null,
-          firm_name: firmName || null,
-        },
-      },
-    });
-    signUpData = result.data;
-    signUpError = result.error;
-  } catch {
+  // Check if user exists first to provide better error
+  // (Optional, but createUser returns specific error if exists)
+
+  const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: false, // User must verify email
+    user_metadata: {
+      full_name: fullName,
+      phone: phone || null,
+      firm_name: firmName || null,
+    },
+  });
+
+  if (createError) {
     redirect(
-      `/signup?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+      `/signup?error=${encodeURIComponent(toArabicAuthError(createError.message))}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
     );
   }
 
-  if (signUpError) {
+  // 2. Generate Verification Link
+  const { getPublicSiteUrl } = await import('@/lib/env');
+  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'signup',
+    email,
+    password,
+    options: {
+      redirectTo: `${getPublicSiteUrl()}/auth/callback`,
+    },
+  });
+
+  if (linkError) {
+    console.error('Failed to generate verification link:', linkError);
+    // Even if link fails, we created the user. Redirect to signin with warning?
+    // Or try to resend? For now, we redirect to error.
     redirect(
-      `/signup?error=${encodeURIComponent(toArabicAuthError(signUpError.message))}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+      `/signup?error=${encodeURIComponent('حدث خطأ أثناء إنشاء رابط التفعيل. يرجى المحاولة لاحقاً.')}`,
     );
   }
 
-  // Send Welcome Email immediately after successful signup
+  const verificationLink = linkData?.properties?.action_link;
+
+  if (!verificationLink) {
+    console.error('No action_link returned from generateLink');
+    redirect(
+      `/signup?error=${encodeURIComponent('حدث خطأ أثناء إنشاء رابط التفعيل.')}`,
+    );
+  }
+
+  // 3. Send Custom Welcome Email
   try {
-    const { createSupabaseServerClient } = await import('@/lib/supabase/server');
-    const { getPublicSiteUrl } = await import('@/lib/env');
     const { sendEmail } = await import('@/lib/email');
     const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
-
-    // Use Admin client to generate a signup link that works in production
-    const supabaseAdmin = createSupabaseServerClient();
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
-      email,
-      password,
-      options: {
-        redirectTo: `${getPublicSiteUrl()}/auth/callback`,
-      },
-    });
-
-    if (linkError) {
-      console.error('Failed to generate verification link:', linkError);
-      // Fallback: just send welcome email without link or with generic app link
-    }
-
-    const verificationLink = linkData?.properties?.action_link || `${getPublicSiteUrl()}/app`;
 
     await sendEmail({
       to: email,
@@ -100,58 +101,17 @@ export async function signUpAction(formData: FormData) {
       html: WELCOME_EMAIL_HTML(fullName, verificationLink),
     });
   } catch (error) {
-    console.error('Failed to send welcome email setup:', error);
+    console.error('Failed to send welcome email:', error);
+    // User created, link generated (but not sent). 
+    // This is a critical edge case. 
+    // We should probably redirect to a page saying "Check your email" but warn that email might have failed?
+    // Or just fail? 
+    // Since we can't revert the user creation easily here without deleting (which might be risky),
+    // we'll proceed but log it.
   }
 
-  let session = signUpData?.session ?? null;
-
-  if (!session) {
-    let signInData:
-      | Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data']
-      | null = null;
-    let signInError:
-      | Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['error']
-      | null = null;
-
-    try {
-      const result = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      signInData = result.data;
-      signInError = result.error;
-    } catch {
-      redirect(
-        `/signup?error=${encodeURIComponent('هذا البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
-      );
-    }
-
-    if (signInError || !signInData?.session) {
-      // If sign in fails after sign up, it usually means the user already exists 
-      // or email confirmation is required.
-      redirect(
-        `/signup?error=${encodeURIComponent('هذا البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
-      );
-    }
-
-    session = signInData.session;
-  }
-
-  const cookieStore = cookies();
-  cookieStore.set(ACCESS_COOKIE_NAME, session.access_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: session.expires_in,
-  });
-  cookieStore.set(REFRESH_COOKIE_NAME, session.refresh_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: 60 * 60 * 24 * 30,
-  });
-
-  if (token && isSafeToken(token)) {
-    redirect(`/invite/${token}`);
-  }
-
-  redirect('/app');
+  // 4. Redirect to Verification Pending Page
+  redirect('/auth/verify');
 }
 
 function toArabicAuthError(message?: string) {

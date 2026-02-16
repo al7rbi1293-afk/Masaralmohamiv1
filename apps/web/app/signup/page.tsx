@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { signUpAction } from './actions';
+import { resendActivationAction, signUpAction } from './actions';
 import { InviteEmailField } from './invite-email-field';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
@@ -23,12 +23,14 @@ type SignUpPageProps = {
     error?: string;
     token?: string;
     email?: string;
+    status?: string;
   };
 };
 
 export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const token = searchParams?.token ? safeDecode(searchParams.token) : '';
   const invitedEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
+  const status = searchParams?.status ? safeDecode(searchParams.status) : '';
 
   const user = await getCurrentAuthUser();
   if (user) {
@@ -39,6 +41,8 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   }
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
+  const pendingActivation = status === 'pending_activation';
+  const activationResent = status === 'activation_resent';
   const inviteBanner = token
     ? `أنت على وشك قبول دعوة لفريق. استخدم البريد المدعو${invitedEmail ? `: ${invitedEmail}` : '.'}`
     : null;
@@ -65,6 +69,25 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           {error ? (
             <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
               {error}
+            </p>
+          ) : null}
+
+          {pendingActivation && invitedEmail ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+              <p>الحساب مسجل مسبقًا لكنه غير مُفعّل. اضغط لإعادة إرسال رسالة التفعيل.</p>
+              <form action={resendActivationAction} className="mt-3">
+                <input type="hidden" name="email" value={invitedEmail} />
+                {token ? <input type="hidden" name="token" value={token} /> : null}
+                <button type="submit" className={buttonVariants('outline', 'sm')}>
+                  إعادة إرسال رسالة التفعيل
+                </button>
+              </form>
+            </div>
+          ) : null}
+
+          {activationResent && invitedEmail ? (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+              تم إرسال رسالة التفعيل إلى {invitedEmail}. تحقق من بريدك ثم افتح الرابط.
             </p>
           ) : null}
 

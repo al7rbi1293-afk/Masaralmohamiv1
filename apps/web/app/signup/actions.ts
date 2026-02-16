@@ -32,16 +32,6 @@ export async function signUpAction(formData: FormData) {
   const nextPath = token && isSafeToken(token) ? `/invite/${token}` : '/app';
   const redirectTo = `${getPublicSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
-  // If account already exists and is not activated, show resend activation CTA.
-  const existingUser = await findUserByEmail(supabaseAdmin, email);
-  if (existingUser) {
-    if (existingUser.email_confirmed_at) {
-      redirect(buildSignInHref(email, token));
-    }
-
-    redirect(buildPendingActivationHref(email, token));
-  }
-
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'signup',
     email,
@@ -116,17 +106,6 @@ export async function resendActivationAction(formData: FormData) {
 
   const { getPublicSiteUrl } = await import('@/lib/env');
   const supabaseAdmin = createSupabaseServerClient();
-  const user = await findUserByEmail(supabaseAdmin, email);
-
-  if (!user) {
-    redirect(
-      `/signup?error=${encodeURIComponent('لا يوجد حساب بهذا البريد. يمكنك إنشاء حساب جديد.')}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`,
-    );
-  }
-
-  if (user.email_confirmed_at) {
-    redirect(buildSignInHref(email, token));
-  }
 
   const nextPath = token && isSafeToken(token) ? `/invite/${token}` : '/app';
   const redirectTo = `${getPublicSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
@@ -150,13 +129,12 @@ export async function resendActivationAction(formData: FormData) {
   try {
     const { sendEmail } = await import('@/lib/email');
     const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
-    const fullName = getDisplayName(user.raw_user_meta_data);
 
     await sendEmail({
       to: email,
       subject: WELCOME_EMAIL_SUBJECT,
       text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
-      html: WELCOME_EMAIL_HTML(fullName, verificationLink),
+      html: WELCOME_EMAIL_HTML('عميلنا الكريم', verificationLink),
     });
   } catch {
     redirect(
@@ -211,41 +189,4 @@ function getServerActionIp() {
 
 function buildPendingActivationHref(email: string, token: string) {
   return `/signup?status=pending_activation&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
-}
-
-function buildSignInHref(email: string, token: string) {
-  return `/signin?reason=exists&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
-}
-
-function getDisplayName(rawMetadata: unknown) {
-  if (!rawMetadata || typeof rawMetadata !== 'object') {
-    return 'عميلنا الكريم';
-  }
-
-  const value = (rawMetadata as Record<string, unknown>).full_name;
-  if (typeof value === 'string' && value.trim()) {
-    return value.trim();
-  }
-
-  return 'عميلنا الكريم';
-}
-
-async function findUserByEmail(
-  supabaseAdmin: ReturnType<typeof createSupabaseServerClient>,
-  email: string,
-) {
-  const { data } = await supabaseAdmin
-    .schema('auth')
-    .from('users')
-    .select('id, email, email_confirmed_at, raw_user_meta_data')
-    .eq('email', email)
-    .limit(1)
-    .maybeSingle();
-
-  return data as {
-    id: string;
-    email: string | null;
-    email_confirmed_at: string | null;
-    raw_user_meta_data: Record<string, unknown> | null;
-  } | null;
 }

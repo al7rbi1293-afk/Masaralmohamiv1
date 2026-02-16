@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 /**
- * GET /admin/api/requests — list subscription requests (admin only)
+ * GET /admin/api/requests — list admin-facing requests (admin only)
  * PATCH /admin/api/requests — approve or reject a request (admin only)
  */
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
 
     const adminClient = createSupabaseServerClient();
 
-    const { data, error } = await adminClient
+    const { data: subscriptionRequests, error: subscriptionError } = await adminClient
         .from('subscription_requests')
         .select(`
       *,
@@ -25,11 +25,35 @@ export async function GET() {
         .order('requested_at', { ascending: false })
         .limit(200);
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    if (subscriptionError) {
+        return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ requests: data ?? [] });
+    const { data: fullVersionRequests, error: fullVersionError } = await adminClient
+        .from('full_version_requests')
+        .select('id, created_at, org_id, user_id, full_name, email, phone, firm_name, message, source, type')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+    if (fullVersionError) {
+        return NextResponse.json({ error: fullVersionError.message }, { status: 500 });
+    }
+
+    const { data: leads, error: leadsError } = await adminClient
+        .from('leads')
+        .select('id, created_at, full_name, email, phone, firm_name, topic, message, referrer, utm')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+    if (leadsError) {
+        return NextResponse.json({ error: leadsError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+        requests: subscriptionRequests ?? [],
+        fullVersionRequests: fullVersionRequests ?? [],
+        leads: leads ?? [],
+    });
 }
 
 export async function PATCH(request: NextRequest) {

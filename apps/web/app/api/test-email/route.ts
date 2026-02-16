@@ -1,67 +1,61 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { sendEmail } from '@/lib/email';
-import { getSmtpEnv, isSmtpConfigured } from '@/lib/env';
+import { isSmtpConfigured } from '@/lib/env';
+import { requireAdmin } from '@/lib/admin';
+import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
+import { logError, logInfo } from '@/lib/logger';
 
-export async function GET(request: Request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const targetEmail = searchParams.get('to');
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-        if (!targetEmail) {
-            return NextResponse.json(
-                { error: 'Missing "to" query parameter. Usage: /api/test-email?to=your@email.com' },
-                { status: 400 }
-            );
-        }
+const bodySchema = z.object({
+  to: z.string().trim().email('البريد الإلكتروني غير صحيح.'),
+});
 
-        const configured = isSmtpConfigured();
-        let envDebug = {};
+export async function POST(request: NextRequest) {
+  const ip = getRequestIp(request);
+  const limit = checkRateLimit({
+    key: `test_email:${ip}`,
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+  });
 
-        try {
-            const env = getSmtpEnv();
-            envDebug = {
-                host: env.host,
-                port: env.port,
-                user: env.user,
-                from: env.from,
-                passConfigured: !!env.pass, // Don't leak the password
-            };
-        } catch (e: any) {
-            envDebug = { error: e.message };
-        }
+  if (!limit.allowed) {
+    return NextResponse.json({ error: RATE_LIMIT_MESSAGE_AR }, { status: 429 });
+  }
 
-        if (!configured) {
-            return NextResponse.json(
-                {
-                    error: 'SMTP not configured',
-                    debug: envDebug
-                },
-                { status: 500 }
-            );
-        }
+  try {
+    await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: 'لا تملك صلاحية تنفيذ هذا الإجراء.' }, { status: 403 });
+  }
 
-        await sendEmail({
-            to: targetEmail,
-            subject: 'Test Email from Masar Al-Muhami (Debug)',
-            text: 'This is a test email to verify SMTP configuration.',
-            html: '<p>This is a <strong>test email</strong> to verify SMTP configuration.</p>',
-        });
+  const body = await request.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'بيانات غير صالحة.' },
+      { status: 400 },
+    );
+  }
 
-        return NextResponse.json({
-            success: true,
-            message: 'Email sent successfully',
-            debug: envDebug
-        });
+  if (!isSmtpConfigured()) {
+    return NextResponse.json({ error: 'خدمة البريد غير مفعلة حالياً.' }, { status: 503 });
+  }
 
-    } catch (error: any) {
-        console.error('Test email failed:', error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: error.message,
-                stack: error.stack
-            },
-            { status: 500 }
-        );
-    }
+  try {
+    await sendEmail({
+      to: parsed.data.to,
+      subject: 'اختبار البريد - مسار المحامي',
+      text: 'هذه رسالة اختبار للتأكد من إعدادات البريد.',
+      html: '<p>هذه رسالة <strong>اختبار</strong> للتأكد من إعدادات البريد.</p>',
+    });
+
+    logInfo('test_email_sent', { to: parsed.data.to });
+    return NextResponse.json({ ok: true, message: 'تم إرسال رسالة الاختبار.' }, { status: 200 });
+  } catch (error) {
+    logError('test_email_failed', { message: error instanceof Error ? error.message : 'unknown_error' });
+    return NextResponse.json({ error: 'تعذر إرسال رسالة الاختبار.' }, { status: 500 });
+  }
 }

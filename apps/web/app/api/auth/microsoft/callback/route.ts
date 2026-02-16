@@ -1,7 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { encryptToken } from '@/lib/token-crypto';
 import { logError, logInfo } from '@/lib/logger';
+import { getPublicSiteUrl } from '@/lib/env';
+
+const OAUTH_STATE_COOKIE = 'masar-ms-oauth-state';
+const OAUTH_STATE_COOKIE_PATH = '/api/auth/microsoft/callback';
+
+type VerifiedOAuthState = {
+    orgId: string;
+    userId: string;
+    exp: number;
+};
+
+function getOAuthStateSecret() {
+    const secret =
+        process.env.MICROSOFT_OAUTH_STATE_SECRET?.trim() ||
+        process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+    if (!secret) {
+        throw new Error('oauth_state_secret_missing');
+    }
+
+    return secret;
+}
+
+function signStatePayload(payload: string) {
+    return crypto.createHmac('sha256', getOAuthStateSecret()).update(payload).digest('base64url');
+}
+
+function safeEqual(a: string, b: string) {
+    const aBuf = Buffer.from(a);
+    const bBuf = Buffer.from(b);
+    if (aBuf.length !== bBuf.length) return false;
+    return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+function verifyState(rawState: string): VerifiedOAuthState | null {
+    const [encodedPayload, signature] = rawState.split('.');
+    if (!encodedPayload || !signature) {
+        return null;
+    }
+
+    const expected = signStatePayload(encodedPayload);
+    if (!safeEqual(signature, expected)) {
+        return null;
+    }
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+    } catch {
+        return null;
+    }
+
+    const state = parsed as Partial<{
+        orgId: string;
+        userId: string;
+        exp: number;
+    }>;
+
+    if (!state.orgId || !state.userId || !state.exp || !Number.isFinite(state.exp)) {
+        return null;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    if (now >= state.exp) {
+        return null;
+    }
+
+    return {
+        orgId: state.orgId,
+        userId: state.userId,
+        exp: state.exp,
+    };
+}
+
+function clearStateCookie(response: NextResponse) {
+    response.cookies.set(OAUTH_STATE_COOKIE, '', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: OAUTH_STATE_COOKIE_PATH,
+        maxAge: 0,
+    });
+    return response;
+}
+
+function redirectWithStateCleanup(url: string) {
+    return clearStateCookie(NextResponse.redirect(url));
+}
 
 /**
  * GET /api/auth/microsoft/callback
@@ -13,23 +102,26 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = getPublicSiteUrl();
 
     if (error) {
         logError('microsoft_oauth_error', { error, description: searchParams.get('error_description') });
-        return NextResponse.redirect(`${appUrl}/app/settings/email?error=oauth_denied`);
+        return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=oauth_denied`);
     }
 
     if (!code || !state) {
-        return NextResponse.redirect(`${appUrl}/app/settings/email?error=missing_params`);
+        return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=missing_params`);
     }
 
-    // Decode state
-    let stateData: { orgId: string; userId: string };
-    try {
-        stateData = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
-    } catch {
-        return NextResponse.redirect(`${appUrl}/app/settings/email?error=invalid_state`);
+    // Validate OAuth state integrity + CSRF binding.
+    const cookieState = request.cookies.get(OAUTH_STATE_COOKIE)?.value ?? '';
+    if (!cookieState || cookieState !== state) {
+        return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=invalid_state`);
+    }
+
+    const verifiedState = verifyState(state);
+    if (!verifiedState) {
+        return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=invalid_state`);
     }
 
     const clientId = process.env.MICROSOFT_CLIENT_ID;
@@ -37,7 +129,7 @@ export async function GET(request: NextRequest) {
     const redirectUri = `${appUrl}/api/auth/microsoft/callback`;
 
     if (!clientId || !clientSecret) {
-        return NextResponse.redirect(`${appUrl}/app/settings/email?error=not_configured`);
+        return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=not_configured`);
     }
 
     // Exchange code for tokens
@@ -64,13 +156,13 @@ export async function GET(request: NextRequest) {
         if (!tokenRes.ok) {
             const errBody = await tokenRes.text();
             logError('microsoft_token_exchange_failed', { status: tokenRes.status, body: errBody });
-            return NextResponse.redirect(`${appUrl}/app/settings/email?error=token_exchange`);
+            return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=token_exchange`);
         }
 
         tokenData = await tokenRes.json();
     } catch (err) {
         logError('microsoft_token_fetch_error', { error: err instanceof Error ? err.message : 'unknown' });
-        return NextResponse.redirect(`${appUrl}/app/settings/email?error=token_fetch`);
+        return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=token_fetch`);
     }
 
     // Fetch user email from Microsoft Graph
@@ -95,8 +187,8 @@ export async function GET(request: NextRequest) {
         .from('email_accounts')
         .upsert(
             {
-                org_id: stateData.orgId,
-                user_id: stateData.userId,
+                org_id: verifiedState.orgId,
+                user_id: verifiedState.userId,
                 provider: 'microsoft',
                 email,
                 access_token_enc: encryptToken(tokenData.access_token),
@@ -109,9 +201,9 @@ export async function GET(request: NextRequest) {
 
     if (insertError) {
         logError('microsoft_account_save_error', { error: insertError.message });
-        return NextResponse.redirect(`${appUrl}/app/settings/email?error=save_failed`);
+        return redirectWithStateCleanup(`${appUrl}/app/settings/email?error=save_failed`);
     }
 
-    logInfo('microsoft_account_connected', { orgId: stateData.orgId, email });
-    return NextResponse.redirect(`${appUrl}/app/settings/email?success=connected`);
+    logInfo('microsoft_account_connected', { orgId: verifiedState.orgId, email });
+    return redirectWithStateCleanup(`${appUrl}/app/settings/email?success=connected`);
 }

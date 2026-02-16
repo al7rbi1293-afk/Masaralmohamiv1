@@ -6,6 +6,7 @@ import {
   SESSION_COOKIE_OPTIONS,
 } from '@/lib/supabase/constants';
 import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
+import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data.session) {
-      return withSessionRedirect(origin, nextPath, data.session);
+      return await withSessionRedirect(origin, nextPath, data.session);
     }
   }
 
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
     });
 
     if (!error && data.session) {
-      return withSessionRedirect(origin, nextPath, data.session);
+      return await withSessionRedirect(origin, nextPath, data.session);
     }
   }
 
@@ -39,12 +40,37 @@ export async function GET(request: Request) {
   );
 }
 
-function withSessionRedirect(origin: string, nextPath: string, session: {
+async function withSessionRedirect(origin: string, nextPath: string, session: {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+  user: {
+    id: string;
+    user_metadata?: Record<string, unknown>;
+  };
 }) {
-  const response = NextResponse.redirect(`${origin}${nextPath}`);
+  let destination = nextPath;
+
+  // For normal app activation flows, bootstrap org+trial if missing.
+  if (nextPath.startsWith('/app') && !nextPath.startsWith('/app/api')) {
+    try {
+      const firmName = typeof session.user.user_metadata?.firm_name === 'string'
+        ? session.user.user_metadata.firm_name
+        : null;
+      const provision = await ensureTrialProvisionForUser({
+        userId: session.user.id,
+        firmName,
+      });
+      if (provision.isExpired && !nextPath.startsWith('/app/expired')) {
+        destination = '/app/expired';
+      }
+    } catch {
+      // Keep login working; dashboard can still guide user if trial bootstrap fails.
+      destination = '/app';
+    }
+  }
+
+  const response = NextResponse.redirect(`${origin}${destination}`);
   response.cookies.set(ACCESS_COOKIE_NAME, session.access_token, {
     ...SESSION_COOKIE_OPTIONS,
     maxAge: session.expires_in,

@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
+import { getPublicSiteUrl } from '@/lib/env';
 
 export async function signUpAction(formData: FormData) {
   const token = String(formData.get('token') ?? '').trim();
@@ -28,9 +29,9 @@ export async function signUpAction(formData: FormData) {
   }
 
   const supabaseAdmin = createSupabaseServerClient();
-  const { getPublicSiteUrl } = await import('@/lib/env');
+  const siteUrl = getRequestSiteUrl();
   const nextPath = token && isSafeToken(token) ? `/invite/${token}` : '/app';
-  const redirectTo = `${getPublicSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'signup',
@@ -56,7 +57,13 @@ export async function signUpAction(formData: FormData) {
     );
   }
 
-  const verificationLink = linkData?.properties?.action_link;
+  const verificationLink = buildVerificationLink({
+    siteUrl,
+    nextPath,
+    otpType: 'signup',
+    tokenHash: linkData?.properties?.hashed_token ?? null,
+    fallbackActionLink: linkData?.properties?.action_link ?? null,
+  });
 
   if (!verificationLink) {
     redirect(
@@ -104,11 +111,11 @@ export async function resendActivationAction(formData: FormData) {
     );
   }
 
-  const { getPublicSiteUrl } = await import('@/lib/env');
+  const siteUrl = getRequestSiteUrl();
   const supabaseAdmin = createSupabaseServerClient();
 
   const nextPath = token && isSafeToken(token) ? `/invite/${token}` : '/app';
-  const redirectTo = `${getPublicSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
   const linkResult = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
@@ -118,7 +125,13 @@ export async function resendActivationAction(formData: FormData) {
     },
   });
 
-  const verificationLink = linkResult.data?.properties?.action_link;
+  const verificationLink = buildVerificationLink({
+    siteUrl,
+    nextPath,
+    otpType: 'magiclink',
+    tokenHash: linkResult.data?.properties?.hashed_token ?? null,
+    fallbackActionLink: linkResult.data?.properties?.action_link ?? null,
+  });
 
   if (linkResult.error || !verificationLink) {
     redirect(
@@ -189,4 +202,38 @@ function getServerActionIp() {
 
 function buildPendingActivationHref(email: string, token: string) {
   return `/signup?status=pending_activation&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+}
+
+function getRequestSiteUrl() {
+  const h = headers();
+  const forwardedHost = h
+    .get('x-forwarded-host')
+    ?.split(',')[0]
+    ?.trim();
+  const host = forwardedHost || h.get('host')?.trim();
+  const forwardedProto = h
+    .get('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim();
+  const proto = forwardedProto || (host?.includes('localhost') ? 'http' : 'https');
+
+  if (host) {
+    return `${proto}://${host}`;
+  }
+
+  return getPublicSiteUrl();
+}
+
+function buildVerificationLink(params: {
+  siteUrl: string;
+  nextPath: string;
+  otpType: 'signup' | 'magiclink';
+  tokenHash: string | null;
+  fallbackActionLink: string | null;
+}) {
+  if (params.tokenHash) {
+    return `${params.siteUrl}/auth/callback?token_hash=${encodeURIComponent(params.tokenHash)}&type=${encodeURIComponent(params.otpType)}&next=${encodeURIComponent(params.nextPath)}`;
+  }
+
+  return params.fallbackActionLink;
 }

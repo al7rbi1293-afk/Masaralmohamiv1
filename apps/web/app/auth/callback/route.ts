@@ -5,7 +5,7 @@ import {
   REFRESH_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
 } from '@/lib/supabase/constants';
-import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
+import { createSupabaseServerAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 
 export async function GET(request: Request) {
@@ -54,6 +54,17 @@ async function withSessionRedirect(origin: string, nextPath: string, session: {
   // For normal app activation flows, bootstrap org+trial if missing.
   if (nextPath.startsWith('/app') && !nextPath.startsWith('/app/api')) {
     try {
+      // Do not auto-provision trials for super-admin accounts.
+      const adminDb = createSupabaseServerClient();
+      const { data: adminRecord } = await adminDb
+        .from('app_admins')
+        .select('user_id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (adminRecord) {
+        // Keep destination as-is; admin can access /admin via normal sign-in flow.
+      } else {
       const firmName = typeof session.user.user_metadata?.firm_name === 'string'
         ? session.user.user_metadata.firm_name
         : null;
@@ -63,6 +74,7 @@ async function withSessionRedirect(origin: string, nextPath: string, session: {
       });
       if (provision.isExpired && !nextPath.startsWith('/app/expired')) {
         destination = '/app/expired';
+      }
       }
     } catch {
       // Keep login working; dashboard can still guide user if trial bootstrap fails.

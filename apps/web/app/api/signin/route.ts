@@ -6,6 +6,7 @@ import {
   REFRESH_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
 } from '@/lib/supabase/constants';
+import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 
 const signInSchema = z.object({
   email: z
@@ -61,7 +62,27 @@ export async function POST(request: NextRequest) {
 
   // Some users might come with old bookmarked routes (e.g. legacy /app/[tenantId] pages).
   // Only allow returning to the current trial platform pages.
-  const destination = safeNextPath(parsed.data.next) ?? defaultRedirect;
+  let destination = safeNextPath(parsed.data.next) ?? defaultRedirect;
+
+  // Ensure trial provisioning exists for non-admin accounts (defense in depth),
+  // so existing users without a trial row get one on first login after confirmation.
+  if (!adminRecord && destination.startsWith('/app') && !destination.startsWith('/app/api')) {
+    try {
+      const firmName =
+        typeof data.session.user.user_metadata?.firm_name === 'string'
+          ? data.session.user.user_metadata.firm_name
+          : null;
+      const provision = await ensureTrialProvisionForUser({
+        userId: data.session.user.id,
+        firmName,
+      });
+      if (provision.isExpired && !destination.startsWith('/app/expired')) {
+        destination = '/app/expired';
+      }
+    } catch {
+      // Keep login working even if provisioning fails.
+    }
+  }
   const response = NextResponse.redirect(new URL(destination, request.url), 303);
 
   response.cookies.set(ACCESS_COOKIE_NAME, data.session.access_token, {

@@ -18,7 +18,7 @@ export async function GET() {
   const { data: authUsersRaw, error: authUsersError } = await adminClient
     .schema('auth')
     .from('users')
-    .select('id, email, created_at, email_confirmed_at')
+    .select('id, email, created_at, email_confirmed_at, confirmed_at')
     .order('created_at', { ascending: false })
     .limit(1000);
 
@@ -31,10 +31,11 @@ export async function GET() {
     email: string | null;
     created_at: string;
     email_confirmed_at: string | null;
+    confirmed_at: string | null;
   }> | null) ?? [];
 
   const pending = authUsers
-    .filter((row) => !row.email_confirmed_at)
+    .filter((row) => !isUserConfirmed(row))
     .map((row) => {
       const createdAt = String(row.created_at ?? '');
       const createdAtDate = new Date(createdAt);
@@ -47,12 +48,13 @@ export async function GET() {
       email: row.email ? String(row.email) : null,
       created_at: createdAt,
       email_confirmed_at: row.email_confirmed_at ? String(row.email_confirmed_at) : null,
+      confirmed_at: row.confirmed_at ? String(row.confirmed_at) : null,
       older_than_3h: ageHours >= 3,
     };
     });
 
   const activatedUserIds = authUsers
-    .filter((row) => Boolean(row.email_confirmed_at))
+    .filter((row) => isUserConfirmed(row))
     .map((row) => row.id);
 
   let profilesByUserId = new Map<string, {
@@ -123,7 +125,7 @@ export async function GET() {
   }
 
   const users = authUsers
-    .filter((row) => Boolean(row.email_confirmed_at))
+    .filter((row) => isUserConfirmed(row))
     .map((row) => {
       const profile = profilesByUserId.get(row.id);
       return {
@@ -138,6 +140,10 @@ export async function GET() {
     });
 
   return NextResponse.json({ users, pending });
+}
+
+function isUserConfirmed(user: { email_confirmed_at: string | null; confirmed_at: string | null }) {
+  return Boolean(user.email_confirmed_at || user.confirmed_at);
 }
 
 export async function PATCH(request: NextRequest) {

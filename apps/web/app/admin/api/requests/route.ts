@@ -15,24 +15,13 @@ export async function GET() {
 
     const adminClient = createSupabaseServerClient();
 
+    // Avoid PostgREST embedded relations here to prevent schema-cache edge cases in production.
+    // We resolve requester/org names with follow-up queries instead.
     const { data: subscriptionRequestsRaw, error: subscriptionError } = await adminClient
         .from('subscription_requests')
-        .select(`
-      id,
-      org_id,
-      requester_user_id,
-      plan_requested,
-      duration_months,
-      payment_method,
-      payment_reference,
-      proof_file_path,
-      status,
-      notes,
-      requested_at,
-      decided_at,
-      decided_by,
-      organizations:org_id ( id, name )
-    `)
+        .select(
+            'id, org_id, requester_user_id, plan_requested, duration_months, payment_method, payment_reference, proof_file_path, status, notes, requested_at, decided_at, decided_by',
+        )
         .order('requested_at', { ascending: false })
         .limit(200);
 
@@ -40,33 +29,59 @@ export async function GET() {
         return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
     }
 
-    const requesterUserIds = Array.from(
-        new Set(
-            ((subscriptionRequestsRaw as Array<{ requester_user_id?: string | null }> | null) ?? [])
-                .map((row) => row.requester_user_id)
-                .filter((value): value is string => Boolean(value)),
-        ),
-    );
+    const subscriptionRows = (subscriptionRequestsRaw as Array<{ org_id: string; requester_user_id?: string | null }> | null) ?? [];
+
+    const requesterUserIds = Array.from(new Set(subscriptionRows
+        .map((row) => row.requester_user_id)
+        .filter((value): value is string => Boolean(value))));
+
+    const orgIds = Array.from(new Set(subscriptionRows
+        .map((row) => row.org_id)
+        .filter((value): value is string => Boolean(value))));
 
     const requesterNamesByUserId = new Map<string, string>();
-    if (requesterUserIds.length) {
-        const { data: requesterProfiles, error: requesterProfilesError } = await adminClient
-            .from('profiles')
-            .select('user_id, full_name')
-            .in('user_id', requesterUserIds);
+    const orgNamesByOrgId = new Map<string, { id: string; name: string }>();
+
+    if (requesterUserIds.length || orgIds.length) {
+        const [
+            { data: requesterProfiles, error: requesterProfilesError },
+            { data: organizationsRaw, error: organizationsError },
+        ] = await Promise.all([
+            requesterUserIds.length
+                ? adminClient
+                    .from('profiles')
+                    .select('user_id, full_name')
+                    .in('user_id', requesterUserIds)
+                : Promise.resolve({ data: [], error: null } as any),
+            orgIds.length
+                ? adminClient
+                    .from('organizations')
+                    .select('id, name')
+                    .in('id', orgIds)
+                : Promise.resolve({ data: [], error: null } as any),
+        ]);
 
         if (requesterProfilesError) {
             return NextResponse.json({ error: requesterProfilesError.message }, { status: 500 });
         }
 
+        if (organizationsError) {
+            return NextResponse.json({ error: organizationsError.message }, { status: 500 });
+        }
+
         for (const profile of (requesterProfiles as Array<{ user_id: string; full_name: string | null }> | null) ?? []) {
             requesterNamesByUserId.set(profile.user_id, profile.full_name ?? '');
         }
+
+        for (const org of (organizationsRaw as Array<{ id: string; name: string }> | null) ?? []) {
+            orgNamesByOrgId.set(org.id, { id: org.id, name: org.name });
+        }
     }
 
-    const subscriptionRequests = ((subscriptionRequestsRaw as Array<any> | null) ?? []).map((row) => ({
+    const subscriptionRequests = (subscriptionRows as Array<any>).map((row) => ({
         ...row,
         requester_name: row.requester_user_id ? requesterNamesByUserId.get(row.requester_user_id) ?? null : null,
+        organizations: orgNamesByOrgId.get(row.org_id) ?? null,
     }));
 
     const { data: fullVersionRequests, error: fullVersionError } = await adminClient

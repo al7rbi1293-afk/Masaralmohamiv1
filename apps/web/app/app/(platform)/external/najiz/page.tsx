@@ -81,7 +81,7 @@ export default async function NajizExternalCasesPage() {
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">بيانات ناجز</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            هذه بيانات مرجعية مستوردة. لإنشاء قضية داخل مسار، اختر "إنشاء قضية في مسار" ثم حدّد الموكل يدويًا.
+            هذه بيانات مرجعية مستوردة. لإنشاء قضية داخل مسار، اختر &quot;إنشاء قضية في مسار&quot; ثم حدّد الموكل يدويًا.
           </p>
         </div>
         <Link href="/app/settings/integrations/najiz" className={buttonVariants('outline', 'sm')}>
@@ -128,4 +128,3 @@ export default async function NajizExternalCasesPage() {
     </Card>
   );
 }
-

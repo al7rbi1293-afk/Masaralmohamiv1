@@ -35,7 +35,7 @@ export function TemplateVariablesEditor({ templateId, latestVersion }: TemplateV
     }
 
     setVariables(loadDraftVariables(templateId));
-  }, [latestVersion?.id, templateId]);
+  }, [latestVersion, templateId]);
 
   const hasInvalid = useMemo(() => {
     return variables.some((v) => {

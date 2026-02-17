@@ -8,8 +8,8 @@
   "scripts": {
     "build": "npm run build --workspace @masar/web",
     "build:all": "npm run build -ws",
-    "test": "npm run test -ws",
-    "lint": "npm run lint -ws",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
     "test:e2e": "npm run test:e2e --workspace @masar/web",
     "test:rls": "tsx scripts/rls-smoke-test.ts"
   },

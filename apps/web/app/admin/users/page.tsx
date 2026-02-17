@@ -28,25 +28,40 @@ export default function AdminUsersPage() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function loadUsers() {
     const res = await fetch('/admin/api/users');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error((data as { error?: string }).error || 'تعذر تحميل المستخدمين.');
+    }
     setUsers(data.users ?? []);
     setPendingUsers(data.pending ?? []);
   }
 
   useEffect(() => {
-    loadUsers().finally(() => setLoading(false));
+    loadUsers()
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : 'تعذر تحميل المستخدمين.';
+        setLoadError(message);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleAction(userId: string, action: 'suspend' | 'activate' | 'delete_pending') {
+    setLoadError(null);
     setActionId(userId);
-    await fetch('/admin/api/users', {
+    const res = await fetch('/admin/api/users', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, action }),
     });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setActionId(null);
+      throw new Error((payload as { error?: string }).error || 'تعذر تنفيذ العملية.');
+    }
     await loadUsers();
     setActionId(null);
   }
@@ -59,7 +74,12 @@ export default function AdminUsersPage() {
       return;
     }
 
-    await handleAction(user.user_id, 'delete_pending');
+    try {
+      await handleAction(user.user_id, 'delete_pending');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'تعذر حذف الحساب.';
+      setLoadError(message);
+    }
   }
 
   async function handleDeleteOlderPending() {
@@ -76,14 +96,23 @@ export default function AdminUsersPage() {
     }
 
     for (const user of oldUsers) {
-      await fetch('/admin/api/users', {
+      const res = await fetch('/admin/api/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.user_id, action: 'delete_pending' }),
       });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error((payload as { error?: string }).error || 'تعذر حذف بعض الحسابات.');
+      }
     }
 
-    await loadUsers();
+    try {
+      await loadUsers();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'تعذر تحديث القائمة.';
+      setLoadError(message);
+    }
   }
 
   if (loading) {
@@ -93,6 +122,11 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">المستخدمون</h1>
+      {loadError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+          {loadError}
+        </div>
+      ) : null}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -199,21 +233,31 @@ export default function AdminUsersPage() {
                       <td className="py-3">{new Date(u.created_at).toLocaleDateString('ar-SA')}</td>
                       <td className="py-3">
                         {u.status === 'active' ? (
-                          <button
-                            disabled={actionId === u.user_id}
-                            onClick={() => handleAction(u.user_id, 'suspend')}
-                            className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
-                          >
-                            تعليق
-                          </button>
+                        <button
+                          disabled={actionId === u.user_id}
+                          onClick={() =>
+                            handleAction(u.user_id, 'suspend').catch((error) => {
+                              const message = error instanceof Error ? error.message : 'تعذر تعليق المستخدم.';
+                              setLoadError(message);
+                            })
+                          }
+                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          تعليق
+                        </button>
                         ) : (
-                          <button
-                            disabled={actionId === u.user_id}
-                            onClick={() => handleAction(u.user_id, 'activate')}
-                            className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            تفعيل
-                          </button>
+                        <button
+                          disabled={actionId === u.user_id}
+                          onClick={() =>
+                            handleAction(u.user_id, 'activate').catch((error) => {
+                              const message = error instanceof Error ? error.message : 'تعذر تفعيل المستخدم.';
+                              setLoadError(message);
+                            })
+                          }
+                          className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          تفعيل
+                        </button>
                         )}
                       </td>
                     </tr>

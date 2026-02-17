@@ -86,7 +86,7 @@ export function TaskUpsertModal({
     setDueAtLocal('');
     setPriority('medium');
     setStatus('todo');
-  }, [open, mode, initialTask, fixedMatterId]);
+  }, [open, mode, initialTask, fixedMatterId, currentUserId]);
 
   if (!open) {
     return null;

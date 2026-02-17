@@ -60,15 +60,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const formData = await request.formData();
-  const parsed = startTrialSchema.safeParse({
-    full_name: toText(formData, 'full_name'),
-    email: toText(formData, 'email'),
-    password: toText(formData, 'password'),
-    phone: toText(formData, 'phone'),
-    firm_name: toText(formData, 'firm_name'),
-    website: toText(formData, 'website'),
-  });
+  const payload = await readStartTrialPayload(request);
+  if (!payload.ok) {
+    logWarn('trial_start_failed', {
+      requestId,
+      ip: requestIp,
+      reason: payload.reason,
+    });
+
+    return jsonResponse(
+      { message: payload.message },
+      400,
+      requestId,
+      rate,
+    );
+  }
+
+  const parsed = startTrialSchema.safeParse(payload.value);
 
   if (!parsed.success) {
     const message = parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.';
@@ -386,6 +394,88 @@ function buildSessionSuccessResponse(
 function toText(formData: FormData, field: string) {
   const value = formData.get(field);
   return typeof value === 'string' ? value : '';
+}
+
+function toObjectText(value: unknown) {
+  return typeof value === 'string' ? value : '';
+}
+
+async function readStartTrialPayload(request: NextRequest): Promise<
+  | {
+      ok: true;
+      value: {
+        full_name: string;
+        email: string;
+        password: string;
+        phone: string;
+        firm_name: string;
+        website: string;
+      };
+    }
+  | {
+      ok: false;
+      reason: string;
+      message: string;
+    }
+> {
+  const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
+
+  if (contentType.includes('application/json')) {
+    let raw: unknown;
+    try {
+      raw = await request.json();
+    } catch {
+      return {
+        ok: false,
+        reason: 'invalid_json',
+        message: 'تعذر قراءة البيانات المرسلة.',
+      };
+    }
+
+    if (!raw || typeof raw !== 'object') {
+      return {
+        ok: false,
+        reason: 'invalid_json_shape',
+        message: 'تعذر قراءة البيانات المرسلة.',
+      };
+    }
+
+    const data = raw as Record<string, unknown>;
+    return {
+      ok: true,
+      value: {
+        full_name: toObjectText(data.full_name ?? data.fullName),
+        email: toObjectText(data.email),
+        password: toObjectText(data.password),
+        phone: toObjectText(data.phone),
+        firm_name: toObjectText(data.firm_name ?? data.firmName),
+        website: toObjectText(data.website),
+      },
+    };
+  }
+
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return {
+      ok: false,
+      reason: 'invalid_form_data',
+      message: 'تعذر قراءة البيانات المرسلة.',
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      full_name: toText(formData, 'full_name'),
+      email: toText(formData, 'email'),
+      password: toText(formData, 'password'),
+      phone: toText(formData, 'phone'),
+      firm_name: toText(formData, 'firm_name'),
+      website: toText(formData, 'website'),
+    },
+  };
 }
 
 function emptyToNull(value?: string) {

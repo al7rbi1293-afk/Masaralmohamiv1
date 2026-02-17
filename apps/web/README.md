@@ -82,6 +82,12 @@ vercel --prod
 
 Ensure all environment variables are set in the Vercel project settings.
 
+### Vercel Checks (GitHub)
+
+If you see a GitHub check like: "Vercel - Canceled from the Vercel Dashboard",
+avoid canceling the deployment from Vercel and push a commit that changes files
+inside `apps/web/` (this project uses `rootDirectory: apps/web` on Vercel).
+
 ## Documentation
 
 - [HANDOVER.md](./HANDOVER.md): Detailed system architecture and handover notes.

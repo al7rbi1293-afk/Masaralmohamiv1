@@ -6,6 +6,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
  * GET /admin/api/requests — list admin-facing requests (admin only)
  * PATCH /admin/api/requests — approve or reject a request (admin only)
  */
+function isMissingColumnError(message?: string) {
+    const normalized = String(message ?? '').toLowerCase();
+    return normalized.includes('column') && normalized.includes('does not exist');
+}
+
 export async function GET() {
     try {
         await requireAdmin();
@@ -84,14 +89,36 @@ export async function GET() {
         organizations: orgNamesByOrgId.get(row.org_id) ?? null,
     }));
 
-    const { data: fullVersionRequests, error: fullVersionError } = await adminClient
+    // Backward-compatible query: some deployments may not have the `type` column yet.
+    // If the column is missing, we retry without it and return `type: null`.
+    let fullVersionRequests: Array<any> | null = null;
+    const { data: fullVersionRequestsWithType, error: fullVersionError } = await adminClient
         .from('full_version_requests')
         .select('id, created_at, org_id, user_id, full_name, email, phone, firm_name, message, source, type')
         .order('created_at', { ascending: false })
         .limit(200);
 
     if (fullVersionError) {
-        return NextResponse.json({ error: fullVersionError.message }, { status: 500 });
+        if (isMissingColumnError(fullVersionError.message)) {
+            const { data: fullVersionRequestsWithoutType, error: retryError } = await adminClient
+                .from('full_version_requests')
+                .select('id, created_at, org_id, user_id, full_name, email, phone, firm_name, message, source')
+                .order('created_at', { ascending: false })
+                .limit(200);
+
+            if (retryError) {
+                return NextResponse.json({ error: retryError.message }, { status: 500 });
+            }
+
+            fullVersionRequests = ((fullVersionRequestsWithoutType as Array<any>) ?? []).map((row) => ({
+                ...row,
+                type: null,
+            }));
+        } else {
+            return NextResponse.json({ error: fullVersionError.message }, { status: 500 });
+        }
+    } else {
+        fullVersionRequests = (fullVersionRequestsWithType as Array<any>) ?? [];
     }
 
     const { data: leads, error: leadsError } = await adminClient

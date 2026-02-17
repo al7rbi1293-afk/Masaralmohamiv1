@@ -15,24 +15,22 @@ export async function GET() {
 
   const adminClient = createSupabaseServerClient();
 
-  const { data: authUsersRaw, error: authUsersError } = await adminClient
-    .schema('auth')
-    .from('users')
-    .select('id, email, created_at, email_confirmed_at, confirmed_at')
-    .order('created_at', { ascending: false })
-    .limit(1000);
+  const { data: authUsersResult, error: authUsersError } = await adminClient.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
 
   if (authUsersError) {
     return NextResponse.json({ error: authUsersError.message }, { status: 500 });
   }
 
-  const authUsers = (authUsersRaw as Array<{
-    id: string;
-    email: string | null;
-    created_at: string;
-    email_confirmed_at: string | null;
-    confirmed_at: string | null;
-  }> | null) ?? [];
+  const authUsers = (authUsersResult?.users ?? []).map((user) => ({
+    id: String(user.id),
+    email: user.email ? String(user.email) : null,
+    created_at: String(user.created_at ?? ''),
+    email_confirmed_at: (user as any).email_confirmed_at ? String((user as any).email_confirmed_at) : null,
+    confirmed_at: user.confirmed_at ? String(user.confirmed_at) : null,
+  }));
 
   const pending = authUsers
     .filter((row) => !isUserConfirmed(row))
@@ -167,22 +165,21 @@ export async function PATCH(request: NextRequest) {
   const adminClient = createSupabaseServerClient();
 
   if (action === 'delete_pending') {
-    const { data: authUser, error: authUserError } = await adminClient
-      .schema('auth')
-      .from('users')
-      .select('id, email_confirmed_at')
-      .eq('id', user_id)
-      .maybeSingle();
+    const { data: authUserResult, error: authUserError } = await adminClient.auth.admin.getUserById(user_id);
 
     if (authUserError) {
       return NextResponse.json({ error: authUserError.message }, { status: 500 });
     }
 
+    const authUser = authUserResult?.user ?? null;
     if (!authUser) {
       return NextResponse.json({ error: 'المستخدم غير موجود.' }, { status: 404 });
     }
 
-    if ((authUser as any).email_confirmed_at) {
+    if (isUserConfirmed({
+      email_confirmed_at: (authUser as any).email_confirmed_at ? String((authUser as any).email_confirmed_at) : null,
+      confirmed_at: authUser.confirmed_at ? String(authUser.confirmed_at) : null,
+    })) {
       return NextResponse.json({ error: 'لا يمكن حذف حساب مفعّل.' }, { status: 409 });
     }
 

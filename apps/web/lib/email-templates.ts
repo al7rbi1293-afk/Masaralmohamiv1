@@ -99,3 +99,51 @@ export const INVOICE_EMAIL_HTML = (name: string, planName: string, amount: strin
 </body>
 </html>
 `;
+
+export const PASSWORD_RESET_EMAIL_SUBJECT = 'استعادة كلمة المرور - مسار المحامي';
+
+export const PASSWORD_RESET_EMAIL_HTML = (params: {
+  name: string;
+  code: string;
+  siteUrl: string;
+}) => `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #0f172a; direction: rtl; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc; }
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; }
+        .title { font-size: 20px; margin: 0 0 10px; }
+        .muted { color: #475569; font-size: 14px; margin: 0 0 14px; }
+        .codeWrap { margin: 18px 0; text-align: center; }
+        .code { display: inline-block; font-size: 28px; letter-spacing: 6px; padding: 12px 16px; border-radius: 10px; background: #ecfdf5; border: 1px solid #10b981; color: #065f46; font-weight: 700; }
+        .hint { font-size: 13px; color: #64748b; margin-top: 10px; }
+        .footer { margin-top: 18px; font-size: 12px; color: #64748b; text-align: center; }
+        a { color: #10b981; text-decoration: none; }
+    </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1 class="title">استعادة كلمة المرور</h1>
+      <p class="muted">مرحباً ${params.name}،</p>
+      <p class="muted">استخدم الرمز التالي لإعادة تعيين كلمة المرور داخل الموقع. إذا لم تطلب استعادة كلمة المرور، تجاهل هذه الرسالة.</p>
+
+      <div class="codeWrap">
+        <div class="code">${params.code}</div>
+        <div class="hint">يفضل إدخال الرمز خلال دقائق قليلة.</div>
+      </div>
+
+      <p class="muted">افتح صفحة "نسيت كلمة المرور" ثم أدخل الرمز:</p>
+      <p class="muted"><a href="${params.siteUrl}/forgot-password">${params.siteUrl}/forgot-password</a></p>
+    </div>
+
+    <div class="footer">
+      <p>الدعم: <a href="mailto:masar.almohami@outlook.sa">masar.almohami@outlook.sa</a></p>
+    </div>
+  </div>
+</body>
+</html>
+`;

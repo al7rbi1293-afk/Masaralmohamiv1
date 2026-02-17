@@ -112,6 +112,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </form>
 
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+            <Link href="/forgot-password" className="block text-brand-emerald hover:underline">
+              نسيت كلمة المرور؟
+            </Link>
             <Link href={signUpHref} className="block text-brand-emerald hover:underline">
               إنشاء حساب
             </Link>

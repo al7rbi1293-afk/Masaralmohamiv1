@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 type User = {
   user_id: string;
+  email?: string | null;
   full_name: string;
   phone: string | null;
   status: string;
@@ -167,6 +168,7 @@ export default function AdminUsersPage() {
               <thead className="border-b border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>
                   <th className="py-3 text-start font-medium">الاسم</th>
+                  <th className="py-3 text-start font-medium">البريد</th>
                   <th className="py-3 text-start font-medium">المكتب</th>
                   <th className="py-3 text-start font-medium">الدور</th>
                   <th className="py-3 text-start font-medium">الحالة</th>
@@ -180,6 +182,7 @@ export default function AdminUsersPage() {
                   return (
                     <tr key={u.user_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="py-3 font-medium">{u.full_name || '—'}</td>
+                      <td className="py-3">{u.email ?? '—'}</td>
                       <td className="py-3">{m?.organizations?.name ?? '—'}</td>
                       <td className="py-3">{m?.role ?? '—'}</td>
                       <td className="py-3">

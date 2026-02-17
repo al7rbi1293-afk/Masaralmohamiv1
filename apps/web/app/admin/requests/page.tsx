@@ -13,7 +13,7 @@ type SubRequest = {
     notes: string | null;
     requested_at: string;
     organizations: { name: string } | null;
-    profiles: { full_name: string } | null;
+    requester_name: string | null;
 };
 
 type FullVersionRequest = {
@@ -167,7 +167,7 @@ export default function AdminRequestsPage() {
                                 {requests.map((req) => (
                                     <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                         <td className="py-3 font-medium">{req.organizations?.name ?? '—'}</td>
-                                        <td className="py-3">{req.profiles?.full_name ?? '—'}</td>
+                                        <td className="py-3">{req.requester_name ?? '—'}</td>
                                         <td className="py-3">{req.plan_requested}</td>
                                         <td className="py-3">{req.duration_months} شهر</td>
                                         <td className="py-3">{req.payment_reference ?? '—'}</td>

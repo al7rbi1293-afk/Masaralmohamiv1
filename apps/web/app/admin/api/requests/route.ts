@@ -15,12 +15,23 @@ export async function GET() {
 
     const adminClient = createSupabaseServerClient();
 
-    const { data: subscriptionRequests, error: subscriptionError } = await adminClient
+    const { data: subscriptionRequestsRaw, error: subscriptionError } = await adminClient
         .from('subscription_requests')
         .select(`
-      *,
-      organizations:org_id ( id, name ),
-      profiles:requester_user_id ( full_name )
+      id,
+      org_id,
+      requester_user_id,
+      plan_requested,
+      duration_months,
+      payment_method,
+      payment_reference,
+      proof_file_path,
+      status,
+      notes,
+      requested_at,
+      decided_at,
+      decided_by,
+      organizations:org_id ( id, name )
     `)
         .order('requested_at', { ascending: false })
         .limit(200);
@@ -28,6 +39,35 @@ export async function GET() {
     if (subscriptionError) {
         return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
     }
+
+    const requesterUserIds = Array.from(
+        new Set(
+            ((subscriptionRequestsRaw as Array<{ requester_user_id?: string | null }> | null) ?? [])
+                .map((row) => row.requester_user_id)
+                .filter((value): value is string => Boolean(value)),
+        ),
+    );
+
+    const requesterNamesByUserId = new Map<string, string>();
+    if (requesterUserIds.length) {
+        const { data: requesterProfiles, error: requesterProfilesError } = await adminClient
+            .from('profiles')
+            .select('user_id, full_name')
+            .in('user_id', requesterUserIds);
+
+        if (requesterProfilesError) {
+            return NextResponse.json({ error: requesterProfilesError.message }, { status: 500 });
+        }
+
+        for (const profile of (requesterProfiles as Array<{ user_id: string; full_name: string | null }> | null) ?? []) {
+            requesterNamesByUserId.set(profile.user_id, profile.full_name ?? '');
+        }
+    }
+
+    const subscriptionRequests = ((subscriptionRequestsRaw as Array<any> | null) ?? []).map((row) => ({
+        ...row,
+        requester_name: row.requester_user_id ? requesterNamesByUserId.get(row.requester_user_id) ?? null : null,
+    }));
 
     const { data: fullVersionRequests, error: fullVersionError } = await adminClient
         .from('full_version_requests')

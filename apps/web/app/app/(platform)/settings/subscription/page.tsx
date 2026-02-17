@@ -4,7 +4,8 @@ import { buttonVariants } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { FullVersionRequestForm } from '@/components/sections/full-version-request-form';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
-import { ensureSubscriptionRowExists, listPlans } from '@/lib/subscriptions';
+import { ensureSubscriptionRowExists } from '@/lib/subscriptions';
+import { getPricingPlanCardByCode, SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
 
 function statusLabel(status: string) {
   switch (status) {
@@ -21,6 +22,10 @@ function statusLabel(status: string) {
     default:
       return status;
   }
+}
+
+function planLabel(planCode: string) {
+  return getPricingPlanCardByCode(planCode)?.title ?? planCode;
 }
 
 function formatDate(value: string | null) {
@@ -41,12 +46,10 @@ export default async function SubscriptionSettingsPage() {
   }
 
   let subscription: Awaited<ReturnType<typeof ensureSubscriptionRowExists>> | null = null;
-  let plans: Awaited<ReturnType<typeof listPlans>> = [];
   let errorMessage = '';
 
   try {
     subscription = await ensureSubscriptionRowExists();
-    plans = await listPlans();
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
 
@@ -109,7 +112,7 @@ export default async function SubscriptionSettingsPage() {
             <div>
               <dt className="text-slate-500 dark:text-slate-400">الخطة</dt>
               <dd className="mt-1 font-medium text-slate-800 dark:text-slate-100">
-                {subscription.plan_code}
+                {planLabel(subscription.plan_code)}
               </dd>
             </div>
             <div>
@@ -136,31 +139,27 @@ export default async function SubscriptionSettingsPage() {
 
       <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
         <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">الخطط المتاحة</h2>
-        {!plans.length ? (
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">لا توجد خطط حالياً.</p>
-        ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {plans.map((plan) => (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {SUBSCRIPTION_PRICING_CARDS.map((plan) => (
               <div
                 key={plan.code}
                 className="rounded-lg border border-brand-border p-4 dark:border-slate-700"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-brand-navy dark:text-slate-100">{plan.name_ar}</p>
+                    <p className="font-semibold text-brand-navy dark:text-slate-100">{plan.title}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{plan.code}</p>
                   </div>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {plan.price_monthly ? `${plan.price_monthly} ${plan.currency}` : 'تواصل معنا'}
+                    {plan.priceLabel}
                   </p>
                 </div>
                 <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
-                  {plan.seat_limit ? `حد المقاعد: ${plan.seat_limit}` : 'حد المقاعد: حسب الاتفاق'}
+                  {plan.seatsLabel}
                 </p>
               </div>
             ))}
           </div>
-        )}
       </section>
 
       <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">

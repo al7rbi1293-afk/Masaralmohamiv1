@@ -15,38 +15,32 @@ export async function GET() {
 
   const adminClient = createSupabaseServerClient();
 
-  const [{ data, error }, { data: pendingData, error: pendingError }] = await Promise.all([
-    adminClient
-      .from('profiles')
-      .select(`
-      user_id, full_name, phone, status, created_at,
-      memberships ( org_id, role, organizations:org_id ( name, status ) )
-    `)
-      .order('created_at', { ascending: false })
-      .limit(500),
-    adminClient
-      .schema('auth')
-      .from('users')
-      .select('id, email, created_at, email_confirmed_at')
-      .is('email_confirmed_at', null)
-      .order('created_at', { ascending: false })
-      .limit(500),
-  ]);
+  const { data: authUsersRaw, error: authUsersError } = await adminClient
+    .schema('auth')
+    .from('users')
+    .select('id, email, created_at, email_confirmed_at')
+    .order('created_at', { ascending: false })
+    .limit(1000);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (authUsersError) {
+    return NextResponse.json({ error: authUsersError.message }, { status: 500 });
   }
 
-  if (pendingError) {
-    return NextResponse.json({ error: pendingError.message }, { status: 500 });
-  }
+  const authUsers = (authUsersRaw as Array<{
+    id: string;
+    email: string | null;
+    created_at: string;
+    email_confirmed_at: string | null;
+  }> | null) ?? [];
 
-  const pending = ((pendingData as any[] | null) ?? []).map((row) => {
-    const createdAt = String(row.created_at ?? '');
-    const createdAtDate = new Date(createdAt);
-    const ageHours = Number.isNaN(createdAtDate.getTime())
-      ? 0
-      : (Date.now() - createdAtDate.getTime()) / (1000 * 60 * 60);
+  const pending = authUsers
+    .filter((row) => !row.email_confirmed_at)
+    .map((row) => {
+      const createdAt = String(row.created_at ?? '');
+      const createdAtDate = new Date(createdAt);
+      const ageHours = Number.isNaN(createdAtDate.getTime())
+        ? 0
+        : (Date.now() - createdAtDate.getTime()) / (1000 * 60 * 60);
 
     return {
       user_id: String(row.id),
@@ -55,9 +49,95 @@ export async function GET() {
       email_confirmed_at: row.email_confirmed_at ? String(row.email_confirmed_at) : null,
       older_than_3h: ageHours >= 3,
     };
-  });
+    });
 
-  return NextResponse.json({ users: data ?? [], pending });
+  const activatedUserIds = authUsers
+    .filter((row) => Boolean(row.email_confirmed_at))
+    .map((row) => row.id);
+
+  let profilesByUserId = new Map<string, {
+    full_name: string;
+    phone: string | null;
+    status: string;
+    created_at: string;
+  }>();
+
+  let membershipsByUserId = new Map<string, Array<{
+    org_id: string;
+    role: string;
+    organizations: { name: string; status: string } | null;
+  }>>();
+
+  if (activatedUserIds.length) {
+    const [{ data: profilesRaw, error: profilesError }, { data: membershipsRaw, error: membershipsError }] = await Promise.all([
+      adminClient
+        .from('profiles')
+        .select('user_id, full_name, phone, status, created_at')
+        .in('user_id', activatedUserIds),
+      adminClient
+        .from('memberships')
+        .select('user_id, org_id, role, organizations:org_id(name, status)')
+        .in('user_id', activatedUserIds),
+    ]);
+
+    if (profilesError) {
+      return NextResponse.json({ error: profilesError.message }, { status: 500 });
+    }
+
+    if (membershipsError) {
+      return NextResponse.json({ error: membershipsError.message }, { status: 500 });
+    }
+
+    for (const profile of (profilesRaw as Array<{
+      user_id: string;
+      full_name: string | null;
+      phone: string | null;
+      status: string | null;
+      created_at: string;
+    }> | null) ?? []) {
+      profilesByUserId.set(profile.user_id, {
+        full_name: profile.full_name ?? '',
+        phone: profile.phone ?? null,
+        status: profile.status ?? 'active',
+        created_at: profile.created_at,
+      });
+    }
+
+    for (const membership of (membershipsRaw as Array<{
+      user_id: string;
+      org_id: string;
+      role: string;
+      organizations: { name: string; status: string } | Array<{ name: string; status: string }> | null;
+    }> | null) ?? []) {
+      const list = membershipsByUserId.get(membership.user_id) ?? [];
+      const org = Array.isArray(membership.organizations)
+        ? membership.organizations[0] ?? null
+        : membership.organizations ?? null;
+      list.push({
+        org_id: membership.org_id,
+        role: membership.role,
+        organizations: org,
+      });
+      membershipsByUserId.set(membership.user_id, list);
+    }
+  }
+
+  const users = authUsers
+    .filter((row) => Boolean(row.email_confirmed_at))
+    .map((row) => {
+      const profile = profilesByUserId.get(row.id);
+      return {
+        user_id: row.id,
+        email: row.email,
+        full_name: profile?.full_name ?? '',
+        phone: profile?.phone ?? null,
+        status: profile?.status ?? 'active',
+        created_at: profile?.created_at ?? row.created_at,
+        memberships: membershipsByUserId.get(row.id) ?? [],
+      };
+    });
+
+  return NextResponse.json({ users, pending });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -111,8 +191,13 @@ export async function PATCH(request: NextRequest) {
   const newStatus = action === 'suspend' ? 'suspended' : 'active';
   const { error } = await adminClient
     .from('profiles')
-    .update({ status: newStatus })
-    .eq('user_id', user_id);
+    .upsert(
+      {
+        user_id,
+        status: newStatus,
+      },
+      { onConflict: 'user_id' },
+    );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

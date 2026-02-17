@@ -1,19 +1,17 @@
 // This needs to be a Client Component to manage state (Monthly/Yearly toggle)
 // But the current file is server component. We will make a wrapper.
 import { PricingClient } from '@/components/subscription/pricing-client';
-import { ensureSubscriptionRowExists, listPlans } from '@/lib/subscriptions';
+import { ensureSubscriptionRowExists } from '@/lib/subscriptions';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 
 export default async function SubscriptionPricingPage() {
-  let plans: Awaited<ReturnType<typeof listPlans>> = [];
   let errorMessage = '';
 
   try {
     // Owner-only (ensure subscription row exists) and also warms RLS context.
     await ensureSubscriptionRowExists();
-    plans = await listPlans();
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (message === 'لا تملك صلاحية تنفيذ هذا الإجراء.') {
@@ -52,11 +50,7 @@ export default async function SubscriptionPricingPage() {
         </p>
       ) : null}
 
-      {!plans.length ? (
-        <p className="text-sm text-slate-600 dark:text-slate-300">لا توجد خطط حالياً.</p>
-      ) : (
-        <PricingClient plans={plans} />
-      )}
+      <PricingClient />
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
         ملاحظة: إذا كانت التجربة منتهية، يمكنك ترقية الخطة ثم سيُفتح الوصول تلقائيًا بعد مراجعة الدفع.

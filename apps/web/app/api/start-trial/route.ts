@@ -152,33 +152,11 @@ export async function POST(request: NextRequest) {
     }
 
     const siteUrl = getRequestSiteUrl(request);
+    const nextPath = '/app';
+    const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
-    const { data: existingAuthUser, error: existingAuthUserError } = await adminClient
-      .schema('auth')
-      .from('users')
-      .select('id, email_confirmed_at')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (existingAuthUserError) {
-      logError('trial_start_failed', {
-        requestId,
-        ip: requestIp,
-        reason: 'existing_auth_user_lookup_failed',
-        error: existingAuthUserError.message,
-      });
-
-      return jsonResponse(
-        { message: 'تعذر بدء التجربة. حاول مرة أخرى.' },
-        500,
-        requestId,
-        rate,
-      );
-    }
-
-    if (existingAuthUser && !(existingAuthUser as any).email_confirmed_at) {
-      const nextPath = '/app';
-      const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    // If the user exists but isn't confirmed yet, resend activation via magic link.
+    if (isEmailNotConfirmed(signInErrorMessage)) {
       const magicLinkResult = await adminClient.auth.admin.generateLink({
         type: 'magiclink',
         email,
@@ -229,17 +207,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (existingAuthUser) {
-      return jsonResponse(
-        { message: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول.' },
-        409,
-        requestId,
-        rate,
-      );
-    }
-
-    const nextPath = '/app';
-    const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    // New email or wrong password. Try to create the account; if it already exists,
+    // send a magic link instead (email access required to proceed).
     const createUserResult = await adminClient.auth.admin.generateLink({
       type: 'signup',
       email,
@@ -256,14 +225,51 @@ export async function POST(request: NextRequest) {
 
     if (createUserResult.error) {
       if (isAlreadyRegistered(createUserResult.error.message)) {
-        logWarn('signup_failed_existing_user', {
+        const magicLinkResult = await adminClient.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+          options: {
+            redirectTo,
+          },
+        });
+
+        const verificationLink = buildVerificationLink({
+          siteUrl,
+          nextPath,
+          otpType: 'magiclink',
+          tokenHash: magicLinkResult.data?.properties?.hashed_token ?? null,
+          fallbackActionLink: magicLinkResult.data?.properties?.action_link ?? null,
+        });
+
+        if (magicLinkResult.error || !verificationLink) {
+          logError('trial_start_failed', {
+            requestId,
+            ip: requestIp,
+            reason: 'activation_link_regeneration_failed',
+            error: magicLinkResult.error?.message ?? null,
+          });
+
+          return jsonResponse(
+            { message: 'تعذر إرسال رابط التفعيل. حاول مرة أخرى.' },
+            500,
+            requestId,
+            rate,
+          );
+        }
+
+        await sendWelcomeActivationEmail({
+          email,
+          fullName,
+          verificationLink,
           requestId,
-          ip: requestIp,
         });
 
         return jsonResponse(
-          { message: 'هذا البريد مسجل بالفعل. استخدم تسجيل الدخول.' },
-          409,
+          {
+            message: 'الحساب موجود بالفعل. أرسلنا رابطًا إلى بريدك لإكمال التفعيل أو تسجيل الدخول.',
+            redirectTo: '/auth/verify',
+          },
+          200,
           requestId,
           rate,
         );

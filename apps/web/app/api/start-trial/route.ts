@@ -131,12 +131,16 @@ export async function POST(request: NextRequest) {
   let session = signInResult.data.session;
 
   if (!session) {
-    if (!isInvalidCredentials(signInResult.error?.message)) {
+    const signInErrorMessage = signInResult.error?.message;
+    const canHandleAsSignupFlow =
+      isInvalidCredentials(signInErrorMessage) || isEmailNotConfirmed(signInErrorMessage);
+
+    if (!canHandleAsSignupFlow) {
       logWarn('trial_start_failed', {
         requestId,
         ip: requestIp,
         reason: 'sign_in_failed',
-        error: signInResult.error?.message ?? null,
+        error: signInErrorMessage ?? null,
       });
 
       return jsonResponse(
@@ -489,6 +493,15 @@ function isInvalidCredentials(message?: string) {
   }
 
   return message.toLowerCase().includes('invalid login credentials');
+}
+
+function isEmailNotConfirmed(message?: string) {
+  if (!message) {
+    return false;
+  }
+
+  const normalized = message.toLowerCase();
+  return normalized.includes('email not confirmed') || normalized.includes('not confirmed');
 }
 
 function isAlreadyRegistered(message?: string) {

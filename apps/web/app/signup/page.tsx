@@ -32,6 +32,12 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const invitedEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
   const status = searchParams?.status ? safeDecode(searchParams.status) : '';
 
+  // New office signup happens via the marketing trial form (/#trial).
+  // The /signup page is reserved for invite acceptance flow (token-based).
+  if (!token) {
+    redirect('/#trial');
+  }
+
   const user = await getCurrentAuthUser();
   if (user) {
     if (token) {

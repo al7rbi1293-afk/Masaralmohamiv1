@@ -155,14 +155,11 @@ export default function HomePage() {
               بواجهة بسيطة وصلاحيات وسجل تدقيق يحمي المكتب.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-              <Link href="#trial" className={buttonVariants('primary', 'lg')}>
-                برمج مكتبك الآن
-              </Link>
               <Link
                 href="/signin"
                 className={buttonVariants('outline', 'lg')}
               >
-                دخول الإدارة
+                تسجيل الدخول
               </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">

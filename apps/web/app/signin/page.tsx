@@ -54,7 +54,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   const signUpHref = inviteToken
     ? `/signup?token=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(prefilledEmail)}`
-    : '/signup';
+    : '/#trial';
+  const signUpLabel = inviteToken ? 'إنشاء حساب' : 'تسجيل مكتب جديد';
 
   return (
     <Section className="py-16 sm:py-20">
@@ -116,7 +117,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               نسيت كلمة المرور؟
             </Link>
             <Link href={signUpHref} className="block text-brand-emerald hover:underline">
-              إنشاء حساب
+              {signUpLabel}
             </Link>
             <Link href="/" className="text-brand-emerald hover:underline">
               العودة للموقع

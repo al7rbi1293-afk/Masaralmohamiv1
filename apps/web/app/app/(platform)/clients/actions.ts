@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
-import { createClient, getClientById, setClientStatus, updateClient } from '@/lib/clients';
+import { createClient, getClientById, setClientStatus, updateClient, deleteClient } from '@/lib/clients';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
@@ -111,6 +111,25 @@ export async function restoreClientAction(id: string, redirectTo = '/app/clients
     if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('client_restore_failed', { clientId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
+  }
+}
+
+export async function deleteClientAction(id: string, redirectTo = '/app/clients') {
+  try {
+    await deleteClient(id);
+    await logAudit({
+      action: 'client.deleted',
+      entityType: 'client',
+      entityId: id,
+      meta: {},
+    });
+    logInfo('client_deleted', { clientId: id });
+    redirect(withToast(redirectTo, 'success', 'تم حذف العميل بنجاح.'));
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message = toUserMessage(error);
+    logError('client_delete_failed', { clientId: id, message });
     redirect(withToast(redirectTo, 'error', message));
   }
 }

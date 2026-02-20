@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listClients, type ClientStatus, type ClientType } from '@/lib/clients';
-import { archiveClientAction, restoreClientAction } from './actions';
+import { archiveClientAction, restoreClientAction, deleteClientAction } from './actions';
 
 type ClientsPageProps = {
   searchParams?: {
@@ -170,18 +170,27 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                             confirmLabel="أرشفة"
                             destructive
                           />
-                        ) : (
-                          <ConfirmActionForm
-                            action={restoreClientAction.bind(null, client.id, '/app/clients')}
-                            triggerLabel="استعادة"
-                            triggerVariant="outline"
-                            triggerSize="sm"
-                            confirmTitle="استعادة العميل"
-                            confirmMessage="هل تريد استعادة هذا العميل إلى الحالة النشطة؟"
-                            confirmLabel="استعادة"
-                            destructive={false}
-                          />
+                            <ConfirmActionForm
+                              action={restoreClientAction.bind(null, client.id, '/app/clients')}
+                              triggerLabel="استعادة"
+                              triggerVariant="outline"
+                              triggerSize="sm"
+                              confirmTitle="استعادة العميل"
+                              confirmMessage="هل تريد استعادة هذا العميل إلى الحالة النشطة؟"
+                              confirmLabel="استعادة"
+                              destructive={false}
+                            />
                         )}
+                        <ConfirmActionForm
+                          action={deleteClientAction.bind(null, client.id, '/app/clients')}
+                          triggerLabel="إزالة"
+                          triggerVariant="outline"
+                          triggerSize="sm"
+                          confirmTitle="إزالة العميل نهائياً"
+                          confirmMessage="هل أنت متأكد أنك تريد إزالة هذا العميل نهائيًا من المكتب؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع البيانات المرتبطة."
+                          confirmLabel="إزالة نهائية"
+                          destructive={true}
+                        />
                       </div>
                     </td>
                   </tr>

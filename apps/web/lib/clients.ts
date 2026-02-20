@@ -182,6 +182,21 @@ export async function setClientStatus(id: string, status: ClientStatus): Promise
   await updateClient(id, { status });
 }
 
+export async function deleteClient(id: string): Promise<void> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('org_id', orgId)
+    .eq('id', id);
+
+  if (error) {
+    throw error;
+  }
+}
+
 function cleanQuery(value?: string) {
   if (!value) return '';
   return value.replaceAll(',', ' ').trim().slice(0, 120);

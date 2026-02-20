@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { computeEntitlements, type SubscriptionSnapshot, type TrialSnapshot } from './lib/entitlements';
 import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
 } from './lib/supabase/constants';
+
+// ────────────────────────────────────────────
+// Types for Supabase row shapes (replaces `as any`)
+// ────────────────────────────────────────────
+
+type ProfileStatusRow = { status: string };
+type MembershipRow = { org_id: string; created_at?: string };
+type OrgStatusRow = { status: string };
+type AdminRow = { user_id: string };
+type TrialRow = { ends_at: string | null; status: string };
+type SubscriptionRow = { status: string; current_period_end: string | null };
+
+// ────────────────────────────────────────────
+// Security headers
+// ────────────────────────────────────────────
 
 function setSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -16,6 +31,10 @@ function setSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
+// ────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────
+
 function redirectToSignIn(request: NextRequest) {
   const url = new URL('/signin', request.url);
   url.searchParams.set('next', request.nextUrl.pathname);
@@ -23,95 +42,24 @@ function redirectToSignIn(request: NextRequest) {
 }
 
 function isBypassedPath(pathname: string) {
-  // Locked users must be able to reach the upgrade page.
   if (pathname === '/app/settings/subscription' || pathname.startsWith('/app/settings/subscription/')) {
     return true;
   }
-  // Allow creating Stripe checkout sessions even when the org is locked (trial ended).
   if (pathname.startsWith('/app/api/stripe/')) {
     return true;
   }
-  // Expired page is always accessible when authenticated.
   if (pathname === '/app/expired' || pathname.startsWith('/app/expired/')) {
     return true;
   }
-  // Suspended page is always accessible.
   if (pathname === '/app/suspended' || pathname.startsWith('/app/suspended/')) {
     return true;
   }
   return false;
 }
 
-async function isAdmin(params: {
-  supabaseUrl: string;
-  supabaseAnon: string;
-  accessToken: string;
-  userId: string;
-}): Promise<boolean> {
-  const { supabaseUrl, supabaseAnon, accessToken, userId } = params;
-  const supabase = createClient(supabaseUrl, supabaseAnon, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-
-  const { data } = await supabase
-    .from('app_admins')
-    .select('user_id')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  return !!data;
-}
-
-async function isAccountSuspended(params: {
-  supabaseUrl: string;
-  supabaseAnon: string;
-  accessToken: string;
-  userId: string;
-}): Promise<boolean> {
-  const { supabaseUrl, supabaseAnon, accessToken, userId } = params;
-  const supabase = createClient(supabaseUrl, supabaseAnon, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-
-  // Check profile status
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('status')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (profile && (profile as any).status === 'suspended') {
-    return true;
-  }
-
-  // Check org status
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('org_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  if (membership) {
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('status')
-      .eq('id', (membership as any).org_id)
-      .maybeSingle();
-
-    if (org && (org as any).status === 'suspended') {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 function missingEnvResponse() {
   return new NextResponse(
-    'إعدادات البيئة غير مكتملة. Missing environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+    'إعدادات البيئة غير مكتملة.',
     { status: 500 },
   );
 }
@@ -122,23 +70,79 @@ function isMissingRelationError(message?: string) {
   return normalized.includes('does not exist') || normalized.includes('relation');
 }
 
-async function getOrgIdForUser(params: {
-  supabaseUrl: string;
-  supabaseAnon: string;
-  accessToken: string;
-  userId: string;
-}) {
-  const { supabaseUrl, supabaseAnon, accessToken, userId } = params;
-  const supabase = createClient(supabaseUrl, supabaseAnon, {
+/** Create a single RLS-aware Supabase client for middleware use. */
+function createRlsClient(supabaseUrl: string, supabaseAnon: string, accessToken: string) {
+  return createClient(supabaseUrl, supabaseAnon, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
+}
 
-  const { data, error } = await supabase
+/** Set refreshed session cookies on a response (DRY helper). */
+function applyRefreshedCookies(
+  response: NextResponse,
+  session: { access_token: string; refresh_token: string; expires_in: number } | null,
+) {
+  if (!session) return;
+  response.cookies.set(ACCESS_COOKIE_NAME, session.access_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: session.expires_in,
+  });
+  response.cookies.set(REFRESH_COOKIE_NAME, session.refresh_token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+// ────────────────────────────────────────────
+// DB check functions (accept shared client)
+// ────────────────────────────────────────────
+
+async function isAdmin(rls: SupabaseClient, userId: string): Promise<boolean> {
+  const { data } = await rls
+    .from('app_admins')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return !!data;
+}
+
+async function isAccountSuspended(rls: SupabaseClient, userId: string): Promise<boolean> {
+  const { data: profile } = await rls
+    .from('profiles')
+    .select('status')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (profile && (profile as ProfileStatusRow).status === 'suspended') {
+    return true;
+  }
+
+  const { data: membership } = await rls
+    .from('memberships')
+    .select('org_id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (membership) {
+    const { data: org } = await rls
+      .from('organizations')
+      .select('status')
+      .eq('id', (membership as MembershipRow).org_id)
+      .maybeSingle();
+
+    if (org && (org as OrgStatusRow).status === 'suspended') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function getOrgIdForUser(rls: SupabaseClient, userId: string): Promise<string | null> {
+  const { data, error } = await rls
     .from('memberships')
     .select('org_id, created_at')
     .eq('user_id', userId)
@@ -146,110 +150,68 @@ async function getOrgIdForUser(params: {
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    return null;
-  }
-
-  return (data as any)?.org_id ? String((data as any).org_id) : null;
+  if (error) return null;
+  const row = data as MembershipRow | null;
+  return row?.org_id ? String(row.org_id) : null;
 }
 
-async function getTrialSnapshot(params: {
-  supabaseUrl: string;
-  supabaseAnon: string;
-  accessToken: string;
-  orgId: string;
-}): Promise<TrialSnapshot> {
-  const { supabaseUrl, supabaseAnon, accessToken, orgId } = params;
-  const supabase = createClient(supabaseUrl, supabaseAnon, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  });
-
-  const { data, error } = await supabase
+async function getTrialSnapshot(rls: SupabaseClient, orgId: string): Promise<TrialSnapshot> {
+  const { data, error } = await rls
     .from('trial_subscriptions')
     .select('ends_at, status')
     .eq('org_id', orgId)
     .maybeSingle();
 
-  if (error || !data) {
-    return null;
-  }
-
+  if (error || !data) return null;
+  const row = data as TrialRow;
   return {
-    endsAt: (data as any).ends_at ? String((data as any).ends_at) : null,
-    status: String((data as any).status ?? 'active'),
+    endsAt: row.ends_at ? String(row.ends_at) : null,
+    status: String(row.status ?? 'active'),
   };
 }
 
-async function getSubscriptionSnapshot(params: {
-  supabaseUrl: string;
-  supabaseAnon: string;
-  accessToken: string;
-  orgId: string;
-}): Promise<SubscriptionSnapshot> {
-  const { supabaseUrl, supabaseAnon, accessToken, orgId } = params;
-  const supabase = createClient(supabaseUrl, supabaseAnon, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  });
-
-  const { data, error } = await supabase
+async function getSubscriptionSnapshot(rls: SupabaseClient, orgId: string): Promise<SubscriptionSnapshot> {
+  const { data, error } = await rls
     .from('subscriptions')
     .select('status, current_period_end')
     .eq('org_id', orgId)
     .maybeSingle();
 
   if (error) {
-    // If migrations haven't been applied yet, don't break the app.
-    if (isMissingRelationError(error.message)) {
-      return null;
-    }
+    if (isMissingRelationError(error.message)) return null;
     return null;
   }
-
   if (!data) return null;
 
+  const row = data as SubscriptionRow;
   return {
-    status: String((data as any).status ?? 'trial'),
-    currentPeriodEnd: (data as any).current_period_end ? String((data as any).current_period_end) : null,
+    status: String(row.status ?? 'trial'),
+    currentPeriodEnd: row.current_period_end ? String(row.current_period_end) : null,
   };
 }
 
-async function shouldLockApp(params: {
-  request: NextRequest;
-  supabaseUrl: string;
-  supabaseAnon: string;
-  accessToken: string;
-  userId: string;
-}) {
-  const { request, supabaseUrl, supabaseAnon, accessToken, userId } = params;
-  const pathname = request.nextUrl.pathname;
+async function shouldLockApp(
+  rls: SupabaseClient,
+  pathname: string,
+  userId: string,
+): Promise<boolean> {
+  if (!pathname.startsWith('/app') || isBypassedPath(pathname)) return false;
 
-  if (!pathname.startsWith('/app') || isBypassedPath(pathname)) {
-    return false;
-  }
-
-  const orgId = await getOrgIdForUser({ supabaseUrl, supabaseAnon, accessToken, userId });
-  if (!orgId) {
-    return false;
-  }
+  const orgId = await getOrgIdForUser(rls, userId);
+  if (!orgId) return false;
 
   const [trial, subscription] = await Promise.all([
-    getTrialSnapshot({ supabaseUrl, supabaseAnon, accessToken, orgId }),
-    getSubscriptionSnapshot({ supabaseUrl, supabaseAnon, accessToken, orgId }),
+    getTrialSnapshot(rls, orgId),
+    getSubscriptionSnapshot(rls, orgId),
   ]);
 
   const entitlements = computeEntitlements({ trial, subscription });
   return entitlements.access === 'locked';
 }
+
+// ────────────────────────────────────────────
+// Main middleware
+// ────────────────────────────────────────────
 
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -261,7 +223,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const requestHeaders = new Headers(request.headers);
-
   const accessToken = request.cookies.get(ACCESS_COOKIE_NAME)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE_NAME)?.value;
 
@@ -269,21 +230,21 @@ export async function middleware(request: NextRequest) {
     return redirectToSignIn(request);
   }
 
-  const supabase = createClient(supabaseUrl, supabaseAnon, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+  // Auth client — only used for getUser / refreshSession (no RLS token needed)
+  const authClient = createClient(supabaseUrl, supabaseAnon, {
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 
   let userId: string | null = null;
   let tokenForRls = accessToken ?? '';
-  let refreshedSession:
-    | { access_token: string; refresh_token: string; expires_in: number; user_id: string }
-    | null = null;
+  let refreshedSession: {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+  } | null = null;
 
   if (accessToken) {
-    const { data, error } = await supabase.auth.getUser(accessToken);
+    const { data, error } = await authClient.auth.getUser(accessToken);
     if (!error && data.user) {
       userId = data.user.id;
       tokenForRls = accessToken;
@@ -291,7 +252,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!userId && refreshToken) {
-    const { data, error } = await supabase.auth.refreshSession({
+    const { data, error } = await authClient.auth.refreshSession({
       refresh_token: refreshToken,
     });
 
@@ -302,71 +263,40 @@ export async function middleware(request: NextRequest) {
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
         expires_in: data.session.expires_in,
-        user_id: data.session.user.id,
       };
     }
   }
 
   if (userId) {
-    // Propagate the access token so server components/handlers can perform RLS queries.
     requestHeaders.set('x-masar-access-token', tokenForRls);
+
+    // Single RLS client reused for all DB checks
+    const rls = createRlsClient(supabaseUrl, supabaseAnon, tokenForRls);
 
     // --- Admin route protection ---
     if (pathname.startsWith('/admin')) {
-      const adminCheck = await isAdmin({
-        supabaseUrl,
-        supabaseAnon,
-        accessToken: tokenForRls,
-        userId,
-      }).catch(() => false);
+      const adminCheck = await isAdmin(rls, userId).catch(() => false);
 
       if (!adminCheck) {
-        let response: NextResponse;
-        if (pathname.startsWith('/admin/api/')) {
-          response = NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
-        } else {
-          response = NextResponse.redirect(new URL('/app', request.url));
-        }
-        if (refreshedSession) {
-          response.cookies.set(ACCESS_COOKIE_NAME, refreshedSession.access_token, {
-            ...SESSION_COOKIE_OPTIONS,
-            maxAge: refreshedSession.expires_in,
-          });
-          response.cookies.set(REFRESH_COOKIE_NAME, refreshedSession.refresh_token, {
-            ...SESSION_COOKIE_OPTIONS,
-            maxAge: 60 * 60 * 24 * 30,
-          });
-        }
-        return response;
+        const response = pathname.startsWith('/admin/api/')
+          ? NextResponse.json({ error: 'غير مصرح.' }, { status: 403 })
+          : NextResponse.redirect(new URL('/app', request.url));
+        applyRefreshedCookies(response, refreshedSession);
+        return setSecurityHeaders(response);
       }
 
-      // Admin is verified — proceed
-      let response = NextResponse.next({ request: { headers: requestHeaders } });
-      if (refreshedSession) {
-        response.cookies.set(ACCESS_COOKIE_NAME, refreshedSession.access_token, {
-          ...SESSION_COOKIE_OPTIONS,
-          maxAge: refreshedSession.expires_in,
-        });
-        response.cookies.set(REFRESH_COOKIE_NAME, refreshedSession.refresh_token, {
-          ...SESSION_COOKIE_OPTIONS,
-          maxAge: 60 * 60 * 24 * 30,
-        });
-      }
-      return response;
+      const response = NextResponse.next({ request: { headers: requestHeaders } });
+      applyRefreshedCookies(response, refreshedSession);
+      return setSecurityHeaders(response);
     }
 
     // --- Suspended account check (for /app routes) ---
     if (pathname.startsWith('/app') && !isBypassedPath(pathname)) {
-      const suspended = await isAccountSuspended({
-        supabaseUrl,
-        supabaseAnon,
-        accessToken: tokenForRls,
-        userId,
-      }).catch(() => false);
+      const suspended = await isAccountSuspended(rls, userId).catch(() => false);
 
       if (suspended) {
         if (pathname === '/app/suspended') {
-          // Already on suspended page, allow through
+          // Already on suspended page, fall through
         } else if (pathname.startsWith('/app/api/')) {
           return NextResponse.json(
             { error: 'تم تعليق الحساب. تواصل مع الإدارة.' },
@@ -374,29 +304,14 @@ export async function middleware(request: NextRequest) {
           );
         } else {
           const response = NextResponse.redirect(new URL('/app/suspended', request.url));
-          if (refreshedSession) {
-            response.cookies.set(ACCESS_COOKIE_NAME, refreshedSession.access_token, {
-              ...SESSION_COOKIE_OPTIONS,
-              maxAge: refreshedSession.expires_in,
-            });
-            response.cookies.set(REFRESH_COOKIE_NAME, refreshedSession.refresh_token, {
-              ...SESSION_COOKIE_OPTIONS,
-              maxAge: 60 * 60 * 24 * 30,
-            });
-          }
-          return response;
+          applyRefreshedCookies(response, refreshedSession);
+          return setSecurityHeaders(response);
         }
       }
     }
 
-    const locked = await shouldLockApp({
-      request,
-      supabaseUrl,
-      supabaseAnon,
-      accessToken: tokenForRls,
-      userId,
-    });
-
+    // --- Trial/subscription lock check ---
+    const locked = await shouldLockApp(rls, pathname, userId);
     const isApi = pathname.startsWith('/app/api/');
     let response: NextResponse;
 
@@ -408,22 +323,10 @@ export async function middleware(request: NextRequest) {
     } else if (locked) {
       response = NextResponse.redirect(new URL('/app/expired', request.url));
     } else {
-      response = NextResponse.next({
-        request: { headers: requestHeaders },
-      });
+      response = NextResponse.next({ request: { headers: requestHeaders } });
     }
 
-    if (refreshedSession) {
-      response.cookies.set(ACCESS_COOKIE_NAME, refreshedSession.access_token, {
-        ...SESSION_COOKIE_OPTIONS,
-        maxAge: refreshedSession.expires_in,
-      });
-      response.cookies.set(REFRESH_COOKIE_NAME, refreshedSession.refresh_token, {
-        ...SESSION_COOKIE_OPTIONS,
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    }
-
+    applyRefreshedCookies(response, refreshedSession);
     return setSecurityHeaders(response);
   }
 

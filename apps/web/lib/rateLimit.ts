@@ -38,6 +38,14 @@ export function checkRateLimit(config: RateLimitConfig): RateLimitResult {
   const { key, limit, windowMs } = config;
   const now = Date.now();
   const store = getStore();
+
+  // Periodically clean up expired entries to prevent memory growth
+  if (store.size > 100) {
+    for (const [k, v] of store) {
+      if (v.resetAt <= now) store.delete(k);
+    }
+  }
+
   const current = store.get(key);
 
   if (!current || current.resetAt <= now) {

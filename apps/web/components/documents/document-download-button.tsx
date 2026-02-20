@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 type DocumentDownloadButtonProps = {
     storagePath?: string | null;
     label?: string;
-    variant?: 'outline' | 'ghost' | 'primary' | 'secondary' | 'danger' | 'warning' | 'success';
-    size?: 'sm' | 'md' | 'lg' | 'icon';
+    variant?: 'outline' | 'ghost' | 'primary' | 'secondary';
+    size?: 'sm' | 'md' | 'lg';
     className?: string;
 };
 

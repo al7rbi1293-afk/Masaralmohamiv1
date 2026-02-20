@@ -7,10 +7,19 @@ import {
   SESSION_COOKIE_OPTIONS,
 } from './lib/supabase/constants';
 
+function setSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  return response;
+}
+
 function redirectToSignIn(request: NextRequest) {
   const url = new URL('/signin', request.url);
   url.searchParams.set('next', request.nextUrl.pathname);
-  return NextResponse.redirect(url);
+  return setSecurityHeaders(NextResponse.redirect(url));
 }
 
 function isBypassedPath(pathname: string) {
@@ -415,7 +424,7 @@ export async function middleware(request: NextRequest) {
       });
     }
 
-    return response;
+    return setSecurityHeaders(response);
   }
 
   const response = redirectToSignIn(request);

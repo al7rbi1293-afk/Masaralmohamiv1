@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
 import { createClient, getClientById, setClientStatus, updateClient, deleteClient } from '@/lib/clients';
@@ -40,6 +41,7 @@ export async function createClientAction(formData: FormData) {
       meta: { type: created.type },
     });
     logInfo('client_created', { clientId: created.id });
+    revalidatePath('/app/clients');
     redirect(`/app/clients/${created.id}?success=${encodeURIComponent('تم إنشاء العميل.')}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -68,6 +70,8 @@ export async function updateClientAction(id: string, formData: FormData) {
     });
 
     logInfo('client_updated', { clientId: id });
+    revalidatePath('/app/clients');
+    revalidatePath(`/app/clients/${id}`);
     redirect(`/app/clients/${id}?success=${encodeURIComponent('تم تحديث بيانات العميل.')}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -78,6 +82,9 @@ export async function updateClientAction(id: string, formData: FormData) {
 }
 
 export async function archiveClientAction(id: string, redirectTo = '/app/clients') {
+  if (!isValidUuid(id)) {
+    redirect(withToast(redirectTo, 'error', 'معرف العميل غير صالح.'));
+  }
   try {
     await setClientStatus(id, 'archived');
     await logAudit({
@@ -87,6 +94,7 @@ export async function archiveClientAction(id: string, redirectTo = '/app/clients
       meta: { changed: ['status'] },
     });
     logInfo('client_archived', { clientId: id });
+    revalidatePath('/app/clients');
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة العميل.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -97,6 +105,9 @@ export async function archiveClientAction(id: string, redirectTo = '/app/clients
 }
 
 export async function restoreClientAction(id: string, redirectTo = '/app/clients') {
+  if (!isValidUuid(id)) {
+    redirect(withToast(redirectTo, 'error', 'معرف العميل غير صالح.'));
+  }
   try {
     await setClientStatus(id, 'active');
     await logAudit({
@@ -106,6 +117,7 @@ export async function restoreClientAction(id: string, redirectTo = '/app/clients
       meta: { changed: ['status'] },
     });
     logInfo('client_restored', { clientId: id });
+    revalidatePath('/app/clients');
     redirect(withToast(redirectTo, 'success', 'تمت استعادة العميل.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -116,6 +128,9 @@ export async function restoreClientAction(id: string, redirectTo = '/app/clients
 }
 
 export async function deleteClientAction(id: string, redirectTo = '/app/clients') {
+  if (!isValidUuid(id)) {
+    redirect(withToast(redirectTo, 'error', 'معرف العميل غير صالح.'));
+  }
   try {
     await deleteClient(id);
     await logAudit({
@@ -125,6 +140,7 @@ export async function deleteClientAction(id: string, redirectTo = '/app/clients'
       meta: {},
     });
     logInfo('client_deleted', { clientId: id });
+    revalidatePath('/app/clients');
     redirect(withToast(redirectTo, 'success', 'تم حذف العميل بنجاح.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -204,3 +220,9 @@ function diffClientFields(before: Awaited<ReturnType<typeof getClientById>>, aft
   }
   return changed;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+

@@ -9,7 +9,7 @@ import { CircuitOpenError, TimeoutError, withCircuitBreaker, withTimeout } from 
 const uploadUrlSchema = z.object({
   document_id: z.string().uuid(),
   file_name: z.string().trim().min(1, 'اسم الملف مطلوب.').max(255, 'اسم الملف طويل جدًا.'),
-  file_size: z.number().int().positive('حجم الملف غير صالح.'),
+  file_size: z.number().int().positive('حجم الملف غير صالح.').max(50 * 1024 * 1024, 'الحد الأقصى لحجم الملف 50 ميجابايت.'),
   mime_type: z.string().trim().max(150).optional().or(z.literal('')),
 });
 

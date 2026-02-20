@@ -29,8 +29,10 @@ export function getIntegrationEncryptionKey() {
 }
 
 function missingEnvError(name: string) {
+  // Log the env var name only server-side, don't expose to users
+  console.error(`Missing required environment variable: ${name}`);
   return new Error(
-    `متغير البيئة ${name} غير مضبوط. Missing required environment variable: ${name}.`,
+    'إعدادات البيئة غير مكتملة. يرجى التواصل مع الدعم الفني.',
   );
 }
 

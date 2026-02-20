@@ -66,6 +66,12 @@ export function checkRateLimit(config: RateLimitConfig): RateLimitResult {
 }
 
 export function getRequestIp(request: NextRequest): string {
+  // Prefer Vercel's trusted IP (not spoofable by the client)
+  const vercelIp = (request as any).ip;
+  if (vercelIp && typeof vercelIp === 'string') {
+    return vercelIp.trim();
+  }
+
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
     const [first] = forwardedFor.split(',');

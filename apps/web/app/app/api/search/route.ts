@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
         .from('matters')
         .select('id, title, status, is_private, client_id, summary', { count: 'exact' })
         .eq('org_id', orgId)
+        .eq('is_private', false)
         .or(`title.ilike.${pattern},summary.ilike.${pattern}`)
         .order('updated_at', { ascending: false })
         .range(0, 9),

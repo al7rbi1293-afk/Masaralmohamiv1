@@ -164,8 +164,7 @@ function emptyToNull(value?: string) {
 }
 
 function toUserMessage(error: unknown) {
-  console.error("DEBUG SUPABASE ERROR:", error);
-  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : JSON.stringify(error);
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
   const normalized = message.toLowerCase();
 
   if (
@@ -187,7 +186,8 @@ function toUserMessage(error: unknown) {
     return 'لا يمكن حذف العميل لأنه مرتبط ببيانات أخرى مثل القضايا أو الفواتير.';
   }
 
-  return message || 'تعذر الحفظ. حاول مرة أخرى.';
+  // لا نعرض رسائل الخطأ الداخلية للمستخدم أبداً
+  return 'تعذر الحفظ. حاول مرة أخرى.';
 }
 
 function withToast(path: string, key: 'success' | 'error', message: string) {

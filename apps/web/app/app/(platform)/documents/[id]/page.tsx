@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
 import { DocumentEmailShareButton } from '@/components/documents/document-email-share-button';
 import { DocumentVersionActions } from '@/components/documents/document-version-actions';
+import { DocumentDownloadButton } from '@/components/documents/document-download-button';
 import { getDocumentById, listDocumentVersions } from '@/lib/documents';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
@@ -111,6 +112,7 @@ export default async function DocumentDetailsPage({ params, searchParams }: Docu
                     <th className="py-2 text-start font-medium">الحجم</th>
                     <th className="py-2 text-start font-medium">تاريخ الرفع</th>
                     <th className="py-2 text-start font-medium">الرافع</th>
+                    <th className="py-2 text-start font-medium">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-border dark:divide-slate-800">
@@ -124,6 +126,9 @@ export default async function DocumentDetailsPage({ params, searchParams }: Docu
                       </td>
                       <td className="py-2 text-slate-700 dark:text-slate-200">
                         {currentUser?.id && v.uploaded_by === currentUser.id ? 'أنت' : v.uploaded_by}
+                      </td>
+                      <td className="py-2">
+                        <DocumentDownloadButton storagePath={v.storage_path} variant="ghost" size="sm" />
                       </td>
                     </tr>
                   ))}

@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
+import { DocumentDownloadButton } from '@/components/documents/document-download-button';
 import { MatterMembersClient } from '@/components/matters/matter-members-client';
 import { MatterTasksClient } from '@/components/tasks/matter-tasks-client';
 import { listClients } from '@/lib/clients';
@@ -408,12 +409,12 @@ async function MatterTimelineSection({
   const typeRaw = (searchParams?.type ?? 'all').trim();
   const typeFilter: MatterEventType | 'all' =
     typeRaw === 'all' ||
-    typeRaw === 'hearing' ||
-    typeRaw === 'call' ||
-    typeRaw === 'note' ||
-    typeRaw === 'email' ||
-    typeRaw === 'meeting' ||
-    typeRaw === 'other'
+      typeRaw === 'hearing' ||
+      typeRaw === 'call' ||
+      typeRaw === 'note' ||
+      typeRaw === 'email' ||
+      typeRaw === 'meeting' ||
+      typeRaw === 'other'
       ? typeRaw
       : 'all';
   const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
@@ -658,6 +659,7 @@ async function MatterDocumentsSection({
                         <Link href={`/app/documents/${doc.id}`} className={buttonVariants('ghost', 'sm')}>
                           عرض
                         </Link>
+                        <DocumentDownloadButton storagePath={doc.latestVersion?.storage_path} variant="ghost" size="sm" />
                         <DocumentShareButton documentId={doc.id} />
                       </div>
                     </td>

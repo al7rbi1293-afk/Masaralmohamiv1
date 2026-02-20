@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
+import { DocumentDownloadButton } from '@/components/documents/document-download-button';
 import { listDocuments } from '@/lib/documents';
 import { listMatters } from '@/lib/matters';
 
@@ -142,6 +143,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                         <Link href={`/app/documents/${doc.id}`} className={buttonVariants('ghost', 'sm')}>
                           عرض
                         </Link>
+                        <DocumentDownloadButton storagePath={doc.latestVersion?.storage_path} variant="ghost" size="sm" />
                         <DocumentShareButton documentId={doc.id} />
                       </div>
                     </td>

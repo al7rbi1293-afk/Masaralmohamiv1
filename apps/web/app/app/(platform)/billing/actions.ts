@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createInvoice, createQuote, getInvoiceById, itemsSchema, updateInvoice, updateQuote } from '@/lib/billing';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
+import { toUserMessage, emptyToNull } from '@/lib/shared-utils';
 
 const quoteFormSchema = z.object({
   client_id: z.string().uuid('يرجى اختيار العميل.'),
@@ -214,11 +215,6 @@ function toInvoiceObject(formData: FormData) {
   };
 }
 
-function emptyToNull(value?: string) {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
 function parseItems(json: string) {
   try {
     const parsed = JSON.parse(json);
@@ -246,34 +242,6 @@ function normalizeDateTimeIso(value?: string) {
   return date.toISOString();
 }
 
-function toUserMessage(error: unknown) {
-  let message = '';
-  if (error instanceof Error) {
-    message = error.message;
-  } else if (typeof error === 'object' && error && 'message' in error) {
-    message = String((error as any).message);
-  } else {
-    message = String(error);
-  }
-
-  const normalized = message.toLowerCase();
-
-  if (message.includes('لا يوجد مكتب مفعّل')) return message;
-
-  if (
-    normalized.includes('permission denied') ||
-    normalized.includes('not allowed') ||
-    normalized.includes('violates row-level security')
-  ) {
-    return 'لا تملك صلاحية لهذا الإجراء.';
-  }
-
-  if (normalized.includes('not_found') || normalized.includes('no rows')) {
-    return 'العنصر غير موجود.';
-  }
-
-  return message || 'تعذر الحفظ. حاول مرة أخرى.';
-}
 
 function diffInvoiceFields(
   before: Awaited<ReturnType<typeof getInvoiceById>>,

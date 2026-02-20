@@ -6,6 +6,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { logAudit } from '@/lib/audit';
 import { logError } from '@/lib/logger';
+import { toUserMessage } from '@/lib/shared-utils';
 
 export const runtime = 'nodejs';
 
@@ -219,17 +220,4 @@ function escapeOrTerm(value: string) {
   return value.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function toUserMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
-  const normalized = message.toLowerCase();
 
-  if (
-    normalized.includes('permission denied') ||
-    normalized.includes('violates row-level security') ||
-    normalized.includes('not allowed')
-  ) {
-    return 'لا تملك صلاحية الوصول.';
-  }
-
-  return message || 'تعذر البحث. حاول مرة أخرى.';
-}

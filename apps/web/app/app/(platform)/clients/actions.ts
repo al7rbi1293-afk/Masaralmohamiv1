@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { createClient, getClientById, setClientStatus, updateClient, deleteClient } from '@/lib/clients';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
+import { toUserMessage, emptyToNull, isValidUuid } from '@/lib/shared-utils';
 
 const clientSchema = z.object({
   type: z.enum(['person', 'company']),
@@ -174,38 +175,6 @@ function normalize(data: z.infer<typeof clientSchema>) {
   };
 }
 
-function emptyToNull(value?: string) {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
-function toUserMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-  const normalized = message.toLowerCase();
-
-  if (
-    normalized.includes('permission denied') ||
-    normalized.includes('not allowed') ||
-    normalized.includes('violates row-level security')
-  ) {
-    return 'لا تملك صلاحية لهذا الإجراء.';
-  }
-  if (
-    normalized.includes('no rows') ||
-    normalized.includes('not found') ||
-    normalized.includes('not_found')
-  ) {
-    return 'العميل غير موجود.';
-  }
-
-  if (normalized.includes('foreign key constraint')) {
-    return 'لا يمكن حذف العميل لأنه مرتبط ببيانات أخرى مثل القضايا أو الفواتير.';
-  }
-
-  // لا نعرض رسائل الخطأ الداخلية للمستخدم أبداً
-  return 'تعذر الحفظ. حاول مرة أخرى.';
-}
-
 function withToast(path: string, key: 'success' | 'error', message: string) {
   const [pathname] = path.split('?');
   return `${pathname}?${key}=${encodeURIComponent(message)}`;
@@ -219,10 +188,5 @@ function diffClientFields(before: Awaited<ReturnType<typeof getClientById>>, aft
     if ((before as any)[key] !== (after as any)[key]) changed.push(key);
   }
   return changed;
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function isValidUuid(value: string): boolean {
-  return UUID_RE.test(value);
 }
 

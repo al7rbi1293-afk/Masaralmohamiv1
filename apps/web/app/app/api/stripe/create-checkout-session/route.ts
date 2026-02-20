@@ -7,6 +7,7 @@ import { ensureSubscriptionRowExists } from '@/lib/subscriptions';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOwner } from '@/lib/org';
 import { logError, logInfo } from '@/lib/logger';
+import { isMissingRelationError } from '@/lib/shared-utils';
 
 export const runtime = 'nodejs';
 
@@ -16,11 +17,7 @@ const bodySchema = z.object({
   }),
 });
 
-function isMissingRelationError(message?: string) {
-  if (!message) return false;
-  const normalized = message.toLowerCase();
-  return normalized.includes('does not exist') || normalized.includes('relation');
-}
+
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);

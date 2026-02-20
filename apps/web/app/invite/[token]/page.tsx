@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
@@ -223,6 +223,14 @@ export default async function InvitePage({ params }: InvitePageProps) {
     meta: { role: row.role },
     ip: ip === 'unknown' ? null : ip,
     user_agent: userAgent,
+  });
+
+  cookies().set('active_org_id', row.org_id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365, // 1 year
   });
 
   redirect('/app');

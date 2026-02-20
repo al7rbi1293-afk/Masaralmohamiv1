@@ -1,4 +1,5 @@
 import 'server-only';
+import { cookies } from 'next/headers';
 
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
@@ -17,11 +18,28 @@ export async function getCurrentOrgIdForUser(): Promise<string | null> {
   }
 
   const supabase = createSupabaseServerRlsClient();
+
+  // 1. Check if there's an active_org_id cookie
+  const activeOrgId = cookies().get('active_org_id')?.value;
+  if (activeOrgId) {
+    const { data: cookieMembership } = await supabase
+      .from('memberships')
+      .select('org_id')
+      .eq('user_id', currentUser.id)
+      .eq('org_id', activeOrgId)
+      .maybeSingle();
+
+    if (cookieMembership) {
+      return cookieMembership.org_id;
+    }
+  }
+
+  // 2. Fall back to the most recent membership
   const { data, error } = await supabase
     .from('memberships')
     .select('org_id, created_at')
     .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 

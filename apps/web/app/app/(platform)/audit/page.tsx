@@ -150,12 +150,31 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
 
         <label className="block space-y-1 text-sm">
           <span className="font-medium text-slate-700 dark:text-slate-200">الإجراء (اختياري)</span>
-          <input
+          <select
             name="action"
             defaultValue={action}
-            placeholder="مثال: invoice.created"
             className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-          />
+          >
+            <option value="">الكل</option>
+            <option value="client.created">إضافة عميل</option>
+            <option value="client.updated">تعديل عميل</option>
+            <option value="client.archived">أرشفة عميل</option>
+            <option value="client.restored">استعادة عميل</option>
+            <option value="client.deleted">حذف عميل</option>
+            <option value="matter.created">إنشاء قضية</option>
+            <option value="matter.updated">تعديل قضية</option>
+            <option value="matter.deleted">حذف قضية</option>
+            <option value="invoice.created">إنشاء فاتورة</option>
+            <option value="invoice.updated">تعديل فاتورة</option>
+            <option value="invoice.act_export">تصدير فاتورة</option>
+            <option value="quote.created">إنشاء عرض سعر</option>
+            <option value="quote.updated">تعديل عرض سعر</option>
+            <option value="team.invite_accepted">قبول دعوة انضمام</option>
+            <option value="org_invitation">دعوة مكتب</option>
+            <option value="document.upload_url_issued">رفع مستند</option>
+            <option value="document_version.committed">تحديث نسخة مستند</option>
+            <option value="document.download_url_signed">تنزيل مستند</option>
+          </select>
         </label>
 
         <button type="submit" className={buttonVariants('outline', 'sm')}>
@@ -189,10 +208,10 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
                     {row.user_id ? (row.user_id === userId ? 'أنت' : 'عضو الفريق') : 'النظام'}
                   </td>
                   <td className="px-3 py-3">
-                    <Badge variant="default">{row.action}</Badge>
+                    <Badge variant="default">{actionLabel(row.action)}</Badge>
                   </td>
                   <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                    {row.entity_type ?? '—'}
+                    {entityLabel(row.entity_type)}
                   </td>
                   <td className="px-3 py-3 text-xs text-slate-600 dark:text-slate-300">
                     {renderMeta(row.meta)}
@@ -254,11 +273,100 @@ function endOfDayIso(value: string) {
   return date.toISOString();
 }
 
+const ACTION_LABELS: Record<string, string> = {
+  'client.created': 'إضافة عميل',
+  'client.updated': 'تعديل بيانات عميل',
+  'client.archived': 'أرشفة عميل',
+  'client.restored': 'استعادة عميل',
+  'client.deleted': 'حذف عميل',
+  'matter.created': 'إنشاء قضية',
+  'matter.updated': 'تعديل قضية',
+  'matter.deleted': 'حذف قضية',
+  'invoice.created': 'إنشاء فاتورة',
+  'invoice.updated': 'تعديل فاتورة',
+  'invoice.act_export': 'تصدير فاتورة',
+  'quote.created': 'إنشاء عرض سعر',
+  'quote.updated': 'تعديل عرض سعر',
+  'team.invite_accepted': 'قبول دعوة انضمام',
+  'org_invitation': 'دعوة للمكتب',
+  'team.invite_created': 'إنشاء دعوة انضمام',
+  'document.upload_url_issued': 'رفع مستند',
+  'document_version.committed': 'تحديث نسخة مستند',
+  'document.download_url_signed': 'تنزيل مستند',
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  client: 'عميل',
+  matter: 'قضية',
+  invoice: 'فاتورة',
+  quote: 'عرض سعر',
+  document: 'مستند',
+  document_version: 'نسخة مستند',
+  org_invitation: 'دعوة مكتب',
+  team: 'فريق العمل',
+};
+
+const META_FIELD_LABELS: Record<string, string> = {
+  status: 'الحالة',
+  title: 'العنوان',
+  name: 'الاسم',
+  email: 'البريد الإلكتروني',
+  phone: 'الهاتف',
+  role: 'الدور',
+  number: 'الرقم',
+  file_size: 'حجم الملف',
+  version_no: 'رقم النسخة',
+  document_id: 'المستند',
+};
+
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] ?? action;
+}
+
+function entityLabel(type: string | null | undefined): string {
+  if (!type) return '—';
+  return ENTITY_LABELS[type] ?? type;
+}
+
 function renderMeta(meta: unknown) {
-  if (!meta) return '—';
+  if (!meta || (typeof meta === 'object' && Object.keys(meta as any).length === 0)) return '—';
   try {
-    const text = JSON.stringify(meta);
-    return text.length > 140 ? `${text.slice(0, 140)}…` : text;
+    const obj = meta as Record<string, unknown>;
+
+    // Handle "changed" array
+    if (obj.changed && Array.isArray(obj.changed)) {
+      const fields = (obj.changed as string[]).map(f => META_FIELD_LABELS[f] ?? f);
+      return `تم تعديل: ${fields.join('، ')}`;
+    }
+
+    // Handle "role" key
+    if (obj.role && typeof obj.role === 'string') {
+      const roleMap: Record<string, string> = { owner: 'مالك', admin: 'مدير', member: 'عضو', lawyer: 'محامي' };
+      return `الدور: ${roleMap[obj.role] ?? obj.role}`;
+    }
+
+    // Handle "number" key (invoice/quote number)
+    if (obj.number && typeof obj.number === 'string') {
+      return `الرقم: ${obj.number}`;
+    }
+
+    // Handle file_size and version_no
+    if (obj.file_size !== undefined) {
+      const sizeMB = (Number(obj.file_size) / (1024 * 1024)).toFixed(2);
+      const parts = [`حجم الملف: ${sizeMB} م.ب`];
+      if (obj.version_no !== undefined) parts.push(`النسخة: ${obj.version_no}`);
+      if (obj.document_id) parts.push(`معرف المستند: ${String(obj.document_id).slice(0, 8)}…`);
+      return parts.join(' — ');
+    }
+
+    // Fallback: show a simplified key-value list
+    const entries = Object.entries(obj);
+    if (entries.length === 0) return '—';
+    const parts = entries.slice(0, 4).map(([k, v]) => {
+      const label = META_FIELD_LABELS[k] ?? k;
+      return `${label}: ${String(v)}`;
+    });
+    return parts.join(' — ');
   } catch {
     return '—';
   }

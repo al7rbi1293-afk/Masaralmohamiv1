@@ -164,8 +164,10 @@ function emptyToNull(value?: string) {
 }
 
 function toUserMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
+  console.error("DEBUG SUPABASE ERROR:", error);
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : JSON.stringify(error);
   const normalized = message.toLowerCase();
+
   if (
     normalized.includes('permission denied') ||
     normalized.includes('not allowed') ||
@@ -180,7 +182,12 @@ function toUserMessage(error: unknown) {
   ) {
     return 'العميل غير موجود.';
   }
-  return 'تعذر الحفظ. حاول مرة أخرى.';
+
+  if (normalized.includes('foreign key constraint')) {
+    return 'لا يمكن حذف العميل لأنه مرتبط ببيانات أخرى مثل القضايا أو الفواتير.';
+  }
+
+  return message || 'تعذر الحفظ. حاول مرة أخرى.';
 }
 
 function withToast(path: string, key: 'success' | 'error', message: string) {

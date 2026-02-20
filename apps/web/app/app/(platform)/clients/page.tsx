@@ -170,16 +170,17 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                             confirmLabel="أرشفة"
                             destructive
                           />
-                            <ConfirmActionForm
-                              action={restoreClientAction.bind(null, client.id, '/app/clients')}
-                              triggerLabel="استعادة"
-                              triggerVariant="outline"
-                              triggerSize="sm"
-                              confirmTitle="استعادة العميل"
-                              confirmMessage="هل تريد استعادة هذا العميل إلى الحالة النشطة؟"
-                              confirmLabel="استعادة"
-                              destructive={false}
-                            />
+                        ) : (
+                          <ConfirmActionForm
+                            action={restoreClientAction.bind(null, client.id, '/app/clients')}
+                            triggerLabel="استعادة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="استعادة العميل"
+                            confirmMessage="هل تريد استعادة هذا العميل إلى الحالة النشطة؟"
+                            confirmLabel="استعادة"
+                            destructive={false}
+                          />
                         )}
                         <ConfirmActionForm
                           action={deleteClientAction.bind(null, client.id, '/app/clients')}

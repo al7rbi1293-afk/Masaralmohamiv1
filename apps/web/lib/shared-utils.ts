@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * Shared utility functions used across multiple server actions and API routes.
  * Consolidated from duplicated implementations to follow DRY principle.

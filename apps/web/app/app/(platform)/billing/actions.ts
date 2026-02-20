@@ -247,7 +247,15 @@ function normalizeDateTimeIso(value?: string) {
 }
 
 function toUserMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
+  let message = '';
+  if (error instanceof Error) {
+    message = error.message;
+  } else if (typeof error === 'object' && error && 'message' in error) {
+    message = String((error as any).message);
+  } else {
+    message = String(error);
+  }
+
   const normalized = message.toLowerCase();
 
   if (message.includes('لا يوجد مكتب مفعّل')) return message;

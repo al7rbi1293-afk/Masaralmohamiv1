@@ -11,12 +11,14 @@ export type BillingItemInput = {
 
 type BillingItemsEditorProps = {
   name: string;
+  taxName?: string;
   defaultItems?: BillingItemInput[];
   disabled?: boolean;
 };
 
 export function BillingItemsEditor({
   name,
+  taxName,
   defaultItems = [{ desc: '', qty: 1, unit_price: 0 }],
   disabled = false,
 }: BillingItemsEditorProps) {
@@ -37,6 +39,13 @@ export function BillingItemsEditor({
     const sum = items.reduce((acc, item) => acc + (Number(item.qty) || 0) * (Number(item.unit_price) || 0), 0);
     return Math.round((sum + Number.EPSILON) * 100) / 100;
   }, [items]);
+
+  const tax = useMemo(() => {
+    if (!taxName) return 0;
+    return Math.round(((subtotal * 0.15) + Number.EPSILON) * 100) / 100;
+  }, [taxName, subtotal]);
+
+  const total = useMemo(() => subtotal + tax, [subtotal, tax]);
 
   function updateItem(index: number, patch: Partial<BillingItemInput>) {
     setItems((current) => {
@@ -60,6 +69,7 @@ export function BillingItemsEditor({
   return (
     <div className="space-y-3">
       <input type="hidden" name={name} value={jsonValue} />
+      {taxName && <input type="hidden" name={taxName} value={tax} />}
 
       <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
         <table className="min-w-full text-sm">
@@ -132,9 +142,21 @@ export function BillingItemsEditor({
         <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={addRow}>
           + إضافة بند
         </Button>
-        <p className="text-sm text-slate-700 dark:text-slate-200">
-          المجموع: <span className="font-semibold">{formatMoney(subtotal)} SAR</span>
-        </p>
+        <div className="space-y-2 text-end text-sm text-slate-700 dark:text-slate-200">
+          <p>
+            المجموع: <span className="font-semibold">{formatMoney(subtotal)} SAR</span>
+          </p>
+          {taxName && (
+            <>
+              <p>
+                ضريبة القيمة المضافة (15%): <span className="font-semibold">{formatMoney(tax)} SAR</span>
+              </p>
+              <p className="text-base font-bold text-brand-emerald">
+                الإجمالي الشامل: <span>{formatMoney(total)} SAR</span>
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

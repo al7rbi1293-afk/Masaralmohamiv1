@@ -181,17 +181,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
                 </select>
               </label>
 
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium text-slate-700 dark:text-slate-200">الضريبة</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  name="tax"
-                  defaultValue={String(invoice.tax ?? '0')}
-                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-                />
-              </label>
+
 
               <label className="block space-y-1 text-sm">
                 <span className="font-medium text-slate-700 dark:text-slate-200">الاستحقاق (اختياري)</span>
@@ -221,7 +211,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
 
             <section className="space-y-3">
               <h4 className="font-semibold text-brand-navy dark:text-slate-100">البنود</h4>
-              <BillingItemsEditor name="items_json" defaultItems={items.map((item) => ({ ...item }))} />
+              <BillingItemsEditor name="items_json" taxName="tax" defaultItems={items.map((item) => ({ ...item }))} />
             </section>
 
             <div className="flex flex-wrap gap-3">

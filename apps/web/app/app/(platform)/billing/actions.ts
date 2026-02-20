@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
 import { createInvoice, createQuote, getInvoiceById, itemsSchema, updateInvoice, updateQuote } from '@/lib/billing';
 import { logAudit } from '@/lib/audit';
@@ -42,6 +43,7 @@ export async function createQuoteAction(formData: FormData) {
     logInfo('quote_created', { quoteId: created.id });
     redirect(`/app/billing/quotes/${created.id}?success=${encodeURIComponent('تم إنشاء عرض السعر.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('quote_create_failed', { message });
     redirect(`/app/billing/quotes/new?error=${encodeURIComponent(message)}`);
@@ -77,6 +79,7 @@ export async function updateQuoteAction(id: string, formData: FormData) {
     logInfo('quote_updated', { quoteId: updated.id });
     redirect(`/app/billing/quotes/${updated.id}?success=${encodeURIComponent('تم تحديث عرض السعر.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('quote_update_failed', { quoteId: id, message });
     redirect(`/app/billing/quotes/${id}?error=${encodeURIComponent(message)}`);
@@ -132,6 +135,7 @@ export async function createInvoiceAction(formData: FormData) {
     logInfo('invoice_created', { invoiceId: created.id });
     redirect(`/app/billing/invoices/${created.id}?success=${encodeURIComponent('تم إنشاء الفاتورة.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('invoice_create_failed', { message });
     redirect(`/app/billing/invoices/new?error=${encodeURIComponent(message)}`);
@@ -183,6 +187,7 @@ export async function updateInvoiceAction(id: string, formData: FormData) {
     logInfo('invoice_updated', { invoiceId: updated.id });
     redirect(`/app/billing/invoices/${updated.id}?success=${encodeURIComponent('تم تحديث الفاتورة.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('invoice_update_failed', { invoiceId: id, message });
     redirect(`/app/billing/invoices/${id}?error=${encodeURIComponent(message)}`);

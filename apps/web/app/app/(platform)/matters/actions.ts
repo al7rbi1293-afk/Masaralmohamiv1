@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
 import { archiveMatter, createMatter, getMatterById, restoreMatter, updateMatter } from '@/lib/matters';
 import { createMatterEvent, createMatterEventSchema } from '@/lib/matterEvents';
@@ -34,6 +35,7 @@ export async function createMatterAction(formData: FormData) {
     logInfo('matter_created', { matterId: created.id });
     redirect(`/app/matters/${created.id}?success=${encodeURIComponent('تم إنشاء القضية.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('matter_create_failed', { message });
     redirect(`/app/matters/new?error=${encodeURIComponent(message)}`);
@@ -63,6 +65,7 @@ export async function updateMatterAction(id: string, formData: FormData) {
     logInfo('matter_updated', { matterId: id });
     redirect(`/app/matters/${id}?success=${encodeURIComponent('تم تحديث القضية.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('matter_update_failed', { matterId: id, message });
     redirect(`/app/matters/${id}?error=${encodeURIComponent(message)}`);
@@ -81,6 +84,7 @@ export async function archiveMatterAction(id: string, redirectTo = '/app/matters
     logInfo('matter_archived', { matterId: id });
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة القضية.'));
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('matter_archive_failed', { matterId: id, message });
     redirect(withToast(redirectTo, 'error', message));
@@ -99,6 +103,7 @@ export async function restoreMatterAction(id: string, redirectTo = '/app/matters
     logInfo('matter_restored', { matterId: id });
     redirect(withToast(redirectTo, 'success', 'تمت استعادة القضية.'));
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('matter_restore_failed', { matterId: id, message });
     redirect(withToast(redirectTo, 'error', message));
@@ -124,6 +129,7 @@ export async function createMatterEventAction(matterId: string, formData: FormDa
     logInfo('matter_event_created', { matterId, type: created.type });
     redirect(`/app/matters/${matterId}?tab=timeline&success=${encodeURIComponent('تمت إضافة الحدث.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toEventUserMessage(error);
     logError('matter_event_create_failed', { matterId, message });
     redirect(`/app/matters/${matterId}?tab=timeline&error=${encodeURIComponent(message)}`);

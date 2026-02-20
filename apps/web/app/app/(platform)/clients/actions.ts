@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
 import { createClient, getClientById, setClientStatus, updateClient } from '@/lib/clients';
 import { logAudit } from '@/lib/audit';
@@ -41,6 +42,7 @@ export async function createClientAction(formData: FormData) {
     logInfo('client_created', { clientId: created.id });
     redirect(`/app/clients/${created.id}?success=${encodeURIComponent('تم إنشاء العميل.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('client_create_failed', { message });
     redirect(`/app/clients/new?error=${encodeURIComponent(message)}`);
@@ -68,6 +70,7 @@ export async function updateClientAction(id: string, formData: FormData) {
     logInfo('client_updated', { clientId: id });
     redirect(`/app/clients/${id}?success=${encodeURIComponent('تم تحديث بيانات العميل.')}`);
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('client_update_failed', { clientId: id, message });
     redirect(`/app/clients/${id}?error=${encodeURIComponent(message)}`);
@@ -86,6 +89,7 @@ export async function archiveClientAction(id: string, redirectTo = '/app/clients
     logInfo('client_archived', { clientId: id });
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة العميل.'));
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('client_archive_failed', { clientId: id, message });
     redirect(withToast(redirectTo, 'error', message));
@@ -104,6 +108,7 @@ export async function restoreClientAction(id: string, redirectTo = '/app/clients
     logInfo('client_restored', { clientId: id });
     redirect(withToast(redirectTo, 'success', 'تمت استعادة العميل.'));
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('client_restore_failed', { clientId: id, message });
     redirect(withToast(redirectTo, 'error', message));

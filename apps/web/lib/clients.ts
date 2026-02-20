@@ -190,9 +190,14 @@ export async function deleteClient(id: string): Promise<void> {
     .from('clients')
     .delete()
     .eq('org_id', orgId)
-    .eq('id', id);
+    .eq('id', id)
+    .select('id')
+    .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error('لم يتم العثور على العميل أو لا تملك صلاحية حذفه.');
+    }
     throw error;
   }
 }

@@ -594,13 +594,14 @@ async function generateNextNumber(params: {
   supabase: ReturnType<typeof createSupabaseServerRlsClient>;
 }) {
   const basePrefix = `${params.prefix}-${params.year}-`;
+  const orderCol = params.table === 'quotes' ? 'created_at' : 'issued_at';
 
   const { data, error } = await params.supabase
     .from(params.table)
     .select('number')
     .eq('org_id', params.orgId)
     .like('number', `${basePrefix}%`)
-    .order('created_at', { ascending: false })
+    .order(orderCol as any, { ascending: false })
     .limit(1)
     .maybeSingle();
 

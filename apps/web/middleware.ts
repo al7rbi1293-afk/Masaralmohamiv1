@@ -221,9 +221,15 @@ export async function middleware(request: NextRequest) {
 
   // Initialize response for csrf
   const csrfResponse = NextResponse.next();
-  // We ignore csrfError in middleware to allow manual verification in server actions
-  // This will set the cookie and X-CSRF-Token header in request automatically.
-  await csrfProtect(request, csrfResponse);
+  // We manually catch the csrfError in middleware to allow manual verification in server actions.
+  // This will still set the cookie and X-CSRF-Token header in request automatically for GET.
+  try {
+    await csrfProtect(request, csrfResponse);
+  } catch (err: any) {
+    if (err.name !== 'CsrfError') {
+      throw err;
+    }
+  }
 
   if (!supabaseUrl || !supabaseAnon) {
     return missingEnvResponse();

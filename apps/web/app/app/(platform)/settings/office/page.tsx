@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
@@ -42,6 +43,8 @@ export default async function OfficeIdentityPage() {
         .eq('id', orgId)
         .maybeSingle();
 
+    const csrfToken = headers().get('X-CSRF-Token') || '';
+
     return (
         <Card className="p-6">
             <div className="mb-6">
@@ -51,7 +54,7 @@ export default async function OfficeIdentityPage() {
                 </p>
             </div>
 
-            <OfficeIdentityForm currentName={organization?.name || ''} />
+            <OfficeIdentityForm currentName={organization?.name || ''} csrfToken={csrfToken} />
         </Card>
     );
 }

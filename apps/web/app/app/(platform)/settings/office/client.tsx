@@ -7,9 +7,10 @@ import { Building2 } from 'lucide-react';
 
 type OfficeIdentityFormProps = {
     currentName: string;
+    csrfToken: string;
 };
 
-export function OfficeIdentityForm({ currentName }: OfficeIdentityFormProps) {
+export function OfficeIdentityForm({ currentName, csrfToken }: OfficeIdentityFormProps) {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +36,7 @@ export function OfficeIdentityForm({ currentName }: OfficeIdentityFormProps) {
 
     return (
         <form action={handleSubmit} className="mt-6 flex flex-col gap-6 max-w-2xl">
+            <input type="hidden" name="csrf_token" value={csrfToken} />
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
                     {error}

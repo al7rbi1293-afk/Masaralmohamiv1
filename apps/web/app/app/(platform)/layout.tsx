@@ -129,7 +129,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
       </header>
 
       <Container className="px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+        <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
 
           {/* Modernized Floating Sidebar */}
           <aside className="h-fit rounded-xl2 border border-brand-border bg-white shadow-panel dark:border-slate-800 dark:bg-slate-900">

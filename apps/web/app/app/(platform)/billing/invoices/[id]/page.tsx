@@ -188,8 +188,9 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
                 <input
                   type="date"
                   name="due_at"
+                  dir="ltr"
                   defaultValue={invoice.due_at ? toDateOnly(invoice.due_at) : ''}
-                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 text-left outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                 />
               </label>
             </div>

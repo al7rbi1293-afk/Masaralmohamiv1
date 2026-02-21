@@ -75,11 +75,11 @@ export function BillingItemsEditor({
         <table className="min-w-full text-sm">
           <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
             <tr>
-              <th className="px-3 py-3 text-start font-medium">الوصف</th>
-              <th className="px-3 py-3 text-start font-medium">الكمية</th>
-              <th className="px-3 py-3 text-start font-medium">سعر الوحدة</th>
-              <th className="px-3 py-3 text-start font-medium">الإجمالي</th>
-              <th className="px-3 py-3 text-start font-medium"> </th>
+              <th className="px-3 py-3 text-start font-medium whitespace-nowrap">الوصف</th>
+              <th className="px-3 py-3 text-center font-medium whitespace-nowrap">الكمية</th>
+              <th className="px-3 py-3 text-center font-medium whitespace-nowrap">سعر الوحدة</th>
+              <th className="px-3 py-3 text-center font-medium whitespace-nowrap">الإجمالي</th>
+              <th className="px-3 py-3 text-center font-medium whitespace-nowrap"> </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-border dark:divide-slate-800">
@@ -93,7 +93,7 @@ export function BillingItemsEditor({
                       disabled={disabled}
                       onChange={(e) => updateItem(idx, { desc: e.target.value })}
                       placeholder="مثال: أتعاب متابعة جلسة"
-                      className="h-10 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:disabled:bg-slate-900"
+                      className="h-10 w-full min-w-[150px] rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:disabled:bg-slate-900"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -104,7 +104,7 @@ export function BillingItemsEditor({
                       value={Number.isFinite(item.qty) ? item.qty : 0}
                       disabled={disabled}
                       onChange={(e) => updateItem(idx, { qty: Number(e.target.value) })}
-                      className="h-10 w-24 rounded-lg border border-brand-border px-3 text-start outline-none ring-brand-emerald focus:ring-2 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:disabled:bg-slate-900"
+                      className="h-10 w-24 rounded-lg border border-brand-border px-3 text-center outline-none ring-brand-emerald focus:ring-2 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:disabled:bg-slate-900 mx-auto"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -115,13 +115,13 @@ export function BillingItemsEditor({
                       value={Number.isFinite(item.unit_price) ? item.unit_price : 0}
                       disabled={disabled}
                       onChange={(e) => updateItem(idx, { unit_price: Number(e.target.value) })}
-                      className="h-10 w-32 rounded-lg border border-brand-border px-3 text-start outline-none ring-brand-emerald focus:ring-2 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:disabled:bg-slate-900"
+                      className="h-10 w-32 rounded-lg border border-brand-border px-3 text-center outline-none ring-brand-emerald focus:ring-2 disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:disabled:bg-slate-900 mx-auto"
                     />
                   </td>
-                  <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                  <td className="px-3 py-2 text-center text-slate-700 dark:text-slate-200 whitespace-nowrap font-medium">
                     {formatMoney(lineTotal)} SAR
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 text-center">
                     <button
                       type="button"
                       disabled={disabled}

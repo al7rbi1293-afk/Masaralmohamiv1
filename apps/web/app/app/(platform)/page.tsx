@@ -89,7 +89,7 @@ export default async function DashboardPage() {
           <h3 className="mb-4 font-semibold text-brand-navy dark:text-slate-100">اكتشف المنصة واكمل الإعدادات</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <Link
-              href="/app/settings"
+              href="/app/settings/office"
               className="group flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 transition-all hover:border-brand-emerald hover:bg-brand-emerald/5 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-500/50 dark:hover:bg-emerald-500/5"
             >
               <div className="flex items-center gap-3">

@@ -82,6 +82,11 @@ export default async function SettingsPage() {
       </dl>
 
       <div className="flex flex-wrap gap-3">
+        {isOwner ? (
+          <Link href="/app/settings/office" className={buttonVariants('outline', 'md')}>
+            هوية المكتب
+          </Link>
+        ) : null}
         <Link href="/app/settings/team" className={buttonVariants('outline', 'md')}>
           إدارة الفريق
         </Link>

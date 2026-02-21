@@ -5,12 +5,16 @@ import { buttonVariants } from '@/components/ui/button';
 import { updateOfficeIdentityAction } from './actions';
 import { Building2 } from 'lucide-react';
 
+import Image from 'next/image';
+
 type OfficeIdentityFormProps = {
     currentName: string;
+    currentLogoUrl: string;
     csrfToken: string;
 };
 
-export function OfficeIdentityForm({ currentName, csrfToken }: OfficeIdentityFormProps) {
+export function OfficeIdentityForm({ currentName, currentLogoUrl, csrfToken }: OfficeIdentityFormProps) {
+    const [previewUrl, setPreviewUrl] = useState(currentLogoUrl);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,18 +77,40 @@ export function OfficeIdentityForm({ currentName, csrfToken }: OfficeIdentityFor
                     </p>
                 </div>
 
-                {/* Placeholder for future Logo upload */}
-                <div className="opacity-50">
+                <div className="mt-2">
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                         شعار المكتب (Logo)
                     </label>
-                    <div className="mt-1 flex items-center gap-4">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-                            <span className="text-xs text-slate-400">قريباً</span>
+                    <div className="mt-2 flex items-center gap-4">
+                        <div className="relative flex h-20 w-20 shrink-0 overflow-hidden items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+                            {previewUrl ? (
+                                <Image
+                                    src={previewUrl}
+                                    alt="Office Logo Preview"
+                                    fill
+                                    className="object-contain p-1"
+                                    unoptimized
+                                />
+                            ) : (
+                                <span className="text-xs text-slate-400">لا يوجد شعار</span>
+                            )}
                         </div>
-                        <button type="button" disabled className={buttonVariants('outline', 'sm')}>
-                            رفع شعار
-                        </button>
+                        <div className="flex flex-col gap-2">
+                            <label className={`${buttonVariants('outline', 'sm')} cursor-pointer`}>
+                                اختيار صورة
+                                <input
+                                    type="file"
+                                    name="logo"
+                                    className="hidden"
+                                    accept="image/png, image/jpeg, image/webp"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) setPreviewUrl(URL.createObjectURL(file));
+                                    }}
+                                />
+                            </label>
+                            <span className="text-xs text-slate-500">حجم أقصى: 5 ميجابايت (PNG أو JPG)</span>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -45,11 +45,35 @@ const navItemsBase = [
   { href: '/app/settings', label: 'الإعدادات', icon: Settings },
 ] as const;
 
+import { getTrialStatusForCurrentUser } from '@/lib/trial';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import Image from 'next/image';
+
 export default async function PlatformLayout({ children }: PlatformLayoutProps) {
   const user = await getCurrentAuthUser();
 
   if (!user) {
     redirect('/signin');
+  }
+
+  // Fetch org data for customized branding
+  const trial = await getTrialStatusForCurrentUser();
+  const orgId = trial.orgId;
+  let orgName = 'مسار المحامي';
+  let orgLogo = '';
+
+  if (orgId) {
+    const supabase = createSupabaseServerRlsClient();
+    const { data } = await supabase
+      .from('organizations')
+      .select('name, logo_url')
+      .eq('id', orgId)
+      .maybeSingle();
+
+    if (data) {
+      orgName = data.name || orgName;
+      orgLogo = data.logo_url || '';
+    }
   }
 
   // Create a mutable type-widened copy of nav items
@@ -69,11 +93,17 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
       <header className="sticky top-0 z-40 w-full border-b border-brand-border/60 bg-white/70 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
         <Container className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-emerald text-white shadow-sm">
-              <Briefcase className="h-5 w-5" />
-            </div>
+            {orgLogo ? (
+              <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <Image src={orgLogo} alt={orgName} fill className="object-contain" unoptimized />
+              </div>
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-emerald text-white shadow-sm">
+                <Briefcase className="h-5 w-5" />
+              </div>
+            )}
             <div>
-              <h1 className="text-base font-bold tracking-tight text-brand-navy dark:text-slate-100">مسار المحامي</h1>
+              <h1 className="text-base font-bold tracking-tight text-brand-navy dark:text-slate-100">{orgName}</h1>
               <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 منصة العمليات
               </p>

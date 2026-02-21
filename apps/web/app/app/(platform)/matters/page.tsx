@@ -39,11 +39,11 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
   const statusRaw = (searchParams?.status ?? 'all').trim();
   const status: MatterStatus | 'all' =
     statusRaw === 'all' ||
-    statusRaw === 'new' ||
-    statusRaw === 'in_progress' ||
-    statusRaw === 'on_hold' ||
-    statusRaw === 'closed' ||
-    statusRaw === 'archived'
+      statusRaw === 'new' ||
+      statusRaw === 'in_progress' ||
+      statusRaw === 'on_hold' ||
+      statusRaw === 'closed' ||
+      statusRaw === 'archived'
       ? statusRaw
       : 'all';
   const clientId = (searchParams?.client ?? '').trim();
@@ -111,7 +111,7 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
         </p>
       ) : null}
 
-      <form className="mt-5 grid gap-3 sm:grid-cols-[1fr_190px_220px_auto]">
+      <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[1fr_190px_220px_auto]">
         <label className="block">
           <span className="sr-only">بحث</span>
           <input

@@ -97,55 +97,55 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   const eventsPromise = includeEvents
     ? (() => {
-        let query = supabase
-          .from('matter_events')
-          .select(
-            mine
-              ? 'id, type, event_date, matter_id, matters!inner(title, assigned_user_id)'
-              : 'id, type, event_date, matter_id, matters(title, assigned_user_id)',
-          )
-          .eq('org_id', orgId)
-          .in('type', eventTypes)
-          .not('event_date', 'is', null)
-          .gte('event_date', fetchStart.toISOString())
-          .lt('event_date', fetchEnd.toISOString());
+      let query = supabase
+        .from('matter_events')
+        .select(
+          mine
+            ? 'id, type, event_date, matter_id, matters!inner(title, assigned_user_id)'
+            : 'id, type, event_date, matter_id, matters(title, assigned_user_id)',
+        )
+        .eq('org_id', orgId)
+        .in('type', eventTypes)
+        .not('event_date', 'is', null)
+        .gte('event_date', fetchStart.toISOString())
+        .lt('event_date', fetchEnd.toISOString());
 
-        if (mine) {
-          query = query.eq('matters.assigned_user_id', user.id);
-        }
+      if (mine) {
+        query = query.eq('matters.assigned_user_id', user.id);
+      }
 
-        return query.order('event_date', { ascending: true }).limit(600);
-      })()
+      return query.order('event_date', { ascending: true }).limit(600);
+    })()
     : Promise.resolve({ data: [], error: null } as any);
 
   const tasksPromise = includeTasks
     ? (() => {
-        let query = supabase
-          .from('tasks')
-          .select('id, title, due_at, status, matter_id, assignee_id, matters(title)')
-          .eq('org_id', orgId)
-          .not('due_at', 'is', null)
-          .gte('due_at', fetchStart.toISOString())
-          .lt('due_at', fetchEnd.toISOString());
+      let query = supabase
+        .from('tasks')
+        .select('id, title, due_at, status, matter_id, assignee_id, matters(title)')
+        .eq('org_id', orgId)
+        .not('due_at', 'is', null)
+        .gte('due_at', fetchStart.toISOString())
+        .lt('due_at', fetchEnd.toISOString());
 
-        if (mine) {
-          query = query.eq('assignee_id', user.id);
-        }
+      if (mine) {
+        query = query.eq('assignee_id', user.id);
+      }
 
-        return query.order('due_at', { ascending: true }).limit(800);
-      })()
+      return query.order('due_at', { ascending: true }).limit(800);
+    })()
     : Promise.resolve({ data: [], error: null } as any);
 
   const invoicesPromise = includeInvoices
     ? supabase
-        .from('invoices')
-        .select('id, number, due_at, status')
-        .eq('org_id', orgId)
-        .not('due_at', 'is', null)
-        .gte('due_at', fetchStart.toISOString())
-        .lt('due_at', fetchEnd.toISOString())
-        .order('due_at', { ascending: true })
-        .limit(800)
+      .from('invoices')
+      .select('id, number, due_at, status')
+      .eq('org_id', orgId)
+      .not('due_at', 'is', null)
+      .gte('due_at', fetchStart.toISOString())
+      .lt('due_at', fetchEnd.toISOString())
+      .order('due_at', { ascending: true })
+      .limit(800)
     : Promise.resolve({ data: [], error: null } as any);
 
   const [eventsRes, tasksRes, invoicesRes] = await Promise.all([
@@ -250,7 +250,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           </Link>
         </div>
 
-        <form className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_220px_auto]">
+        <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_220px_220px_auto]">
           <label className="block">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">الشهر</span>
             <input

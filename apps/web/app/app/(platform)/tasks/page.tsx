@@ -146,7 +146,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         </p>
       ) : null}
 
-      <form className="mt-5 grid gap-3 lg:grid-cols-[1fr_170px_170px_170px_170px_auto]">
+      <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-[1fr_150px_150px_150px_150px_auto]">
         <label className="block">
           <span className="sr-only">بحث</span>
           <input

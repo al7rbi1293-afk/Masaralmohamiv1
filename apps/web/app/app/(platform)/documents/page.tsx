@@ -67,7 +67,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         </p>
       ) : null}
 
-      <form className="mt-5 grid gap-3 sm:grid-cols-[1fr_260px_auto]">
+      <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_260px_auto]">
         <label className="block">
           <span className="sr-only">بحث</span>
           <input

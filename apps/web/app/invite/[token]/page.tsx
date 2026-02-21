@@ -168,7 +168,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
   }
 
   const ip = getRequestIpFromHeaders();
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `invite_accept:${ip}`,
     limit: 20,
     windowMs: 10 * 60 * 1000,

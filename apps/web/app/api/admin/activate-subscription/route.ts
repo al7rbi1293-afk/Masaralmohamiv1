@@ -24,7 +24,7 @@ function safeEqual(a: string, b: string) {
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `admin_activate_subscription:${ip}`,
     limit: 30,
     windowMs: 10 * 60 * 1000,

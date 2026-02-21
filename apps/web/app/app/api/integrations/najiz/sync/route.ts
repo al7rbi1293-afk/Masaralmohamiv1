@@ -39,7 +39,7 @@ type ExternalCaseRow = {
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `integrations:najiz:sync:${ip}`,
     limit: 10,
     windowMs: 10 * 60 * 1000,

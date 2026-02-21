@@ -6,6 +6,7 @@ import {
   REFRESH_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
 } from './lib/supabase/constants';
+import { csrfProtect } from './lib/csrf';
 
 // ────────────────────────────────────────────
 // Types for Supabase row shapes (replaces `as any`)
@@ -218,6 +219,12 @@ export async function middleware(request: NextRequest) {
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const pathname = request.nextUrl.pathname;
 
+  // Initialize response for csrf
+  const csrfResponse = NextResponse.next();
+  // We ignore csrfError in middleware to allow manual verification in server actions
+  // This will set the cookie and X-CSRF-Token header in request automatically.
+  await csrfProtect(request, csrfResponse);
+
   if (!supabaseUrl || !supabaseAnon) {
     return missingEnvResponse();
   }
@@ -298,14 +305,17 @@ export async function middleware(request: NextRequest) {
         if (pathname === '/app/suspended') {
           // Already on suspended page, fall through
         } else if (pathname.startsWith('/app/api/')) {
+          setSecurityHeaders(csrfResponse);
           return NextResponse.json(
             { error: 'تم تعليق الحساب. تواصل مع الإدارة.' },
-            { status: 403 },
+            { status: 403, headers: csrfResponse.headers },
           );
         } else {
-          const response = NextResponse.redirect(new URL('/app/suspended', request.url));
-          applyRefreshedCookies(response, refreshedSession);
-          return setSecurityHeaders(response);
+          const redirectResponse = NextResponse.redirect(new URL('/app/suspended', request.url));
+          applyRefreshedCookies(redirectResponse, refreshedSession);
+          // Copy csrf cookies
+          redirectResponse.headers.append('Set-Cookie', csrfResponse.headers.get('Set-Cookie') || '');
+          return setSecurityHeaders(redirectResponse);
         }
       }
     }
@@ -318,22 +328,30 @@ export async function middleware(request: NextRequest) {
     if (locked && isApi) {
       response = NextResponse.json(
         { error: 'انتهت التجربة. يمكنك ترقية الخطة من صفحة الاشتراك.' },
-        { status: 403 },
+        { status: 403, headers: csrfResponse.headers },
       );
+      setSecurityHeaders(response);
+      return response;
     } else if (locked) {
-      response = NextResponse.redirect(new URL('/app/expired', request.url));
+      const redirectResponse = NextResponse.redirect(new URL('/app/expired', request.url));
+      applyRefreshedCookies(redirectResponse, refreshedSession);
+      redirectResponse.headers.append('Set-Cookie', csrfResponse.headers.get('Set-Cookie') || '');
+      return setSecurityHeaders(redirectResponse);
     } else {
+      // response is already NextResponse.next(), we just update headers
       response = NextResponse.next({ request: { headers: requestHeaders } });
+      csrfResponse.headers.forEach((value, key) => response.headers.set(key, value));
     }
 
     applyRefreshedCookies(response, refreshedSession);
     return setSecurityHeaders(response);
   }
 
-  const response = redirectToSignIn(request);
-  response.cookies.delete(ACCESS_COOKIE_NAME);
-  response.cookies.delete(REFRESH_COOKIE_NAME);
-  return response;
+  const redirectResponse = redirectToSignIn(request);
+  redirectResponse.cookies.delete(ACCESS_COOKIE_NAME);
+  redirectResponse.cookies.delete(REFRESH_COOKIE_NAME);
+  redirectResponse.headers.append('Set-Cookie', csrfResponse.headers.get('Set-Cookie') || '');
+  return redirectResponse;
 }
 
 export const config = {

@@ -5,8 +5,14 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { getPublicSiteUrl } from '@/lib/env';
+import { verifyCsrfToken } from '@/lib/csrf';
 
 export async function signUpAction(formData: FormData) {
+  const isCsrfValid = await verifyCsrfToken(formData);
+  if (!isCsrfValid) {
+    redirect(`/signup?error=${encodeURIComponent('انتهت صلاحية الجلسة. أعد تحميل الصفحة.')}`);
+  }
+
   const token = String(formData.get('token') ?? '').trim();
   const fullName = String(formData.get('full_name') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
@@ -99,7 +105,7 @@ export async function resendActivationAction(formData: FormData) {
   }
 
   const ip = getServerActionIp();
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `signup:resend:${ip}:${email}`,
     limit: 3,
     windowMs: 10 * 60 * 1000,

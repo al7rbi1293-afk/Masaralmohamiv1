@@ -34,7 +34,7 @@ type AuthUser = {
 export async function POST(request: NextRequest) {
   const requestId = getOrCreateRequestId(request);
   const requestIp = getRequestIp(request);
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `contact-request:${requestIp}`,
     limit: 10,
     windowMs: 10 * 60 * 1000,

@@ -57,7 +57,7 @@ type CalendarIcsItem = {
 
 export async function GET(request: NextRequest) {
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `calendar-ics:${ip}`,
     limit: 20,
     windowMs: 10 * 60 * 1000,

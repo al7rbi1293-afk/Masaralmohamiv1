@@ -28,7 +28,7 @@ const expiresSeconds: Record<z.infer<typeof bodySchema>['expires_in'], number> =
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `email:doc_share:${ip}`,
     limit: 10,
     windowMs: 10 * 60 * 1000,

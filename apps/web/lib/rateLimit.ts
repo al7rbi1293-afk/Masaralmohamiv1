@@ -15,62 +15,46 @@ export type RateLimitResult = {
   resetAt: number;
 };
 
-type RateBucket = {
-  count: number;
-  resetAt: number;
-};
+import { Redis } from '@upstash/redis';
 
-const rateLimitStoreKey = '__masar_rate_limit_store__';
-
-function getStore() {
-  const globalStore = globalThis as typeof globalThis & {
-    [rateLimitStoreKey]?: Map<string, RateBucket>;
-  };
-
-  if (!globalStore[rateLimitStoreKey]) {
-    globalStore[rateLimitStoreKey] = new Map<string, RateBucket>();
+// Create the Redis instance. Requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in env.
+const redis = (() => {
+  try {
+    return Redis.fromEnv();
+  } catch (err) {
+    console.warn('Upstash Redis env variables not found. Rate limiting will bypass.');
+    return null;
   }
+})();
 
-  return globalStore[rateLimitStoreKey];
-}
-
-export function checkRateLimit(config: RateLimitConfig): RateLimitResult {
+export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
   const { key, limit, windowMs } = config;
   const now = Date.now();
-  const store = getStore();
+  const resetAt = now + windowMs;
 
-  // Periodically clean up expired entries to prevent memory growth
-  if (store.size > 100) {
-    for (const [k, v] of store) {
-      if (v.resetAt <= now) store.delete(k);
-    }
+  if (!redis) {
+    return { allowed: true, limit, remaining: limit - 1, resetAt };
   }
 
-  const current = store.get(key);
-
-  if (!current || current.resetAt <= now) {
-    const resetAt = now + windowMs;
-    store.set(key, { count: 1, resetAt });
+  try {
+    const pipeline = redis.pipeline();
+    pipeline.incr(key);
+    pipeline.pexpire(key, windowMs);
+    
+    const [count] = await pipeline.exec();
+    const currentCount = count as number;
+    const remaining = Math.max(0, limit - currentCount);
 
     return {
-      allowed: true,
+      allowed: currentCount <= limit,
       limit,
-      remaining: Math.max(0, limit - 1),
+      remaining,
       resetAt,
     };
+  } catch (error) {
+    console.error('Rate limit error:', error);
+    return { allowed: true, limit, remaining: limit - 1, resetAt };
   }
-
-  current.count += 1;
-  store.set(key, current);
-
-  const remaining = Math.max(0, limit - current.count);
-
-  return {
-    allowed: current.count <= limit,
-    limit,
-    remaining,
-    resetAt: current.resetAt,
-  };
 }
 
 export function getRequestIp(request: NextRequest): string {

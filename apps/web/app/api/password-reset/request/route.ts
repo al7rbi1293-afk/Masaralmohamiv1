@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   }
 
   const email = parsed.data.email.toLowerCase();
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `password_reset:request:${ip}:${email}`,
     limit: 3,
     windowMs: 10 * 60 * 1000,

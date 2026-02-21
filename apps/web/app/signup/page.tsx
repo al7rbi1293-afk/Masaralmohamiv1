@@ -27,10 +27,16 @@ type SignUpPageProps = {
   };
 };
 
+import { headers } from 'next/headers';
+
 export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const token = searchParams?.token ? safeDecode(searchParams.token) : '';
   const invitedEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
   const status = searchParams?.status ? safeDecode(searchParams.status) : '';
+
+  // Get CSRF Token
+  const requestHeaders = headers();
+  const csrfToken = requestHeaders.get('X-CSRF-Token') || 'missing';
 
   // New office signup happens via the marketing trial form (/#trial).
   // The /signup page is reserved for invite acceptance flow (token-based).
@@ -82,6 +88,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
               <p>الحساب مسجل مسبقًا لكنه غير مُفعّل. اضغط لإعادة إرسال رسالة التفعيل.</p>
               <form action={resendActivationAction} className="mt-3">
+                <input type="hidden" name="csrf_token" value={csrfToken} />
                 <input type="hidden" name="email" value={invitedEmail} />
                 {token ? <input type="hidden" name="token" value={token} /> : null}
                 <button type="submit" className={buttonVariants('outline', 'sm')}>
@@ -98,6 +105,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           ) : null}
 
           <form action={signUpAction} className="mt-6 space-y-4">
+            <input type="hidden" name="csrf_token" value={csrfToken} />
             {token ? <input type="hidden" name="token" value={token} /> : null}
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">الاسم الكامل</span>

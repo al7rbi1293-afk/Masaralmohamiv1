@@ -27,7 +27,7 @@ type NajizSecrets = {
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `integrations:najiz:connect:${ip}`,
     limit: 10,
     windowMs: 10 * 60 * 1000,

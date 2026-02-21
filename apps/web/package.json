@@ -11,10 +11,12 @@
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
+    "@edge-csrf/nextjs": "^2.5.2",
     "@react-pdf/renderer": "^3.4.5",
-    "@sentry/nextjs": "^8.51.0",
+    "@sentry/nextjs": "^8.55.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.50.0",
+    "@upstash/redis": "^1.36.2",
     "docx": "^9.5.2",
     "docxtemplater": "^3.68.1",
     "lucide-react": "^0.468.0",

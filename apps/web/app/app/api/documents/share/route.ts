@@ -25,7 +25,7 @@ const expiresSeconds: Record<z.infer<typeof shareSchema>['expires_in'], number> 
 export async function POST(request: NextRequest) {
   try {
     const ip = getRequestIp(request);
-    const limit = checkRateLimit({
+    const limit = await checkRateLimit({
       key: `document_share:${ip}`,
       limit: 20,
       windowMs: 10 * 60 * 1000,

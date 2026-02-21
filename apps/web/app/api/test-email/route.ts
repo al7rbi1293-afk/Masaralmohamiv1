@@ -15,7 +15,7 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `test_email:${ip}`,
     limit: 5,
     windowMs: 10 * 60 * 1000,

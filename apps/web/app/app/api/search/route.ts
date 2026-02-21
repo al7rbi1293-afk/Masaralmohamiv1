@@ -56,7 +56,7 @@ type TaskItem = {
 
 export async function GET(request: NextRequest) {
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `search:${ip}`,
     limit: 60,
     windowMs: 10 * 60 * 1000,

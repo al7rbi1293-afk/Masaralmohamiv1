@@ -36,7 +36,7 @@ const leadSchema = z.object({
 export async function POST(request: NextRequest) {
     const requestId = getOrCreateRequestId(request);
     const requestIp = getRequestIp(request);
-    const rate = checkRateLimit({
+    const rate = await checkRateLimit({
         key: `leads:${requestIp}`,
         limit: 10,
         windowMs: 10 * 60 * 1000,

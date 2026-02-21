@@ -60,13 +60,21 @@ async function resolveOrgIdFromSubscriptionId(subscriptionId: string) {
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
   const signature = request.headers.get('stripe-signature') ?? '';
+  const webhookSecret = getStripeWebhookSecret();
+
+  if (!webhookSecret) {
+    logError('stripe_webhook_missing_secret', { message: 'Stripe webhook secret is not configured in the environment.' });
+    return NextResponse.json({ error: 'Webhook configuration error.' }, { status: 500 });
+  }
 
   let event: any;
   try {
     const payload = await request.text();
-    event = stripe.webhooks.constructEvent(payload, signature, getStripeWebhookSecret());
+    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
   } catch (err) {
-    return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    logError('stripe_webhook_signature_failed', { message: errorMessage });
+    return NextResponse.json({ error: `Invalid signature: ${errorMessage}` }, { status: 400 });
   }
 
   const service = createSupabaseServerClient();
@@ -87,18 +95,20 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        const { error } = await service
-          .from('subscriptions')
-          .upsert(
-            {
-              org_id: orgId,
-              plan_code: planCode || 'SOLO',
-              provider: 'stripe',
-              provider_customer_id: customerId,
-              provider_subscription_id: subscriptionId,
-            },
-            { onConflict: 'org_id' },
-          );
+        const { error } = await service.rpc('handle_stripe_event_tx', {
+          p_org_id: orgId,
+          p_plan_code: planCode || 'SOLO',
+          p_provider: 'stripe',
+          p_provider_customer_id: customerId,
+          p_provider_subscription_id: subscriptionId,
+          p_status: null,
+          p_seats: null,
+          p_current_period_start: null,
+          p_current_period_end: null,
+          p_cancel_at_period_end: null,
+          p_event_type: 'stripe.checkout_completed',
+          p_event_meta: { plan_code: planCode || null },
+        });
 
         if (error) {
           logError('stripe_webhook_checkout_update_failed', {
@@ -108,12 +118,6 @@ export async function POST(request: NextRequest) {
         } else {
           logInfo('stripe_checkout_completed', { orgId });
         }
-
-        await service.from('subscription_events').insert({
-          org_id: orgId,
-          type: 'stripe.checkout_completed',
-          meta: { plan_code: planCode || null },
-        });
 
         break;
       }
@@ -146,23 +150,20 @@ export async function POST(request: NextRequest) {
         const currentPeriodEnd = toIsoFromUnixSeconds(sub?.current_period_end);
         const cancelAtPeriodEnd = Boolean(sub?.cancel_at_period_end);
 
-        const { error } = await service
-          .from('subscriptions')
-          .upsert(
-            {
-              org_id: orgId,
-              plan_code: planCode,
-              status,
-              seats,
-              current_period_start: currentPeriodStart,
-              current_period_end: currentPeriodEnd,
-              cancel_at_period_end: cancelAtPeriodEnd,
-              provider: 'stripe',
-              provider_customer_id: customerId,
-              provider_subscription_id: subscriptionId || null,
-            },
-            { onConflict: 'org_id' },
-          );
+        const { error } = await service.rpc('handle_stripe_event_tx', {
+          p_org_id: orgId,
+          p_plan_code: planCode,
+          p_provider: 'stripe',
+          p_provider_customer_id: customerId,
+          p_provider_subscription_id: subscriptionId || null,
+          p_status: status,
+          p_seats: seats,
+          p_current_period_start: currentPeriodStart,
+          p_current_period_end: currentPeriodEnd,
+          p_cancel_at_period_end: cancelAtPeriodEnd,
+          p_event_type: event.type,
+          p_event_meta: { status, plan_code: planCode },
+        });
 
         if (error) {
           logError('stripe_webhook_subscription_upsert_failed', {
@@ -172,12 +173,6 @@ export async function POST(request: NextRequest) {
         } else {
           logInfo('stripe_subscription_synced', { orgId, status });
         }
-
-        await service.from('subscription_events').insert({
-          org_id: orgId,
-          type: event.type,
-          meta: { status, plan_code: planCode },
-        });
 
         break;
       }

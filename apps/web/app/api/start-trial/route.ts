@@ -35,7 +35,7 @@ const startTrialSchema = z.object({
 export async function POST(request: NextRequest) {
   const requestId = getOrCreateRequestId(request);
   const requestIp = getRequestIp(request);
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `start-trial:${requestIp}`,
     limit: 5,
     windowMs: 10 * 60 * 1000,

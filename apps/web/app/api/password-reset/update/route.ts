@@ -19,7 +19,7 @@ const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{7,}$/;
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `password_reset:update:${ip}`,
     limit: 15,
     windowMs: 10 * 60 * 1000,

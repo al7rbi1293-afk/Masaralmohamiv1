@@ -19,7 +19,7 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   const ip = getRequestIp(request);
-  const limit = checkRateLimit({
+  const limit = await checkRateLimit({
     key: `matter_members_add:${ip}`,
     limit: 30,
     windowMs: 10 * 60 * 1000,

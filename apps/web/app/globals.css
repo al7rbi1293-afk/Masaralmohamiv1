@@ -22,13 +22,24 @@ html {
 
 body {
   font-family: var(--font-ibm-plex-arabic), var(--font-inter), sans-serif;
-  background: #f7f8fa;
-  color: #111827;
+  background: #f8fafc; /* Softer light mode background */
+  color: #0f172a; /* Richer dark text */
+  @apply leading-relaxed antialiased;
 }
 
 .dark body {
-  background: #020617;
+  background: #090e17; /* Sophisticated very dark blue */
   color: #f8fafc;
+}
+
+/* Base modern transition for all interactive elements */
+a, button, [role="button"] {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Active scale micro-interaction */
+button:active, [role="button"]:active {
+  @apply scale-[0.98];
 }
 
 .skip-link {

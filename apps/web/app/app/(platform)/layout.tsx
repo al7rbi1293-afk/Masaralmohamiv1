@@ -7,6 +7,21 @@ import { Container } from '@/components/ui/container';
 import { SentryClientInit } from '@/components/observability/sentry-client-init';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { isAppAdmin } from '@/lib/admin';
+import {
+  LayoutDashboard,
+  Search,
+  Calendar,
+  Users,
+  Briefcase,
+  FileText,
+  CheckSquare,
+  Receipt,
+  BarChart3,
+  History,
+  Settings,
+  ShieldAlert,
+  LogOut
+} from 'lucide-react';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -17,17 +32,17 @@ type PlatformLayoutProps = {
 };
 
 const navItemsBase = [
-  { href: '/app', label: 'لوحة التحكم' },
-  { href: '/app/search', label: 'البحث' },
-  { href: '/app/calendar', label: 'التقويم' },
-  { href: '/app/clients', label: 'العملاء' },
-  { href: '/app/matters', label: 'القضايا' },
-  { href: '/app/documents', label: 'المستندات' },
-  { href: '/app/tasks', label: 'المهام' },
-  { href: '/app/billing/invoices', label: 'الفوترة' },
-  { href: '/app/reports', label: 'التقارير' },
-  { href: '/app/audit', label: 'سجل التدقيق' },
-  { href: '/app/settings', label: 'الإعدادات' },
+  { href: '/app', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/app/search', label: 'البحث', icon: Search },
+  { href: '/app/calendar', label: 'التقويم', icon: Calendar },
+  { href: '/app/clients', label: 'العملاء', icon: Users },
+  { href: '/app/matters', label: 'القضايا', icon: Briefcase },
+  { href: '/app/documents', label: 'المستندات', icon: FileText },
+  { href: '/app/tasks', label: 'المهام', icon: CheckSquare },
+  { href: '/app/billing/invoices', label: 'الفوترة', icon: Receipt },
+  { href: '/app/reports', label: 'التقارير', icon: BarChart3 },
+  { href: '/app/audit', label: 'سجل التدقيق', icon: History },
+  { href: '/app/settings', label: 'الإعدادات', icon: Settings },
 ] as const;
 
 export default async function PlatformLayout({ children }: PlatformLayoutProps) {
@@ -37,55 +52,83 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
     redirect('/signin');
   }
 
-  // Create a mutable copy of nav items
-  const navItems: { href: string; label: string }[] = [...navItemsBase];
+  // Create a mutable type-widened copy of nav items
+  const navItems: { href: string; label: string; icon: any }[] = [...navItemsBase];
 
   // Add Admin Panel link if user is an admin
   const isAdmin = await isAppAdmin();
   if (isAdmin) {
-    navItems.unshift({ href: '/admin', label: 'لوحة الإدارة 🛡️' });
+    navItems.unshift({ href: '/admin', label: 'إدارة النظام الرئيسي', icon: ShieldAlert });
   }
 
   return (
-    <Container className="py-8 sm:py-10">
+    <div className="min-h-screen bg-brand-background dark:bg-slate-950">
       <SentryClientInit />
-      <section className="rounded-xl2 border border-brand-border bg-white shadow-panel dark:border-slate-700 dark:bg-slate-900">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-border px-5 py-4 dark:border-slate-700">
-          <div>
-            <h1 className="text-lg font-bold text-brand-navy dark:text-slate-100">مسار المحامي</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              منصة المكتب
-            </p>
+
+      {/* Modern Sticky Glass Header */}
+      <header className="sticky top-0 z-40 w-full border-b border-brand-border/60 bg-white/70 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+        <Container className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-emerald text-white shadow-sm">
+              <Briefcase className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold tracking-tight text-brand-navy dark:text-slate-100">مسار المحامي</h1>
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                منصة العمليات
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-slate-600 dark:text-slate-300">{user.email}</p>
+          <div className="flex items-center gap-4">
+            <div className="hidden text-sm font-medium text-slate-600 dark:text-slate-300 sm:block">
+              {user.email}
+            </div>
             <form action={signOutAction}>
-              <button type="submit" className={buttonVariants('outline', 'sm')}>
-                تسجيل الخروج
+              <button
+                type="submit"
+                className="flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50 dark:focus-visible:ring-slate-300"
+                title="تسجيل الخروج"
+              >
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline-block">خروج</span>
               </button>
             </form>
           </div>
-        </header>
+        </Container>
+      </header>
 
-        <div className="grid gap-6 p-5 lg:grid-cols-[240px_1fr]">
-          <aside className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
-            <nav aria-label="التنقل داخل المنصة" className="space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-brand-background dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  {item.label}
-                </Link>
-              ))}
+      <Container className="px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+
+          {/* Modernized Floating Sidebar */}
+          <aside className="h-fit rounded-xl2 border border-brand-border bg-white shadow-panel dark:border-slate-800 dark:bg-slate-900">
+            <nav aria-label="التنقل داخل المنصة" className="flex flex-col gap-1 p-3">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 hover:text-brand-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  >
+                    <Icon className="h-4 w-4 text-slate-400 transition-colors group-hover:text-brand-emerald dark:text-slate-500 dark:group-hover:text-emerald-400" />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           </aside>
 
-          <main>{children}</main>
+          {/* Main Content Area */}
+          <main className="min-w-0">
+            <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+              {children}
+            </div>
+          </main>
+
         </div>
-      </section>
-    </Container>
+      </Container>
+    </div>
   );
 }

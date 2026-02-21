@@ -143,7 +143,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
           ) : null}
         </div>
 
-        <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700 lg:col-span-2">
+        <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700 min-w-0 lg:col-span-2">
           <h3 className="font-semibold text-brand-navy dark:text-slate-100">تعديل الفاتورة</h3>
           <form action={updateInvoiceAction.bind(null, invoice.id)} className="mt-4 grid gap-5">
             <div className="grid gap-4 lg:grid-cols-4">

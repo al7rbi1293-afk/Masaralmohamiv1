@@ -86,7 +86,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   }
 
   return (
-    <div className="min-h-screen bg-brand-background dark:bg-slate-950">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-brand-background dark:bg-slate-950">
       <SentryClientInit />
 
       {/* Modern Sticky Glass Header */}
@@ -151,10 +151,8 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
           </aside>
 
           {/* Main Content Area */}
-          <main className="min-w-0">
-            <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-800 dark:bg-slate-900 sm:p-8">
-              {children}
-            </div>
+          <main className="min-w-0 w-full overflow-x-hidden">
+            {children}
           </main>
 
         </div>

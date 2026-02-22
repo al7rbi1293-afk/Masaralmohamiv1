@@ -55,6 +55,7 @@ GRANT ALL ON public.app_users TO authenticated,
 -- 6. Disable RLS on app_users (all access is controlled by application code)
 ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
 -- Allow service_role full access
+DROP POLICY IF EXISTS app_users_service_all ON public.app_users;
 CREATE POLICY app_users_service_all ON public.app_users FOR ALL TO service_role USING (true) WITH CHECK (true);
 -- 7. Drop the old auth trigger (no longer needed)
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;

@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
-import { getPublicSiteUrl } from '@/lib/env';
+import { hashPassword } from '@/lib/auth-custom';
 import { verifyCsrfToken } from '@/lib/csrf';
 
 export async function signUpAction(formData: FormData) {
@@ -34,48 +34,49 @@ export async function signUpAction(formData: FormData) {
     );
   }
 
-  const supabaseAdmin = createSupabaseServerClient();
+  const db = createSupabaseServerClient();
   const siteUrl = getRequestSiteUrl();
   const nextPath = token && isSafeToken(token) ? `/invite/${token}` : '/app';
-  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
-  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'signup',
-    email,
-    password,
-    options: {
-      redirectTo,
-      data: {
-        full_name: fullName,
-        phone: phone || null,
-        firm_name: firmName || null,
-      },
-    },
-  });
-
-  if (linkError) {
-    if (isAlreadyRegisteredError(linkError.message)) {
+  // Check if user already exists
+  const { data: existingUser } = await db.from('app_users').select('id, email_verified').eq('email', email).maybeSingle();
+  if (existingUser) {
+    if (existingUser.email_verified) {
+      redirect(`/signin?error=${encodeURIComponent('هذا البريد مسجل مسبقًا. استخدم تسجيل الدخول.')}&email=${encodeURIComponent(email)}`);
+    } else {
       redirect(buildPendingActivationHref(email, token));
     }
+  }
 
+  const passwordHash = await hashPassword(password);
+  const verificationToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
+
+  const { data: newUser, error: createError } = await db.from('app_users').insert({
+    email,
+    password_hash: passwordHash,
+    full_name: fullName,
+    phone: phone || null,
+    status: 'active',
+    email_verified: false,
+    email_verification_token: verificationToken,
+    email_verification_expires_at: expiresAt.toISOString(),
+  }).select('id').single();
+
+  if (createError || !newUser) {
     redirect(
-      `/signup?error=${encodeURIComponent(toArabicAuthError(linkError.message))}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+      `/signup?error=${encodeURIComponent('تعذر إنشاء الحساب. حاول مرة أخرى.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
     );
   }
 
-  const verificationLink = buildVerificationLink({
-    siteUrl,
-    nextPath,
-    otpType: 'signup',
-    tokenHash: linkData?.properties?.hashed_token ?? null,
-    fallbackActionLink: linkData?.properties?.action_link ?? null,
-  });
+  await db.from('profiles').upsert({
+    user_id: newUser.id,
+    full_name: fullName,
+    phone: phone || null,
+  }, { onConflict: 'user_id' });
 
-  if (!verificationLink) {
-    redirect(
-      `/signup?error=${encodeURIComponent('حدث خطأ أثناء إنشاء رابط التفعيل.')}`,
-    );
-  }
+  const verificationLink = `${siteUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`;
 
   // Send welcome + activation email
   try {
@@ -93,7 +94,7 @@ export async function signUpAction(formData: FormData) {
   }
 
   // Redirect to verification pending page.
-  redirect('/auth/verify');
+  redirect(buildPendingActivationHref(email, token));
 }
 
 export async function resendActivationAction(formData: FormData) {
@@ -118,32 +119,34 @@ export async function resendActivationAction(formData: FormData) {
   }
 
   const siteUrl = getRequestSiteUrl();
-  const supabaseAdmin = createSupabaseServerClient();
+  const db = createSupabaseServerClient();
 
   const nextPath = token && isSafeToken(token) ? `/invite/${token}` : '/app';
-  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
-  const linkResult = await supabaseAdmin.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-    options: {
-      redirectTo,
-    },
-  });
+  const { data: user } = await db.from('app_users').select('id, email_verified').eq('email', email).maybeSingle();
+  if (!user) {
+    redirect(`/signup?error=${encodeURIComponent('الحساب غير موجود.')}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`);
+  }
+  if (user.email_verified) {
+    redirect(`/signin?success=${encodeURIComponent('الحساب مفعل مسبقاً، يمكنك تسجيل الدخول.')}&email=${encodeURIComponent(email)}`);
+  }
 
-  const verificationLink = buildVerificationLink({
-    siteUrl,
-    nextPath,
-    otpType: 'magiclink',
-    tokenHash: linkResult.data?.properties?.hashed_token ?? null,
-    fallbackActionLink: linkResult.data?.properties?.action_link ?? null,
-  });
+  const verificationToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
 
-  if (linkResult.error || !verificationLink) {
+  const { error: updateError } = await db.from('app_users').update({
+    email_verification_token: verificationToken,
+    email_verification_expires_at: expiresAt.toISOString(),
+  }).eq('id', user.id);
+
+  if (updateError) {
     redirect(
       `/signup?error=${encodeURIComponent('تعذر إعادة إرسال رسالة التفعيل. حاول مرة أخرى.')}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`,
     );
   }
+
+  const verificationLink = `${siteUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`;
 
   try {
     const { sendEmail } = await import('@/lib/email');
@@ -227,19 +230,5 @@ function getRequestSiteUrl() {
     return `${proto}://${host}`;
   }
 
-  return getPublicSiteUrl();
-}
-
-function buildVerificationLink(params: {
-  siteUrl: string;
-  nextPath: string;
-  otpType: 'signup' | 'magiclink';
-  tokenHash: string | null;
-  fallbackActionLink: string | null;
-}) {
-  if (params.tokenHash) {
-    return `${params.siteUrl}/auth/callback?token_hash=${encodeURIComponent(params.tokenHash)}&type=${encodeURIComponent(params.otpType)}&next=${encodeURIComponent(params.nextPath)}`;
-  }
-
-  return params.fallbackActionLink;
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://masaralmohami.com';
 }

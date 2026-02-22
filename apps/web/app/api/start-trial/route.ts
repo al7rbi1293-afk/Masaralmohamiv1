@@ -117,10 +117,21 @@ export async function POST(request: NextRequest) {
         message: 'الحساب موجود بالفعل. يرجى تسجيل الدخول بكلمة المرور الصحيحة.',
       }, 400, requestId, rate);
     }
+
+    if (!existingUser.email_verified) {
+      return jsonResponse({
+        message: 'الحساب موجود ولكنه غير مفعل. يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب.',
+      }, 400, requestId, rate);
+    }
+
     userId = existingUser.id;
   } else {
-    // Create new user in app_users
+    // Create new user in app_users requires verification
     const passwordHash = await hashPassword(password);
+    const verificationToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
     const { data: newUser, error: createError } = await db
       .from('app_users')
       .insert({
@@ -128,8 +139,10 @@ export async function POST(request: NextRequest) {
         password_hash: passwordHash,
         full_name: fullName,
         phone,
-        email_verified: true,
+        email_verified: false,
         status: 'active',
+        email_verification_token: verificationToken,
+        email_verification_expires_at: expiresAt.toISOString(),
       })
       .select('id')
       .single();
@@ -154,9 +167,40 @@ export async function POST(request: NextRequest) {
         full_name: fullName,
         phone,
       }, { onConflict: 'user_id' });
+
+    // Send Welcome Email
+    try {
+      const { sendEmail } = await import('@/lib/email');
+      const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
+
+      const siteUrl = getRequestSiteUrl(request);
+      const verificationLink = `${siteUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+
+      await sendEmail({
+        to: email,
+        subject: WELCOME_EMAIL_SUBJECT,
+        text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
+        html: WELCOME_EMAIL_HTML(fullName, verificationLink),
+      });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // We do not fail the request if the email fails, they can request another one.
+    }
+
+    // Redirect newly created users to the pending activation page
+    const destination = `/signup?status=pending_activation&email=${encodeURIComponent(email)}`;
+    logInfo('trial_started_pending_verification', { requestId, ip: requestIp, userId });
+
+    const response = NextResponse.json(
+      { redirectTo: destination, requestId },
+      { status: 200 },
+    );
+    setRequestIdHeader(response, requestId);
+    setRateLimitHeaders(response, rate);
+    return response;
   }
 
-  // Ensure trial provisioning
+  // If user already existed and is verified, ensure trial provisioning and sign them in
   try {
     const { isExpired } = await ensureTrialProvisionForUser({
       userId,
@@ -208,6 +252,19 @@ function toText(formData: FormData, field: string) {
 
 function toObjectText(value: unknown) {
   return typeof value === 'string' ? value : '';
+}
+
+function getRequestSiteUrl(request: NextRequest) {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const host = forwardedHost || request.headers.get('host')?.trim();
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const proto = forwardedProto || (host?.includes('localhost') ? 'http' : 'https');
+
+  if (host) {
+    return `${proto}://${host}`;
+  }
+
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://masaralmohami.com';
 }
 
 async function readStartTrialPayload(request: NextRequest): Promise<

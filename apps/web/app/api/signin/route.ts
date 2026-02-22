@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   // Look up user in app_users
   const { data: user, error: userError } = await db
     .from('app_users')
-    .select('id, email, password_hash, full_name, status')
+    .select('id, email, password_hash, full_name, status, email_verified')
     .eq('email', parsed.data.email)
     .maybeSingle();
 
@@ -59,6 +59,15 @@ export async function POST(request: NextRequest) {
     return redirectWithError(
       request,
       'تم تعليق الحساب. تواصل مع الإدارة.',
+      parsed.data.email,
+      parsed.data.next,
+    );
+  }
+
+  if (!user.email_verified) {
+    return redirectWithError(
+      request,
+      'الحساب موجود ولكنه غير مفعل. يرجى مراجعة بريدك الإلكتروني لتفعيل الحساب.',
       parsed.data.email,
       parsed.data.next,
     );

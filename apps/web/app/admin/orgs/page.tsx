@@ -14,6 +14,10 @@ type Org = {
         payment_status: string;
         current_period_end: string | null;
     } | null;
+    trial: {
+        ends_at: string | null;
+        status: string;
+    } | null;
 };
 
 export default function AdminOrgsPage() {
@@ -28,7 +32,10 @@ export default function AdminOrgsPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    async function handleAction(orgId: string, action: 'suspend' | 'activate') {
+    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial') {
+        const proceed = action === 'grant_lifetime' ? window.confirm('هل أنت متأكد من منح هذا المكتب اشتراك مدى الحياة؟') : true;
+        if (!proceed) return;
+
         setActionId(orgId);
         await fetch('/admin/api/orgs', {
             method: 'PATCH',
@@ -75,8 +82,8 @@ export default function AdminOrgsPage() {
                                     <td className="py-3">
                                         <span
                                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${org.status === 'suspended'
-                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                                                 }`}
                                         >
                                             {org.status === 'suspended' ? 'معلّق' : 'نشط'}
@@ -85,9 +92,11 @@ export default function AdminOrgsPage() {
                                     <td className="py-3">
                                         {org.subscription?.current_period_end
                                             ? new Date(org.subscription.current_period_end).toLocaleDateString('ar-SA')
-                                            : '—'}
+                                            : org.trial?.ends_at
+                                                ? new Date(org.trial.ends_at).toLocaleDateString('ar-SA')
+                                                : '—'}
                                     </td>
-                                    <td className="py-3">
+                                    <td className="py-3 space-x-reverse space-x-2">
                                         {org.status === 'active' ? (
                                             <button
                                                 disabled={actionId === org.id}
@@ -105,6 +114,20 @@ export default function AdminOrgsPage() {
                                                 تفعيل
                                             </button>
                                         )}
+                                        <button
+                                            disabled={actionId === org.id}
+                                            onClick={() => handleAction(org.id, 'extend_trial')}
+                                            className="rounded bg-brand-navy px-3 py-1 text-xs text-white hover:bg-brand-navy/90 disabled:opacity-50"
+                                        >
+                                            تمديد 14 يوم
+                                        </button>
+                                        <button
+                                            disabled={actionId === org.id}
+                                            onClick={() => handleAction(org.id, 'grant_lifetime')}
+                                            className="rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700 disabled:opacity-50"
+                                        >
+                                            طوال الحياة
+                                        </button>
                                     </td>
                                 </tr>
                             ))}

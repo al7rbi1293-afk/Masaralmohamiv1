@@ -263,11 +263,12 @@ export async function middleware(request: NextRequest) {
   // Use service role client for all DB checks (no RLS needed)
   const db = createServiceClient(supabaseUrl, serviceKey);
 
+  // Check if user is admin globally for this request
+  const isAppAdmin = await isAdmin(db, userId).catch(() => false);
+
   // --- Admin route protection ---
   if (pathname.startsWith('/admin')) {
-    const adminCheck = await isAdmin(db, userId).catch(() => false);
-
-    if (!adminCheck) {
+    if (!isAppAdmin) {
       const response = pathname.startsWith('/admin/api/')
         ? NextResponse.json({ error: 'غير مصرح.' }, { status: 403 })
         : NextResponse.redirect(new URL('/app', request.url));
@@ -301,7 +302,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // --- Trial/subscription lock check ---
-  const locked = await shouldLockApp(db, pathname, userId);
+  const locked = isAppAdmin ? false : await shouldLockApp(db, pathname, userId);
   const isApi = pathname.startsWith('/app/api/');
   let response: NextResponse;
 

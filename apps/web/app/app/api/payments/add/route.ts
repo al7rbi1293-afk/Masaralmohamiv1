@@ -4,6 +4,8 @@ import { addPayment } from '@/lib/billing';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 
+export const runtime = 'nodejs';
+
 const addPaymentSchema = z.object({
   invoice_id: z.string().uuid(),
   amount: z.number().positive('يرجى إدخال مبلغ صحيح.'),

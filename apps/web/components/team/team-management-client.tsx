@@ -27,10 +27,8 @@ export type TeamInvitationItem = {
 };
 
 type TeamManagementClientProps = {
-  publicSiteUrl: string;
   currentUserId: string;
   members: TeamMemberItem[];
-  invitations: TeamInvitationItem[];
 };
 
 const roleLabel: Record<TeamMemberItem['role'], string> = {
@@ -40,10 +38,8 @@ const roleLabel: Record<TeamMemberItem['role'], string> = {
 };
 
 export function TeamManagementClient({
-  publicSiteUrl,
   currentUserId,
   members,
-  invitations,
 }: TeamManagementClientProps) {
   const router = useRouter();
   const [message, setMessage] = useState('');
@@ -57,12 +53,12 @@ export function TeamManagementClient({
   const [confirmLabel, setConfirmLabel] = useState('تأكيد');
   const [confirmDestructive, setConfirmDestructive] = useState(true);
 
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<TeamMemberItem['role']>('lawyer');
-  const [inviteExpiry, setInviteExpiry] = useState<'24h' | '7d'>('7d');
-  const [inviteBusy, setInviteBusy] = useState(false);
-  const [inviteLink, setInviteLink] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [addFullName, setAddFullName] = useState('');
+  const [addEmail, setAddEmail] = useState('');
+  const [addPassword, setAddPassword] = useState('');
+  const [addRole, setAddRole] = useState<TeamMemberItem['role']>('lawyer');
+  const [addBusy, setAddBusy] = useState(false);
 
   const [busyKey, setBusyKey] = useState('');
 
@@ -75,14 +71,16 @@ export function TeamManagementClient({
   }, [membersSorted]);
 
   useEffect(() => {
-    if (!inviteOpen) {
-      setInviteEmail('');
-      setInviteRole('lawyer');
-      setInviteExpiry('7d');
-      setInviteBusy(false);
-      setInviteLink('');
+    if (!addOpen) {
+      setAddFullName('');
+      setAddEmail('');
+      setAddPassword('');
+      setAddRole('lawyer');
+      setAddBusy(false);
+      setError('');
+      setMessage('');
     }
-  }, [inviteOpen]);
+  }, [addOpen]);
 
   function openConfirm(params: {
     title: string;
@@ -100,78 +98,46 @@ export function TeamManagementClient({
     setConfirmOpen(true);
   }
 
-  async function createInvite() {
-    setInviteBusy(true);
+  async function addMember() {
+    setAddBusy(true);
     setError('');
     setMessage('');
 
-    const email = inviteEmail.trim().toLowerCase();
-    if (!email) {
-      setInviteBusy(false);
-      setError('يرجى إدخال البريد الإلكتروني.');
+    const email = addEmail.trim().toLowerCase();
+    const fullName = addFullName.trim();
+    const password = addPassword;
+
+    if (!email || !fullName || !password) {
+      setAddBusy(false);
+      setError('يرجى تعبئة جميع الحقول المطلوبة.');
       return;
     }
 
     try {
-      const response = await fetch('/app/api/team/invite', {
+      const response = await fetch('/app/api/team/add-member', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          fullName,
           email,
-          role: inviteRole,
-          expires_in: inviteExpiry,
+          password,
+          role: addRole,
         }),
       });
       const json = (await response.json().catch(() => ({}))) as any;
       if (!response.ok) {
-        setError(String(json?.error ?? 'تعذر إنشاء الدعوة.'));
+        setError(String(json?.error ?? 'تعذر إضافة العضو.'));
         return;
       }
 
-      setInviteLink(String(json?.inviteUrl ?? ''));
-      setMessage('تم إنشاء رابط الدعوة.');
+      setMessage('تمت إضافة العضو بنجاح.');
+      setAddOpen(false);
       router.refresh();
     } catch {
-      setError('تعذر إنشاء الدعوة. حاول مرة أخرى.');
+      setError('تعذر إضافة العضو. حاول مرة أخرى.');
     } finally {
-      setInviteBusy(false);
+      setAddBusy(false);
     }
-  }
-
-  async function revokeInviteDirect(invitationId: string) {
-    setBusyKey(`revoke:${invitationId}`);
-    setError('');
-    setMessage('');
-
-    try {
-      const response = await fetch('/app/api/team/revoke', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitation_id: invitationId }),
-      });
-      const json = (await response.json().catch(() => ({}))) as any;
-      if (!response.ok) {
-        setError(String(json?.error ?? 'تعذر إلغاء الدعوة.'));
-        return;
-      }
-
-      setMessage('تم إلغاء الدعوة.');
-      router.refresh();
-    } catch {
-      setError('تعذر إلغاء الدعوة.');
-    } finally {
-      setBusyKey('');
-    }
-  }
-
-  function revokeInvite(invitationId: string) {
-    openConfirm({
-      title: 'إلغاء الدعوة',
-      message: 'هل تريد إلغاء هذه الدعوة؟ لن يتمكن المستخدم من استخدام الرابط بعد ذلك.',
-      confirmLabel: 'إلغاء الدعوة',
-      destructive: true,
-      action: async () => revokeInviteDirect(invitationId),
-    });
   }
 
   async function changeRole(userId: string, role: TeamMemberItem['role']) {
@@ -250,10 +216,10 @@ export function TeamManagementClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-slate-600 dark:text-slate-300">
-          <p>يمكنك مشاركة رابط الدعوة يدويًا. لا يوجد إرسال بريد آلي في النسخة الحالية.</p>
+          <p>يمكنك إضافة أعضاء جدد مباشرة إلى فريقك. سيتم إنشاء حساباتهم فوراً ولن تحتاج لإرسال روابط دعوة.</p>
         </div>
-        <Button type="button" variant="primary" size="sm" onClick={() => setInviteOpen(true)}>
-          دعوة عضو جديد
+        <Button type="button" variant="primary" size="sm" onClick={() => setAddOpen(true)}>
+          إضافة عضو
         </Button>
       </div>
 
@@ -367,61 +333,12 @@ export function TeamManagementClient({
         )}
       </section>
 
-      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
-        <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">الدعوات المعلقة</h2>
-        {!invitations.length ? (
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">لا توجد دعوات حالياً.</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {invitations.map((inv) => {
-              const url = `${publicSiteUrl}/invite/${inv.token}`;
-              return (
-                <div
-                  key={inv.id}
-                  className="rounded-lg border border-brand-border p-3 text-sm dark:border-slate-700"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-brand-navy dark:text-slate-100">{inv.email}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        الدور: {roleLabel[inv.role]} · تم الإنشاء: {new Date(inv.created_at).toLocaleString('ar-SA')} · ينتهي:{' '}
-                        {new Date(inv.expires_at).toLocaleString('ar-SA')}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className={buttonVariants('outline', 'sm')}
-                        onClick={() => copy(url)}
-                      >
-                        نسخ الرابط
-                      </button>
-                      <Link href={url} className={buttonVariants('ghost', 'sm')} target="_blank" rel="noreferrer">
-                        فتح
-                      </Link>
-                      <button
-                        type="button"
-                        className={buttonVariants('outline', 'sm')}
-                        onClick={() => revokeInvite(inv.id)}
-                        disabled={busyKey === `revoke:${inv.id}`}
-                      >
-                        إلغاء
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {inviteOpen ? (
+      {addOpen ? (
         <div
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setInviteOpen(false)}
+          onClick={() => setAddOpen(false)}
         >
           <div
             className="w-full max-w-xl rounded-xl border border-brand-border bg-white p-5 shadow-panel dark:border-slate-700 dark:bg-slate-900"
@@ -429,12 +346,12 @@ export function TeamManagementClient({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-brand-navy dark:text-slate-100">دعوة عضو جديد</h3>
+                <h3 className="text-lg font-bold text-brand-navy dark:text-slate-100">إضافة عضو جديد</h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  أدخل البريد وحدد الدور ومدة صلاحية الرابط.
+                  سيتم إنشاء حساب للعضو فوراً وإضافته لفريقك.
                 </p>
               </div>
-              <button type="button" className={buttonVariants('ghost', 'sm')} onClick={() => setInviteOpen(false)}>
+              <button type="button" className={buttonVariants('ghost', 'sm')} onClick={() => setAddOpen(false)}>
                 إغلاق
               </button>
             </div>
@@ -442,12 +359,27 @@ export function TeamManagementClient({
             <div className="mt-4 grid gap-4">
               <label className="block space-y-1 text-sm">
                 <span className="font-medium text-slate-700 dark:text-slate-200">
+                  الاسم الكامل <span className="text-red-600">*</span>
+                </span>
+                <input
+                  value={addFullName}
+                  onChange={(e) => setAddFullName(e.target.value)}
+                  type="text"
+                  placeholder="محمد العبدالله"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">
                   البريد الإلكتروني <span className="text-red-600">*</span>
                 </span>
                 <input
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
                   type="email"
+                  dir="ltr"
                   className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                   required
                 />
@@ -455,10 +387,25 @@ export function TeamManagementClient({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-1 text-sm">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    كلمة المرور (المبدئية) <span className="text-red-600">*</span>
+                  </span>
+                  <input
+                    value={addPassword}
+                    onChange={(e) => setAddPassword(e.target.value)}
+                    type="password"
+                    dir="ltr"
+                    className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                    placeholder="٦ أحرف كحد أدنى"
+                    required
+                  />
+                </label>
+
+                <label className="block space-y-1 text-sm">
                   <span className="font-medium text-slate-700 dark:text-slate-200">الدور</span>
                   <select
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as any)}
+                    value={addRole}
+                    onChange={(e) => setAddRole(e.target.value as any)}
                     className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                   >
                     <option value="lawyer">محامٍ</option>
@@ -466,40 +413,13 @@ export function TeamManagementClient({
                     <option value="owner">مالك</option>
                   </select>
                 </label>
-
-                <label className="block space-y-1 text-sm">
-                  <span className="font-medium text-slate-700 dark:text-slate-200">الصلاحية</span>
-                  <select
-                    value={inviteExpiry}
-                    onChange={(e) => setInviteExpiry(e.target.value as any)}
-                    className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    <option value="24h">24 ساعة</option>
-                    <option value="7d">7 أيام</option>
-                  </select>
-                </label>
               </div>
 
-              {inviteLink ? (
-                <div className="rounded-lg border border-brand-border bg-brand-background p-3 text-sm dark:border-slate-700 dark:bg-slate-800/40">
-                  <p className="font-medium text-brand-navy dark:text-slate-100">رابط الدعوة</p>
-                  <p className="mt-1 break-all text-xs text-slate-600 dark:text-slate-300">{inviteLink}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" className={buttonVariants('primary', 'sm')} onClick={() => copy(inviteLink)}>
-                      نسخ الرابط
-                    </button>
-                    <Link href={inviteLink} className={buttonVariants('outline', 'sm')} target="_blank" rel="noreferrer">
-                      فتح
-                    </Link>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="primary" size="md" onClick={createInvite} disabled={inviteBusy}>
-                  {inviteBusy ? 'جارٍ إنشاء الدعوة...' : 'إنشاء رابط الدعوة'}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button type="button" variant="primary" size="md" onClick={addMember} disabled={addBusy}>
+                  {addBusy ? 'جارٍ إضافة العضو...' : 'إضافة عضو'}
                 </Button>
-                <Button type="button" variant="outline" size="md" onClick={() => setInviteOpen(false)} disabled={inviteBusy}>
+                <Button type="button" variant="outline" size="md" onClick={() => setAddOpen(false)} disabled={addBusy}>
                   إلغاء
                 </Button>
               </div>

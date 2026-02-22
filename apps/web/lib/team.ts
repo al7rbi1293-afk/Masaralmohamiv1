@@ -40,10 +40,92 @@ export class TeamHttpError extends Error {
 const roleSchema = z.enum(['owner', 'lawyer', 'assistant']);
 const expiresInSchema = z.enum(['24h', '7d']);
 
+export async function addMemberDirect(
+  input: unknown,
+  req?: Request,
+): Promise<void> {
+  const { orgId, userId } = await getOwnerContext();
+
+  const parsed = addMemberSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new TeamHttpError(
+      400,
+      parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.',
+    );
+  }
+
+  const supabase = createSupabaseServerRlsClient();
+  const serviceClient = createSupabaseServerClient(); // Admin client needed for auth.admin
+
+  const email = parsed.data.email.toLowerCase();
+
+  // 1. Create the user in Supabase Auth (Admin API)
+  const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
+    email,
+    password: parsed.data.password,
+    email_confirm: true, // Auto-confirm the email so they can log in immediately
+    user_metadata: {
+      full_name: parsed.data.fullName,
+    },
+  });
+
+  if (authError) {
+    const message = authError.message.toLowerCase();
+    if (message.includes('already exists') || message.includes('already registered')) {
+      throw new TeamHttpError(400, 'هذا البريد الإلكتروني مسجل مسبقاً.');
+    }
+    throw new TeamHttpError(400, 'تعذر إنشاء الحساب. ' + authError.message);
+  }
+
+  const newUserId = authData.user.id;
+
+  // 2. Add them to the organization's memberships
+  const { error: membershipError } = await serviceClient
+    .from('memberships')
+    .insert({
+      org_id: orgId,
+      user_id: newUserId,
+      role: parsed.data.role,
+    });
+
+  if (membershipError) {
+    // Attempt rollback of user creation if membership fails, to maintain consistency
+    await serviceClient.auth.admin.deleteUser(newUserId);
+    throw new TeamHttpError(400, 'تعذر إضافة المستخدم للمكتب.');
+  }
+
+  // Note: auth.users insert triggers should automatically create the profile, 
+  // but we might need to verify if the trigger propagates user_metadata.full_name correctly 
+  // or update it manually if `full_name` is missing from the profile.
+  // For safety, let's explicitly update the profile name just in case the trigger didn't catch it.
+  await serviceClient
+    .from('profiles')
+    .update({ full_name: parsed.data.fullName })
+    .eq('user_id', newUserId);
+
+  await logAudit({
+    action: 'team.member_added_direct',
+    entityType: 'membership',
+    entityId: newUserId,
+    meta: {
+      role: parsed.data.role,
+      email: email,
+    },
+    req,
+  });
+}
+
 const createInvitationSchema = z.object({
   email: z.string().trim().email('يرجى إدخال بريد إلكتروني صحيح.').max(255),
   role: roleSchema.default('lawyer'),
   expiresIn: expiresInSchema.default('7d'),
+});
+
+const addMemberSchema = z.object({
+  fullName: z.string().trim().min(2, 'يجب أن يكون الاسم الكامل من حرفين على الأقل').max(100),
+  email: z.string().trim().email('يرجى إدخال بريد إلكتروني صحيح.').max(255),
+  password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل').max(100),
+  role: roleSchema.default('lawyer'),
 });
 
 const revokeInvitationSchema = z.object({
@@ -128,13 +210,13 @@ export async function listMembers(): Promise<TeamMember[]> {
       : Promise.resolve({ data: [], error: null } as any),
     memberIds.length
       ? (async () => {
-          try {
-            const service = createSupabaseServerClient();
-            return await service.schema('auth').from('users').select('id, email').in('id', memberIds);
-          } catch {
-            return { data: [], error: null } as any;
-          }
-        })()
+        try {
+          const service = createSupabaseServerClient();
+          return await service.schema('auth').from('users').select('id, email').in('id', memberIds);
+        } catch {
+          return { data: [], error: null } as any;
+        }
+      })()
       : Promise.resolve({ data: [], error: null } as any),
   ]);
 

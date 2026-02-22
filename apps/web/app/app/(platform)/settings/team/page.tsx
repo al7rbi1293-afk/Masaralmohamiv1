@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
-import { TeamManagementClient, type TeamInvitationItem, type TeamMemberItem } from '@/components/team/team-management-client';
-import { getPublicSiteUrl } from '@/lib/env';
+import { TeamManagementClient, type TeamMemberItem } from '@/components/team/team-management-client';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
-import { listInvitations, listMembers, TeamHttpError } from '@/lib/team';
+import { listMembers, TeamHttpError } from '@/lib/team';
 
 export default async function TeamSettingsPage() {
   const user = await getCurrentAuthUser();
@@ -17,12 +16,9 @@ export default async function TeamSettingsPage() {
   }
 
   let members: TeamMemberItem[] = [];
-  let invites: TeamInvitationItem[] = [];
 
   try {
-    const [memberRows, invitationRows] = await Promise.all([listMembers(), listInvitations()]);
-    members = memberRows;
-    invites = invitationRows;
+    members = await listMembers();
   } catch (error) {
     if (error instanceof TeamHttpError && error.status === 403) {
       return (
@@ -65,7 +61,7 @@ export default async function TeamSettingsPage() {
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">إدارة الفريق</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            دعوة أعضاء جدد وإدارة الأدوار (للمالك فقط).
+            إضافة أعضاء جدد وإدارة الأدوار (للمالك فقط).
           </p>
         </div>
         <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>
@@ -74,10 +70,8 @@ export default async function TeamSettingsPage() {
       </div>
 
       <TeamManagementClient
-        publicSiteUrl={getPublicSiteUrl()}
         currentUserId={user.id}
         members={members}
-        invitations={invites}
       />
     </Card>
   );

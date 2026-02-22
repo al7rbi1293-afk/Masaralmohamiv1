@@ -6,6 +6,7 @@ import { getPublicSiteUrl } from '@/lib/env';
 import { requireOwner, type OrgRole } from '@/lib/org';
 import { logAudit } from '@/lib/audit';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { canAddMoreMembers } from '@/lib/subscription';
 
 export type TeamRole = OrgRole;
 
@@ -57,6 +58,12 @@ export async function addMemberDirect(
 
   const { hashPassword } = await import('@/lib/auth-custom');
   const db = createSupabaseServerClient();
+
+  // 0. Check if the org can add more members based on their plan
+  const canAdd = await canAddMoreMembers(orgId);
+  if (!canAdd) {
+    throw new TeamHttpError(403, 'لقد وصلت للحد الأقصى لعدد المشتركين المسموح به في باقتك الحالية. يرجى ترقية الباقة لإضافة المزيد من الأعضاء.');
+  }
 
   const email = parsed.data.email.toLowerCase();
 
@@ -306,6 +313,12 @@ export async function createInvitation(
   }
 
   const supabase = createSupabaseServerRlsClient();
+
+  // 0. Check if the org can add more members based on their plan
+  const canAdd = await canAddMoreMembers(orgId);
+  if (!canAdd) {
+    throw new TeamHttpError(403, 'لقد وصلت للحد الأقصى لعدد المشتركين المسموح به في باقتك الحالية. يرجى ترقية الباقة لإرسال المزيد من الدعوات.');
+  }
 
   const email = parsed.data.email.toLowerCase();
   const expiresAt = expiresAtFrom(parsed.data.expiresIn);

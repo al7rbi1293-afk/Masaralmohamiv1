@@ -103,6 +103,16 @@ export default function AdminRequestsPage() {
         return 'قيد الانتظار';
     };
 
+    const planLabel = (p: string) => {
+        const map: Record<string, string> = {
+            'SOLO': 'محامي مستقل (1 مستخدم)',
+            'TEAM': 'مكتب صغير (5 مستخدمين)',
+            'BUSINESS': 'مكتب متوسط (25 مستخدم)',
+            'ENTERPRISE': 'مكتب كبير (مفتوح)'
+        };
+        return map[p] || p;
+    };
+
     const tabs = useMemo(
         () => [
             { id: 'subscription' as const, label: 'طلبات الاشتراك', count: requests.length },
@@ -133,11 +143,10 @@ export default function AdminRequestsPage() {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                            activeTab === tab.id
+                        className={`rounded-full border px-4 py-2 text-sm font-medium transition ${activeTab === tab.id
                                 ? 'border-brand-green bg-brand-green text-white'
                                 : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
-                        }`}
+                            }`}
                     >
                         {tab.label}
                         <span className="ms-2 rounded-full bg-black/10 px-2 py-0.5 text-xs">{tab.count}</span>
@@ -168,7 +177,7 @@ export default function AdminRequestsPage() {
                                     <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                         <td className="py-3 font-medium">{req.organizations?.name ?? '—'}</td>
                                         <td className="py-3">{req.requester_name ?? '—'}</td>
-                                        <td className="py-3">{req.plan_requested}</td>
+                                        <td className="py-3 font-medium text-brand-navy dark:text-brand-light">{planLabel(req.plan_requested)}</td>
                                         <td className="py-3">{req.duration_months} شهر</td>
                                         <td className="py-3">{req.payment_reference ?? '—'}</td>
                                         <td className="py-3">

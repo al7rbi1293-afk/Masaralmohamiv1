@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest) {
     const { org_id, org_ids, action, extra_data } = body as {
         org_id?: string;
         org_ids?: string[];
-        action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid';
+        action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid' | 'set_plan';
         extra_data?: any;
     };
 
@@ -121,26 +121,21 @@ export async function PATCH(request: NextRequest) {
     const singleOrgId = targetIds[0];
 
     if (action === 'grant_lifetime') {
-        // Cancel existing active subscriptions
-        await adminClient
-            .from('subscriptions')
-            .update({ status: 'canceled', canceled_at: new Date().toISOString() })
-            .eq('org_id', singleOrgId)
-            .eq('status', 'active');
-
         // Add lifetime subscription
         const now = new Date();
         const lifetimeEnd = new Date(now.getFullYear() + 100, now.getMonth(), now.getDate());
 
         const { error: subError } = await adminClient
-            .from('subscriptions')
-            .insert({
+            .from('org_subscriptions')
+            .upsert({
                 org_id: singleOrgId,
                 status: 'active',
-                plan: 'lifetime',
+                plan: 'ENTERPRISE', // Assuming lifetime grants enterprise
+                payment_status: 'paid',
                 current_period_start: now.toISOString(),
-                current_period_end: lifetimeEnd.toISOString()
-            });
+                current_period_end: lifetimeEnd.toISOString(),
+                updated_at: now.toISOString()
+            }, { onConflict: 'org_id' });
 
         if (subError) {
             return NextResponse.json({ error: subError.message }, { status: 500 });
@@ -150,9 +145,9 @@ export async function PATCH(request: NextRequest) {
             org_id: singleOrgId,
             user_id: adminId,
             action: 'subscription_updated',
-            entity_type: 'subscription',
+            entity_type: 'org_subscriptions',
             entity_id: singleOrgId,
-            meta: { plan: 'lifetime' }
+            meta: { plan: 'ENTERPRISE' }
         });
 
         return NextResponse.json({ success: true });
@@ -192,26 +187,21 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === 'set_expiry' && extra_data?.date) {
-        // Cancel existing active subscriptions
-        await adminClient
-            .from('subscriptions')
-            .update({ status: 'canceled', canceled_at: new Date().toISOString() })
-            .eq('org_id', singleOrgId)
-            .eq('status', 'active');
-
         // Add custom expiry active subscription
         const now = new Date();
         const end = new Date(extra_data.date);
 
         const { error: subError } = await adminClient
-            .from('subscriptions')
-            .insert({
+            .from('org_subscriptions')
+            .upsert({
                 org_id: singleOrgId,
                 status: 'active',
-                plan: 'custom',
+                plan: 'BUSINESS', // default fallback
+                payment_status: 'paid',
                 current_period_start: now.toISOString(),
-                current_period_end: end.toISOString()
-            });
+                current_period_end: end.toISOString(),
+                updated_at: now.toISOString()
+            }, { onConflict: 'org_id' });
 
         if (subError) {
             return NextResponse.json({ error: subError.message }, { status: 500 });
@@ -221,36 +211,32 @@ export async function PATCH(request: NextRequest) {
             org_id: singleOrgId,
             user_id: adminId,
             action: 'subscription_updated',
-            entity_type: 'subscription',
+            entity_type: 'org_subscriptions',
             entity_id: singleOrgId,
-            meta: { plan: 'custom', ends_at: end.toISOString() }
+            meta: { plan: 'BUSINESS', ends_at: end.toISOString() }
         });
 
         return NextResponse.json({ success: true });
     }
 
     if (action === 'activate_paid') {
-        // Cancel existing active subscriptions
-        await adminClient
-            .from('subscriptions')
-            .update({ status: 'canceled', canceled_at: new Date().toISOString() })
-            .eq('org_id', singleOrgId)
-            .eq('status', 'active');
-
         // Add 1 month paid subscription
         const now = new Date();
         const endsAt = new Date(now);
-        endsAt.setMonth(endsAt.getMonth() + 1);
+        const months = parseInt(extra_data?.months || '12', 10);
+        endsAt.setMonth(endsAt.getMonth() + months);
 
         const { error: subError } = await adminClient
-            .from('subscriptions')
-            .insert({
+            .from('org_subscriptions')
+            .upsert({
                 org_id: singleOrgId,
                 status: 'active',
-                plan: 'pro',
+                plan: 'BUSINESS', // default fallback
+                payment_status: 'paid',
                 current_period_start: now.toISOString(),
-                current_period_end: endsAt.toISOString()
-            });
+                current_period_end: endsAt.toISOString(),
+                updated_at: now.toISOString()
+            }, { onConflict: 'org_id' });
 
         if (subError) {
             return NextResponse.json({ error: subError.message }, { status: 500 });
@@ -260,9 +246,48 @@ export async function PATCH(request: NextRequest) {
             org_id: singleOrgId,
             user_id: adminId,
             action: 'subscription_updated',
-            entity_type: 'subscription',
+            entity_type: 'org_subscriptions',
             entity_id: singleOrgId,
-            meta: { plan: 'pro', duration: '1_month' }
+            meta: { plan: 'BUSINESS', duration_months: months }
+        });
+
+        return NextResponse.json({ success: true });
+    }
+
+    if (action === 'set_plan' && extra_data?.plan) {
+        const now = new Date();
+        let endsAt = new Date(now);
+        endsAt.setFullYear(endsAt.getFullYear() + 1); // default 1 year expiry for manually set plans if no existing sub
+
+        // Get existing sub period end to preserve it
+        const { data: existingSub } = await adminClient.from('org_subscriptions').select('current_period_end').eq('org_id', singleOrgId).maybeSingle();
+        if (existingSub?.current_period_end) {
+            endsAt = new Date(existingSub.current_period_end);
+        }
+
+        const { error: subError } = await adminClient
+            .from('org_subscriptions')
+            .upsert({
+                org_id: singleOrgId,
+                status: 'active',
+                plan: extra_data.plan,
+                payment_status: 'paid',
+                current_period_start: now.toISOString(),
+                current_period_end: endsAt.toISOString(),
+                updated_at: now.toISOString()
+            }, { onConflict: 'org_id' });
+
+        if (subError) {
+            return NextResponse.json({ error: subError.message }, { status: 500 });
+        }
+
+        await adminClient.from('audit_logs').insert({
+            org_id: singleOrgId,
+            user_id: adminId,
+            action: 'subscription_plan_changed',
+            entity_type: 'org_subscriptions',
+            entity_id: singleOrgId,
+            meta: { plan: extra_data.plan }
         });
 
         return NextResponse.json({ success: true });

@@ -60,7 +60,7 @@ export default function AdminOrgsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, page]);
 
-    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid', extraData?: any) {
+    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid' | 'set_plan', extraData?: any) {
         if (action === 'grant_lifetime') {
             const proceed = window.confirm('هل أنت متأكد من منح هذا المكتب اشتراك مدى الحياة؟');
             if (!proceed) return;
@@ -216,7 +216,13 @@ export default function AdminOrgsPage() {
                                     </td>
                                     <td className="py-3 font-medium">{org.name}</td>
                                     <td className="py-3">{org.members_count}</td>
-                                    <td className="py-3">{org.subscription?.plan ?? 'تجريبي'}</td>
+                                    <td className="py-3 font-medium text-brand-navy dark:text-brand-light">
+                                        {org.subscription?.plan === 'SOLO' ? 'محامي مستقل (1)' :
+                                            org.subscription?.plan === 'TEAM' ? 'مكتب صغير (5)' :
+                                                org.subscription?.plan === 'BUSINESS' ? 'مكتب متوسط (25)' :
+                                                    org.subscription?.plan === 'ENTERPRISE' ? 'مكتب كبير' :
+                                                        org.subscription?.plan ?? 'تجريبي'}
+                                    </td>
                                     <td className="py-3">{org.subscription?.status ?? '—'}</td>
                                     <td className="py-3">
                                         <span
@@ -429,7 +435,13 @@ export default function AdminOrgsPage() {
                                     <div className="space-y-3">
                                         <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">الخطة الحالية</p>
-                                            <p className="font-medium text-slate-900 dark:text-slate-100">{selectedOrg.subscription?.plan ?? 'تجريبي'}</p>
+                                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                                                {selectedOrg.subscription?.plan === 'SOLO' ? 'محامي مستقل (1 مستخدم)' :
+                                                    selectedOrg.subscription?.plan === 'TEAM' ? 'مكتب صغير (5 مستخدمين)' :
+                                                        selectedOrg.subscription?.plan === 'BUSINESS' ? 'مكتب متوسط (25 مستخدم)' :
+                                                            selectedOrg.subscription?.plan === 'ENTERPRISE' ? 'مكتب كبير (عدد مفتوح)' :
+                                                                selectedOrg.subscription?.plan ?? 'تجريبي'}
+                                            </p>
                                         </div>
                                         <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">تاريخ الانتهاء</p>
@@ -479,13 +491,30 @@ export default function AdminOrgsPage() {
 
                                         {/* Subscription Actions */}
                                         <div className="grid grid-cols-2 gap-2 mt-2">
-                                            <button
-                                                disabled={actionId === selectedOrg.id}
-                                                onClick={() => handleAction(selectedOrg.id, 'activate_paid')}
-                                                className="rounded-lg bg-slate-100 text-slate-700 border border-slate-200 px-4 py-2.5 text-sm font-medium hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
-                                            >
-                                                تفعيل اشتراك مدفوع
-                                            </button>
+                                            <div className="col-span-2">
+                                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">تغيير خطة المكتب:</label>
+                                                <select
+                                                    className="w-full rounded-lg bg-white text-slate-700 border border-slate-200 px-3 py-2 text-sm focus:border-brand-emerald focus:ring-1 focus:ring-brand-emerald dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300"
+                                                    onChange={(e) => {
+                                                        if (!e.target.value) return;
+                                                        if (confirm('هل أنت متأكد من تغيير الباقة؟')) {
+                                                            handleAction(selectedOrg.id, 'set_plan', { plan: e.target.value }).then(() => {
+                                                                if (selectedOrg.subscription) {
+                                                                    setSelectedOrg({ ...selectedOrg, subscription: { ...selectedOrg.subscription, plan: e.target.value } });
+                                                                }
+                                                            });
+                                                        }
+                                                        e.target.value = ''; // Reset select
+                                                    }}
+                                                >
+                                                    <option value="">-- اختر الباقة لتفعيلها فوراً --</option>
+                                                    <option value="SOLO">محامي مستقل (1 مستخدم)</option>
+                                                    <option value="TEAM">مكتب صغير (5 مستخدمين)</option>
+                                                    <option value="BUSINESS">مكتب متوسط (25 مستخدم)</option>
+                                                    <option value="ENTERPRISE">مكتب كبير (عدد لا محدود)</option>
+                                                </select>
+                                            </div>
+
                                             <button
                                                 disabled={actionId === selectedOrg.id}
                                                 onClick={() => handleAction(selectedOrg.id, 'extend_trial')}

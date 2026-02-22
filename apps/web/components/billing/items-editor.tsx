@@ -72,7 +72,7 @@ export function BillingItemsEditor({
       {taxName && <input type="hidden" name={taxName} value={tax} />}
 
       <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
-        <table className="min-w-full text-sm">
+        <table className="w-full text-sm">
           <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
             <tr>
               <th className="px-3 py-3 text-start font-medium whitespace-nowrap">الوصف</th>

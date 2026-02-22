@@ -32,15 +32,28 @@ export default function AdminOrgsPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial') {
-        const proceed = action === 'grant_lifetime' ? window.confirm('هل أنت متأكد من منح هذا المكتب اشتراك مدى الحياة؟') : true;
-        if (!proceed) return;
+    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry', extraData?: any) {
+        if (action === 'grant_lifetime') {
+            const proceed = window.confirm('هل أنت متأكد من منح هذا المكتب اشتراك مدى الحياة؟');
+            if (!proceed) return;
+        }
+
+        if (action === 'set_expiry') {
+            const rawDate = window.prompt('أدخل تاريخ الانتهاء الجديد (سنة-شهر-يوم) مثال: 2025-12-31', new Date().toISOString().split('T')[0]);
+            if (!rawDate) return;
+            const dateObj = new Date(rawDate);
+            if (isNaN(dateObj.getTime())) {
+                alert('تاريخ غير صحيح. الرجاء إدخال تاريخ بصيغة صحيحة (مثال: 2025-12-31)');
+                return;
+            }
+            extraData = { ends_at: dateObj.toISOString() };
+        }
 
         setActionId(orgId);
         await fetch('/admin/api/orgs', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ org_id: orgId, action }),
+            body: JSON.stringify({ org_id: orgId, action, ...extraData }),
         });
         const res = await fetch('/admin/api/orgs');
         const data = await res.json();
@@ -114,6 +127,13 @@ export default function AdminOrgsPage() {
                                                 تفعيل
                                             </button>
                                         )}
+                                        <button
+                                            disabled={actionId === org.id}
+                                            onClick={() => handleAction(org.id, 'set_expiry')}
+                                            className="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-50"
+                                        >
+                                            تحديد تاريخ
+                                        </button>
                                         <button
                                             disabled={actionId === org.id}
                                             onClick={() => handleAction(org.id, 'extend_trial')}

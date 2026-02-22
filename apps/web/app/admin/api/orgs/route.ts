@@ -57,9 +57,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { org_id, action } = body as { org_id: string; action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' };
+    const { org_id, action, ends_at } = body as { org_id: string; action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry'; ends_at?: string };
 
-    if (!org_id || !['suspend', 'activate', 'grant_lifetime', 'extend_trial'].includes(action)) {
+    if (!org_id || !['suspend', 'activate', 'grant_lifetime', 'extend_trial', 'set_expiry'].includes(action)) {
         return NextResponse.json({ error: 'بيانات غير صالحة.' }, { status: 400 });
     }
 
@@ -129,6 +129,31 @@ export async function PATCH(request: NextRequest) {
         }
 
         return NextResponse.json({ success: true, newEnd: newEnd.toISOString() });
+    }
+
+    if (action === 'set_expiry') {
+        if (!ends_at) {
+            return NextResponse.json({ error: 'تاريخ الانتهاء للصلاحية مطلوب.' }, { status: 400 });
+        }
+
+        const dateObj = new Date(ends_at);
+        if (isNaN(dateObj.getTime())) {
+            return NextResponse.json({ error: 'تاريخ الانتهاء غير صالح.' }, { status: 400 });
+        }
+
+        // Upsert a manual PRO subscription ending at the chosen date
+        const { error } = await adminClient.from('subscriptions').upsert({
+            org_id,
+            plan_code: 'PRO',
+            status: 'active',
+            current_period_end: dateObj.toISOString(),
+        }, { onConflict: 'org_id' });
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, newEnd: dateObj.toISOString() });
     }
 
     return NextResponse.json({ error: 'إجراء غير معروف.' }, { status: 400 });

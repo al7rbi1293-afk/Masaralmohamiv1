@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createSupabaseServerAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
-  ACCESS_COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
+  verifyPassword,
+  generateSessionToken,
+  SESSION_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
-} from '@/lib/supabase/constants';
+} from '@/lib/auth-custom';
 import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 
 const signInSchema = z.object({
@@ -36,46 +37,65 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const supabase = createSupabaseServerAuthClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
+  const db = createSupabaseServerClient();
 
-  if (error || !data.session) {
-    return redirectWithError(request, toArabicAuthError(error?.message), parsed.data.email, parsed.data.next);
+  // Look up user in app_users
+  const { data: user, error: userError } = await db
+    .from('app_users')
+    .select('id, email, password_hash, full_name, status')
+    .eq('email', parsed.data.email)
+    .maybeSingle();
+
+  if (userError || !user) {
+    return redirectWithError(
+      request,
+      'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      parsed.data.email,
+      parsed.data.next,
+    );
   }
 
-  // Check if user is an admin to potentially redirect to /admin
-  // Use service role client to bypass RLS and ensure we can read the table regardless of auth context.
+  if (user.status === 'suspended') {
+    return redirectWithError(
+      request,
+      'تم تعليق الحساب. تواصل مع الإدارة.',
+      parsed.data.email,
+      parsed.data.next,
+    );
+  }
+
+  // Verify password
+  const passwordMatch = await verifyPassword(parsed.data.password, user.password_hash);
+  if (!passwordMatch) {
+    return redirectWithError(
+      request,
+      'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      parsed.data.email,
+      parsed.data.next,
+    );
+  }
+
+  // Generate custom JWT session
+  const sessionToken = generateSessionToken({ userId: user.id, email: user.email });
+
+  // Check admin status
   let defaultRedirect = '/app';
-  const adminDb = createSupabaseServerClient();
-  const { data: adminRecord } = await adminDb
+  const { data: adminRecord } = await db
     .from('app_admins')
     .select('user_id')
-    .eq('user_id', data.session.user.id)
+    .eq('user_id', user.id)
     .maybeSingle();
 
   if (adminRecord) {
     defaultRedirect = '/admin';
   }
 
-  // Some users might come with old bookmarked routes (e.g. legacy /app/[tenantId] pages).
-  // Only allow returning to the current trial platform pages.
   let destination = safeNextPath(parsed.data.next) ?? defaultRedirect;
 
-  // Ensure trial provisioning exists for non-admin accounts (defense in depth),
-  // so existing users without a trial row get one on first login after confirmation.
+  // Ensure trial provisioning for non-admin accounts
   if (!adminRecord && destination.startsWith('/app') && !destination.startsWith('/app/api')) {
     try {
-      const firmName =
-        typeof data.session.user.user_metadata?.firm_name === 'string'
-          ? data.session.user.user_metadata.firm_name
-          : null;
-      const provision = await ensureTrialProvisionForUser({
-        userId: data.session.user.id,
-        firmName,
-      });
+      const provision = await ensureTrialProvisionForUser({ userId: user.id, firmName: null });
       if (provision.isExpired && !destination.startsWith('/app/expired')) {
         destination = '/app/expired';
       }
@@ -83,16 +103,14 @@ export async function POST(request: NextRequest) {
       // Keep login working even if provisioning fails.
     }
   }
+
   const response = NextResponse.redirect(new URL(destination, request.url), 303);
 
-  response.cookies.set(ACCESS_COOKIE_NAME, data.session.access_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: data.session.expires_in,
-  });
-  response.cookies.set(REFRESH_COOKIE_NAME, data.session.refresh_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  response.cookies.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+
+  // Clear old Supabase cookies if they exist
+  response.cookies.delete('masar-sb-access-token');
+  response.cookies.delete('masar-sb-refresh-token');
 
   return response;
 }
@@ -115,62 +133,18 @@ function toText(formData: FormData, field: string) {
   return typeof value === 'string' ? value : '';
 }
 
-function toArabicAuthError(message?: string) {
-  if (!message) {
-    return 'تعذر تسجيل الدخول. حاول مرة أخرى.';
-  }
-
-  const normalized = message.toLowerCase();
-
-  if (normalized.includes('invalid login credentials')) {
-    return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
-  }
-
-  if (normalized.includes('email not confirmed')) {
-    return 'يرجى تأكيد البريد الإلكتروني أولًا.';
-  }
-
-  return 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.';
-}
-
 function safeNextPath(raw?: string) {
-  if (!raw) {
-    return null;
-  }
-
+  if (!raw) return null;
   const value = raw.trim();
-
-  // Disallow protocol-relative or malformed values.
-  if (!value.startsWith('/') || value.startsWith('//')) {
-    return null;
-  }
-
-  // Basic hardening against header injection.
-  if (value.includes('\n') || value.includes('\r')) {
-    return null;
-  }
-
-  // Allow returning to the platform (avoid open redirects).
+  if (!value.startsWith('/') || value.startsWith('//')) return null;
+  if (value.includes('\n') || value.includes('\r')) return null;
   if (value.startsWith('/app')) {
-    // Disallow returning to API endpoints.
-    if (value.startsWith('/app/api')) {
-      return null;
-    }
+    if (value.startsWith('/app/api')) return null;
     return value;
   }
-
-  // Allow returning to admin panel.
   if (value.startsWith('/admin')) {
-    if (value.startsWith('/admin/api')) {
-      return null;
-    }
+    if (value.startsWith('/admin/api')) return null;
     return value;
   }
-
-  // Allow returning to invite acceptance flow.
-  if (value.startsWith('/invite/')) {
-    return value;
-  }
-
   return null;
 }

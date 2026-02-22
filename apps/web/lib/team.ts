@@ -55,33 +55,52 @@ export async function addMemberDirect(
     );
   }
 
-  const supabase = createSupabaseServerRlsClient();
-  const serviceClient = createSupabaseServerClient(); // Admin client needed for auth.admin
+  const { hashPassword } = await import('@/lib/auth-custom');
+  const db = createSupabaseServerClient();
 
   const email = parsed.data.email.toLowerCase();
 
-  // 1. Create the user in Supabase Auth (Admin API)
-  const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
-    email,
-    password: parsed.data.password,
-    email_confirm: true, // Auto-confirm the email so they can log in immediately
-    user_metadata: {
-      full_name: parsed.data.fullName,
-    },
-  });
+  // 1. Check if email already exists in app_users
+  const { data: existing } = await db
+    .from('app_users')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
 
-  if (authError) {
-    const message = authError.message.toLowerCase();
-    if (message.includes('already exists') || message.includes('already registered')) {
-      throw new TeamHttpError(400, 'هذا البريد الإلكتروني مسجل مسبقاً.');
-    }
-    throw new TeamHttpError(400, 'تعذر إنشاء الحساب. ' + authError.message);
+  if (existing) {
+    throw new TeamHttpError(400, 'هذا البريد الإلكتروني مسجل مسبقاً.');
   }
 
-  const newUserId = authData.user.id;
+  // 2. Create the user in app_users with bcrypt-hashed password
+  const passwordHash = await hashPassword(parsed.data.password);
+  const { data: newUser, error: createError } = await db
+    .from('app_users')
+    .insert({
+      email,
+      password_hash: passwordHash,
+      full_name: parsed.data.fullName,
+      email_verified: true,
+      status: 'active',
+    })
+    .select('id')
+    .single();
 
-  // 2. Add them to the organization's memberships
-  const { error: membershipError } = await serviceClient
+  if (createError || !newUser) {
+    throw new TeamHttpError(400, 'تعذر إنشاء الحساب. ' + (createError?.message || ''));
+  }
+
+  const newUserId = newUser.id;
+
+  // 3. Create profile for this user
+  await db
+    .from('profiles')
+    .upsert({
+      user_id: newUserId,
+      full_name: parsed.data.fullName,
+    }, { onConflict: 'user_id' });
+
+  // 4. Add them to the organization's memberships
+  const { error: membershipError } = await db
     .from('memberships')
     .insert({
       org_id: orgId,
@@ -90,19 +109,10 @@ export async function addMemberDirect(
     });
 
   if (membershipError) {
-    // Attempt rollback of user creation if membership fails, to maintain consistency
-    await serviceClient.auth.admin.deleteUser(newUserId);
-    throw new TeamHttpError(400, 'تعذر إضافة المستخدم للمكتب.');
+    // Rollback: delete the user from app_users
+    await db.from('app_users').delete().eq('id', newUserId);
+    throw new TeamHttpError(400, 'تعذر إضافة المستخدم للمكتب. ' + membershipError.message);
   }
-
-  // Note: auth.users insert triggers should automatically create the profile, 
-  // but we might need to verify if the trigger propagates user_metadata.full_name correctly 
-  // or update it manually if `full_name` is missing from the profile.
-  // For safety, let's explicitly update the profile name just in case the trigger didn't catch it.
-  await serviceClient
-    .from('profiles')
-    .update({ full_name: parsed.data.fullName })
-    .eq('user_id', newUserId);
 
   await logAudit({
     action: 'team.member_added_direct',

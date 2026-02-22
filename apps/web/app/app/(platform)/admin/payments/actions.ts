@@ -2,7 +2,7 @@
 
 import { approvePaymentRequest, rejectPaymentRequest } from '@/lib/payments';
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { renderInvoicePdfBuffer } from '@/lib/invoice-pdf';
 import { sendInvoiceEmail } from '@/lib/email';
 
@@ -10,8 +10,7 @@ import { sendInvoiceEmail } from '@/lib/email';
 const ADMIN_EMAILS = ['admin@masar.sa', 'masar.almohami@outlook.sa']; // Add your admin email here
 
 async function checkAdmin() {
-    const supabase = createSupabaseServerAuthClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentAuthUser();
     if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
         throw new Error('Unauthorized: Admin access required');
     }

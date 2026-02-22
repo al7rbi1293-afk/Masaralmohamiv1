@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
-import {
-  ACCESS_COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
-  SESSION_COOKIE_OPTIONS,
-} from '@/lib/supabase/constants';
-import { getSupabasePublicEnv } from '@/lib/env';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { hashPassword, generateSessionToken, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from '@/lib/auth-custom';
 
 export const runtime = 'nodejs';
 
@@ -17,11 +12,10 @@ const bodySchema = z.object({
     .trim()
     .email('يرجى إدخال بريد إلكتروني صحيح.')
     .max(255, 'البريد الإلكتروني طويل جدًا.'),
-  code: z
+  newPassword: z
     .string()
-    .trim()
-    .min(4, 'يرجى إدخال الرمز.')
-    .max(12, 'الرمز غير صالح.'),
+    .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.')
+    .max(72, 'كلمة المرور طويلة جدًا.'),
 });
 
 export async function POST(request: NextRequest) {
@@ -43,7 +37,7 @@ export async function POST(request: NextRequest) {
   }
 
   const email = parsed.data.email.toLowerCase();
-  const code = parsed.data.code;
+  const newPassword = parsed.data.newPassword;
 
   const rate = await checkRateLimit({
     key: `password_reset:verify:${ip}:${email}`,
@@ -55,34 +49,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: RATE_LIMIT_MESSAGE_AR }, { status: 429 });
   }
 
-  const { url, anonKey } = getSupabasePublicEnv();
-  const supabase = createClient(url, anonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  const db = createSupabaseServerClient();
 
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token: code,
-    type: 'recovery',
-  });
+  // Find the user
+  const { data: user } = await db
+    .from('app_users')
+    .select('id, email')
+    .eq('email', email)
+    .maybeSingle();
 
-  if (error || !data.session) {
-    return NextResponse.json({ error: 'الرمز غير صحيح أو منتهي.' }, { status: 400 });
+  if (!user) {
+    return NextResponse.json({ error: 'البريد الإلكتروني غير مسجل.' }, { status: 400 });
   }
 
+  // Update password
+  const passwordHash = await hashPassword(newPassword);
+  await db
+    .from('app_users')
+    .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+    .eq('id', user.id);
+
+  // Generate session and sign them in
+  const sessionToken = generateSessionToken({ userId: user.id, email: user.email });
+
   const response = NextResponse.json({ ok: true }, { status: 200 });
-  response.cookies.set(ACCESS_COOKIE_NAME, data.session.access_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: data.session.expires_in,
-  });
-  response.cookies.set(REFRESH_COOKIE_NAME, data.session.refresh_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  response.cookies.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
 
   return response;
 }
-

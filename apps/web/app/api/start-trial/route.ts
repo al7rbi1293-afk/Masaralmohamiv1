@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { Session } from '@supabase/supabase-js';
 import { z } from 'zod';
 import {
-  ACCESS_COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
-} from '@/lib/supabase/constants';
+  hashPassword,
+  verifyPassword,
+  generateSessionToken,
+} from '@/lib/auth-custom';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
-import { createSupabaseServerAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
-import { getPublicSiteUrl } from '@/lib/env';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 
 const startTrialSchema = z.object({
@@ -49,15 +49,7 @@ export async function POST(request: NextRequest) {
       limit: rate.limit,
       remaining: rate.remaining,
     });
-
-    return jsonResponse(
-      {
-        message: RATE_LIMIT_MESSAGE_AR,
-      },
-      429,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message: RATE_LIMIT_MESSAGE_AR }, 429, requestId, rate);
   }
 
   const payload = await readStartTrialPayload(request);
@@ -67,17 +59,10 @@ export async function POST(request: NextRequest) {
       ip: requestIp,
       reason: payload.reason,
     });
-
-    return jsonResponse(
-      { message: payload.message },
-      400,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message: payload.message }, 400, requestId, rate);
   }
 
   const parsed = startTrialSchema.safeParse(payload.value);
-
   if (!parsed.success) {
     const message = parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.';
     logWarn('trial_start_failed', {
@@ -86,13 +71,7 @@ export async function POST(request: NextRequest) {
       reason: 'validation_failed',
       validationMessage: message,
     });
-
-    return jsonResponse(
-      { message },
-      400,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message }, 400, requestId, rate);
   }
 
   const fullName = parsed.data.full_name;
@@ -101,10 +80,10 @@ export async function POST(request: NextRequest) {
   const phone = emptyToNull(parsed.data.phone);
   const firmName = emptyToNull(parsed.data.firm_name);
 
-  const adminClient = createSupabaseServerClient();
-  const authClient = createSupabaseServerAuthClient();
+  const db = createSupabaseServerClient();
 
-  const { error: leadError } = await adminClient.from('leads').insert({
+  // Save lead
+  const { error: leadError } = await db.from('leads').insert({
     full_name: fullName,
     email,
     phone,
@@ -118,242 +97,95 @@ export async function POST(request: NextRequest) {
       reason: 'lead_insert_failed',
       error: leadError.message,
     });
-
-    return jsonResponse(
-      { message: 'تعذر حفظ طلب التجربة. حاول مرة أخرى.' },
-      500,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message: 'تعذر حفظ طلب التجربة. حاول مرة أخرى.' }, 500, requestId, rate);
   }
 
-  const signInResult = await authClient.auth.signInWithPassword({ email, password });
-  let session = signInResult.data.session;
+  // Check if user already exists
+  const { data: existingUser } = await db
+    .from('app_users')
+    .select('id, password_hash, email_verified')
+    .eq('email', email)
+    .maybeSingle();
 
-  if (!session) {
-    const signInErrorMessage = signInResult.error?.message;
-    const canHandleAsSignupFlow =
-      isInvalidCredentials(signInErrorMessage) || isEmailNotConfirmed(signInErrorMessage);
+  let userId: string;
 
-    if (!canHandleAsSignupFlow) {
-      logWarn('trial_start_failed', {
-        requestId,
-        ip: requestIp,
-        reason: 'sign_in_failed',
-        error: signInErrorMessage ?? null,
-      });
-
-      return jsonResponse(
-        { message: 'تعذر بدء التجربة. حاول مرة أخرى.' },
-        401,
-        requestId,
-        rate,
-      );
+  if (existingUser) {
+    // User exists — try to sign them in with provided password
+    const passwordMatch = await verifyPassword(password, existingUser.password_hash);
+    if (!passwordMatch) {
+      return jsonResponse({
+        message: 'الحساب موجود بالفعل. يرجى تسجيل الدخول بكلمة المرور الصحيحة.',
+      }, 400, requestId, rate);
     }
-
-    const siteUrl = getRequestSiteUrl(request);
-    const nextPath = '/app';
-    const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-
-    // If the user exists but isn't confirmed yet, resend activation via magic link.
-    if (isEmailNotConfirmed(signInErrorMessage)) {
-      const magicLinkResult = await adminClient.auth.admin.generateLink({
-        type: 'magiclink',
+    userId = existingUser.id;
+  } else {
+    // Create new user in app_users
+    const passwordHash = await hashPassword(password);
+    const { data: newUser, error: createError } = await db
+      .from('app_users')
+      .insert({
         email,
-        options: {
-          redirectTo,
-        },
-      });
+        password_hash: passwordHash,
+        full_name: fullName,
+        phone,
+        email_verified: true,
+        status: 'active',
+      })
+      .select('id')
+      .single();
 
-      const verificationLink = buildVerificationLink({
-        siteUrl,
-        nextPath,
-        otpType: 'magiclink',
-        tokenHash: magicLinkResult.data?.properties?.hashed_token ?? null,
-        fallbackActionLink: magicLinkResult.data?.properties?.action_link ?? null,
-      });
-
-      if (magicLinkResult.error || !verificationLink) {
-        logError('trial_start_failed', {
-          requestId,
-          ip: requestIp,
-          reason: 'activation_link_regeneration_failed',
-          error: magicLinkResult.error?.message ?? null,
-        });
-
-        return jsonResponse(
-          { message: 'تعذر إعادة إرسال رابط التفعيل. حاول مرة أخرى.' },
-          500,
-          requestId,
-          rate,
-        );
-      }
-
-      await sendWelcomeActivationEmail({
-        email,
-        fullName,
-        verificationLink,
-        requestId,
-      });
-
-      return jsonResponse(
-        {
-          message: 'الحساب موجود لكنه غير مفعّل. أعدنا إرسال رابط التفعيل إلى بريدك الإلكتروني.',
-          redirectTo: '/auth/verify',
-        },
-        200,
-        requestId,
-        rate,
-      );
-    }
-
-    // New email or wrong password. Try to create the account; if it already exists,
-    // send a magic link instead (email access required to proceed).
-    const createUserResult = await adminClient.auth.admin.generateLink({
-      type: 'signup',
-      email,
-      password,
-      options: {
-        redirectTo,
-        data: {
-          full_name: fullName,
-          phone,
-          firm_name: firmName,
-        },
-      },
-    });
-
-    if (createUserResult.error) {
-      if (isAlreadyRegistered(createUserResult.error.message)) {
-        const magicLinkResult = await adminClient.auth.admin.generateLink({
-          type: 'magiclink',
-          email,
-          options: {
-            redirectTo,
-          },
-        });
-
-        const verificationLink = buildVerificationLink({
-          siteUrl,
-          nextPath,
-          otpType: 'magiclink',
-          tokenHash: magicLinkResult.data?.properties?.hashed_token ?? null,
-          fallbackActionLink: magicLinkResult.data?.properties?.action_link ?? null,
-        });
-
-        if (magicLinkResult.error || !verificationLink) {
-          logError('trial_start_failed', {
-            requestId,
-            ip: requestIp,
-            reason: 'activation_link_regeneration_failed',
-            error: magicLinkResult.error?.message ?? null,
-          });
-
-          return jsonResponse(
-            { message: 'تعذر إرسال رابط التفعيل. حاول مرة أخرى.' },
-            500,
-            requestId,
-            rate,
-          );
-        }
-
-        await sendWelcomeActivationEmail({
-          email,
-          fullName,
-          verificationLink,
-          requestId,
-        });
-
-        return jsonResponse(
-          {
-            message: 'الحساب موجود بالفعل. أرسلنا رابطًا إلى بريدك لإكمال التفعيل أو تسجيل الدخول.',
-            redirectTo: '/auth/verify',
-          },
-          200,
-          requestId,
-          rate,
-        );
-      }
-
+    if (createError || !newUser) {
       logError('trial_start_failed', {
         requestId,
         ip: requestIp,
-        reason: 'signup_create_failed',
-        error: createUserResult.error.message,
+        reason: 'user_create_failed',
+        error: createError?.message ?? 'unknown',
       });
-
-      return jsonResponse(
-        { message: 'تعذر إنشاء الحساب. حاول مرة أخرى.' },
-        500,
-        requestId,
-        rate,
-      );
+      return jsonResponse({ message: 'تعذر إنشاء الحساب. حاول مرة أخرى.' }, 500, requestId, rate);
     }
 
-    const verificationLink = buildVerificationLink({
-      siteUrl,
-      nextPath,
-      otpType: 'signup',
-      tokenHash: createUserResult.data?.properties?.hashed_token ?? null,
-      fallbackActionLink: createUserResult.data?.properties?.action_link ?? null,
-    });
+    userId = newUser.id;
 
-    if (!verificationLink) {
-      return jsonResponse(
-        { message: 'تعذر إنشاء رابط التفعيل. حاول مرة أخرى.' },
-        500,
-        requestId,
-        rate,
-      );
-    }
-
-    await sendWelcomeActivationEmail({
-      email,
-      fullName,
-      verificationLink,
-      requestId,
-    });
-
-    logInfo('signup_activation_sent', {
-      requestId,
-      ip: requestIp,
-      email,
-    });
-
-    return jsonResponse(
-      {
-        message: 'تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتفعيل الحساب.',
-        redirectTo: '/auth/verify',
-      },
-      200,
-      requestId,
-      rate,
-    );
+    // Create profile for the user
+    await db
+      .from('profiles')
+      .upsert({
+        user_id: userId,
+        full_name: fullName,
+        phone,
+      }, { onConflict: 'user_id' });
   }
 
+  // Ensure trial provisioning
   try {
-    const userId = session.user.id;
     const { isExpired } = await ensureTrialProvisionForUser({
       userId,
       firmName,
     });
 
     const destination = isExpired ? '/app/expired' : '/app';
+
     if (isExpired) {
-      logWarn('trial_expired_redirect', {
-        requestId,
-        ip: requestIp,
-        userId,
-      });
+      logWarn('trial_expired_redirect', { requestId, ip: requestIp, userId });
     } else {
-      logInfo('trial_started', {
-        requestId,
-        ip: requestIp,
-        userId,
-      });
+      logInfo('trial_started', { requestId, ip: requestIp, userId });
     }
 
-    return buildSessionSuccessResponse(destination, session, requestId, rate);
+    // Generate JWT session
+    const sessionToken = generateSessionToken({ userId, email });
+
+    const response = NextResponse.json(
+      { redirectTo: destination, requestId },
+      { status: 200 },
+    );
+
+    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+    // Clear old Supabase cookies
+    response.cookies.delete('masar-sb-access-token');
+    response.cookies.delete('masar-sb-refresh-token');
+    setRequestIdHeader(response, requestId);
+    setRateLimitHeaders(response, rate);
+    return response;
   } catch (error) {
     logError('trial_start_failed', {
       requestId,
@@ -361,45 +193,13 @@ export async function POST(request: NextRequest) {
       reason: 'provision_failed',
       error: toErrorMessage(error),
     });
-
-    return jsonResponse(
-      { message: 'تعذر تهيئة التجربة. حاول مرة أخرى.' },
-      500,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message: 'تعذر تهيئة التجربة. حاول مرة أخرى.' }, 500, requestId, rate);
   }
 }
 
-function buildSessionSuccessResponse(
-  destination: '/app' | '/app/expired',
-  session: Session,
-  requestId: string,
-  rate: RateLimitResult,
-) {
-  // Important: don't issue an HTTP redirect here because `fetch()` follows redirects
-  // before processing `Set-Cookie`, which causes the redirected request to miss auth cookies.
-  // Return JSON + cookies, then the client navigates to `redirectTo`.
-  const response = NextResponse.json(
-    {
-      redirectTo: destination,
-      requestId,
-    },
-    { status: 200 },
-  );
-
-  response.cookies.set(ACCESS_COOKIE_NAME, session.access_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: session.expires_in,
-  });
-  response.cookies.set(REFRESH_COOKIE_NAME, session.refresh_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: 60 * 60 * 24 * 30,
-  });
-  setRequestIdHeader(response, requestId);
-  setRateLimitHeaders(response, rate);
-  return response;
-}
+// ────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────
 
 function toText(formData: FormData, field: string) {
   const value = formData.get(field);
@@ -412,21 +212,21 @@ function toObjectText(value: unknown) {
 
 async function readStartTrialPayload(request: NextRequest): Promise<
   | {
-      ok: true;
-      value: {
-        full_name: string;
-        email: string;
-        password: string;
-        phone: string;
-        firm_name: string;
-        website: string;
-      };
-    }
+    ok: true;
+    value: {
+      full_name: string;
+      email: string;
+      password: string;
+      phone: string;
+      firm_name: string;
+      website: string;
+    };
+  }
   | {
-      ok: false;
-      reason: string;
-      message: string;
-    }
+    ok: false;
+    reason: string;
+    message: string;
+  }
 > {
   const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
 
@@ -435,21 +235,11 @@ async function readStartTrialPayload(request: NextRequest): Promise<
     try {
       raw = await request.json();
     } catch {
-      return {
-        ok: false,
-        reason: 'invalid_json',
-        message: 'تعذر قراءة البيانات المرسلة.',
-      };
+      return { ok: false, reason: 'invalid_json', message: 'تعذر قراءة البيانات المرسلة.' };
     }
-
     if (!raw || typeof raw !== 'object') {
-      return {
-        ok: false,
-        reason: 'invalid_json_shape',
-        message: 'تعذر قراءة البيانات المرسلة.',
-      };
+      return { ok: false, reason: 'invalid_json_shape', message: 'تعذر قراءة البيانات المرسلة.' };
     }
-
     const data = raw as Record<string, unknown>;
     return {
       ok: true,
@@ -468,11 +258,7 @@ async function readStartTrialPayload(request: NextRequest): Promise<
   try {
     formData = await request.formData();
   } catch {
-    return {
-      ok: false,
-      reason: 'invalid_form_data',
-      message: 'تعذر قراءة البيانات المرسلة.',
-    };
+    return { ok: false, reason: 'invalid_form_data', message: 'تعذر قراءة البيانات المرسلة.' };
   }
 
   return {
@@ -493,100 +279,10 @@ function emptyToNull(value?: string) {
   return normalized ? normalized : null;
 }
 
-function isInvalidCredentials(message?: string) {
-  if (!message) {
-    return false;
-  }
-
-  return message.toLowerCase().includes('invalid login credentials');
-}
-
-function isEmailNotConfirmed(message?: string) {
-  if (!message) {
-    return false;
-  }
-
-  const normalized = message.toLowerCase();
-  return normalized.includes('email not confirmed') || normalized.includes('not confirmed');
-}
-
-function isAlreadyRegistered(message?: string) {
-  if (!message) {
-    return false;
-  }
-
-  const normalized = message.toLowerCase();
-  return normalized.includes('already') || normalized.includes('registered');
-}
-
-function getRequestSiteUrl(request: NextRequest) {
-  const forwardedHost = request.headers
-    .get('x-forwarded-host')
-    ?.split(',')[0]
-    ?.trim();
-  const host = forwardedHost || request.headers.get('host')?.trim();
-  const forwardedProto = request.headers
-    .get('x-forwarded-proto')
-    ?.split(',')[0]
-    ?.trim();
-  const proto = forwardedProto || (host?.includes('localhost') ? 'http' : 'https');
-
-  if (host) {
-    return `${proto}://${host}`;
-  }
-
-  return getPublicSiteUrl();
-}
-
-function buildVerificationLink(params: {
-  siteUrl: string;
-  nextPath: string;
-  otpType: 'signup' | 'magiclink';
-  tokenHash: string | null;
-  fallbackActionLink: string | null;
-}) {
-  if (params.tokenHash) {
-    return `${params.siteUrl}/auth/callback?token_hash=${encodeURIComponent(params.tokenHash)}&type=${encodeURIComponent(params.otpType)}&next=${encodeURIComponent(params.nextPath)}`;
-  }
-
-  return params.fallbackActionLink;
-}
-
-async function sendWelcomeActivationEmail(params: {
-  email: string;
-  fullName: string;
-  verificationLink: string;
-  requestId: string;
-}) {
-  try {
-    const { sendEmail } = await import('@/lib/email');
-    const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
-    await sendEmail({
-      to: params.email,
-      subject: WELCOME_EMAIL_SUBJECT,
-      text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك عبر الرابط المرفق.',
-      html: WELCOME_EMAIL_HTML(params.fullName, params.verificationLink),
-    });
-  } catch (error) {
-    logWarn('welcome_email_failed', {
-      requestId: params.requestId,
-      email: params.email,
-      error: toErrorMessage(error),
-    });
-    throw error;
-  }
-}
-
 function getOrCreateRequestId(request: NextRequest) {
   const incoming = request.headers.get('x-request-id')?.trim();
-  if (incoming) {
-    return incoming;
-  }
-
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
+  if (incoming) return incoming;
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `${Date.now()}`;
 }
 
@@ -596,14 +292,7 @@ function jsonResponse(
   requestId: string,
   rate: RateLimitResult,
 ) {
-  const response = NextResponse.json(
-    {
-      ...body,
-      requestId,
-    },
-    { status },
-  );
-
+  const response = NextResponse.json({ ...body, requestId }, { status });
   setRequestIdHeader(response, requestId);
   setRateLimitHeaders(response, rate);
   return response;
@@ -620,9 +309,6 @@ function setRateLimitHeaders(response: NextResponse, rate: RateLimitResult) {
 }
 
 function toErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
+  if (error instanceof Error) return error.message;
   return 'unknown_error';
 }

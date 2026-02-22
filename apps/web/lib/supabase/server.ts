@@ -1,10 +1,13 @@
 import 'server-only';
 
 import { createClient } from '@supabase/supabase-js';
-import { cookies, headers } from 'next/headers';
-import { getSupabasePublicEnv, getSupabaseServiceEnv } from '@/lib/env';
-import { ACCESS_COOKIE_NAME } from '@/lib/supabase/constants';
+import { getSupabaseServiceEnv } from '@/lib/env';
 
+/**
+ * Creates a Supabase client using the service role key.
+ * This is the ONLY client used throughout the application.
+ * All authorization is handled at the application level (middleware + lib functions).
+ */
 export function createSupabaseServerClient() {
   const { url, serviceRoleKey } = getSupabaseServiceEnv();
 
@@ -16,68 +19,18 @@ export function createSupabaseServerClient() {
   });
 }
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-
-// ...
-
-export function createSupabaseServerAuthClient() {
-  const { url, anonKey } = getSupabasePublicEnv();
-  const cookieStore = cookies();
-
-  return createServerClient(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name: string, value: string, options: CookieOptions) {
-        try {
-          cookieStore.set({ name, value, ...options });
-        } catch (error) {
-          // The `set` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
-        }
-      },
-      remove(name: string, options: CookieOptions) {
-        try {
-          cookieStore.set({ name, value: '', ...options });
-        } catch (error) {
-          // The `delete` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
-        }
-      },
-    },
-  });
+/**
+ * @deprecated Use createSupabaseServerClient() instead.
+ * Kept for backward compatibility during migration.
+ */
+export function createSupabaseServerRlsClient() {
+  return createSupabaseServerClient();
 }
 
-export function createSupabaseServerRlsClient() {
-  const { url, anonKey } = getSupabasePublicEnv();
-
-  // Prefer the middleware-injected header so RLS queries work even when
-  // the access token gets refreshed during the same request.
-  const headerStore = headers();
-  const accessFromHeader = headerStore.get('x-masar-access-token')?.trim();
-
-  const cookieStore = cookies();
-  const accessFromCookie = cookieStore.get(ACCESS_COOKIE_NAME)?.value?.trim();
-
-  const accessToken = accessFromHeader || accessFromCookie || '';
-
-  const options: any = {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  };
-
-  if (accessToken) {
-    options.global = {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    };
-  }
-
-  return createClient(url, anonKey, options);
+/**
+ * @deprecated Use createSupabaseServerClient() instead.
+ * Kept for backward compatibility during migration.
+ */
+export function createSupabaseServerAuthClient() {
+  return createSupabaseServerClient();
 }

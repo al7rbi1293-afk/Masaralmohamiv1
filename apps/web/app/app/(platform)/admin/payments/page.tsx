@@ -2,15 +2,14 @@ import { listPendingPaymentRequests } from '@/lib/payments';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { approveRequestAction, rejectRequestAction } from './actions';
-import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPaymentsPage() {
     // Simple Admin Check
-    const supabase = createSupabaseServerAuthClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getCurrentAuthUser();
 
     // TODO: Use Env var or DB role
     const ADMIN_EMAILS = ['admin@masar.sa', 'masar.almohami@outlook.sa'];

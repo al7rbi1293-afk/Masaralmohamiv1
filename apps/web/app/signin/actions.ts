@@ -2,12 +2,13 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
-  ACCESS_COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
   SESSION_COOKIE_OPTIONS,
-} from '@/lib/supabase/constants';
+  verifyPassword,
+  generateSessionToken,
+} from '@/lib/auth-custom';
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
@@ -17,50 +18,36 @@ export async function signInAction(formData: FormData) {
     redirect(`/signin?error=${encodeURIComponent('يرجى إدخال البريد وكلمة المرور.')}`);
   }
 
-  const supabase = createSupabaseServerAuthClient();
+  const db = createSupabaseServerClient();
 
-  let data: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data'] | null = null;
-  let error: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['error'] | null = null;
+  // Look up user in app_users
+  const { data: user, error: userError } = await db
+    .from('app_users')
+    .select('id, email, password_hash, status')
+    .eq('email', email)
+    .maybeSingle();
 
-  try {
-    const result = await supabase.auth.signInWithPassword({ email, password });
-    data = result.data;
-    error = result.error;
-  } catch {
-    redirect(`/signin?error=${encodeURIComponent('تعذّر الاتصال بخدمة المصادقة.')}`);
+  if (userError || !user) {
+    redirect(`/signin?error=${encodeURIComponent('البريد الإلكتروني أو كلمة المرور غير صحيحة.')}`);
   }
 
-  if (!data?.session || error) {
-    redirect(`/signin?error=${encodeURIComponent(toArabicAuthError(error?.message))}`);
+  if (user.status === 'suspended') {
+    redirect(`/signin?error=${encodeURIComponent('تم تعليق الحساب. تواصل مع الإدارة.')}`);
   }
+
+  const passwordMatch = await verifyPassword(password, user.password_hash);
+  if (!passwordMatch) {
+    redirect(`/signin?error=${encodeURIComponent('البريد الإلكتروني أو كلمة المرور غير صحيحة.')}`);
+  }
+
+  // Generate custom JWT session
+  const sessionToken = generateSessionToken({ userId: user.id, email: user.email });
 
   const cookieStore = cookies();
-  cookieStore.set(ACCESS_COOKIE_NAME, data.session.access_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: data.session.expires_in,
-  });
-  cookieStore.set(REFRESH_COOKIE_NAME, data.session.refresh_token, {
-    ...SESSION_COOKIE_OPTIONS,
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  cookieStore.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+  // Clear old Supabase cookies
+  cookieStore.delete('masar-sb-access-token');
+  cookieStore.delete('masar-sb-refresh-token');
 
   redirect('/app');
-}
-
-function toArabicAuthError(message?: string) {
-  if (!message) {
-    return 'تعذر تسجيل الدخول. حاول مرة أخرى.';
-  }
-
-  const normalized = message.toLowerCase();
-
-  if (normalized.includes('invalid login credentials')) {
-    return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
-  }
-
-  if (normalized.includes('email not confirmed')) {
-    return 'يرجى تأكيد البريد الإلكتروني أولًا.';
-  }
-
-  return 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.';
 }

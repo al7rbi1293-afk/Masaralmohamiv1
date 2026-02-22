@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
-import {
-  ACCESS_COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
-} from '@/lib/supabase/constants';
-import { createSupabaseServerAuthClient, createSupabaseServerClient } from '@/lib/supabase/server';
+import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/auth-custom';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const contactRequestSchema = z.object({
   full_name: z.string().trim().max(120, 'الاسم طويل جدًا.').optional(),
@@ -47,17 +44,10 @@ export async function POST(request: NextRequest) {
       limit: rate.limit,
       remaining: rate.remaining,
     });
-
-    return jsonResponse(
-      { message: RATE_LIMIT_MESSAGE_AR },
-      429,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message: RATE_LIMIT_MESSAGE_AR }, 429, requestId, rate);
   }
 
   let payload: unknown;
-
   try {
     payload = await request.json();
   } catch {
@@ -66,13 +56,7 @@ export async function POST(request: NextRequest) {
       ip: requestIp,
       reason: 'invalid_json',
     });
-
-    return jsonResponse(
-      { message: 'تعذر قراءة البيانات المرسلة.' },
-      400,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message: 'تعذر قراءة البيانات المرسلة.' }, 400, requestId, rate);
   }
 
   const parsed = contactRequestSchema.safeParse(payload);
@@ -84,22 +68,17 @@ export async function POST(request: NextRequest) {
       reason: 'validation_failed',
       validationMessage: message,
     });
-
-    return jsonResponse(
-      { message },
-      400,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message }, 400, requestId, rate);
   }
 
-  const adminClient = createSupabaseServerClient();
-  const authClient = createSupabaseServerAuthClient();
-  const currentUser = await resolveCurrentAuthUser(request, authClient);
+  const db = createSupabaseServerClient();
+
+  // Resolve current user from custom JWT
+  const currentUser = resolveCurrentUser(request);
 
   let orgId: string | null = null;
   if (currentUser) {
-    const { data: membershipData } = await adminClient
+    const { data: membershipData } = await db
       .from('memberships')
       .select('org_id')
       .eq('user_id', currentUser.id)
@@ -110,7 +89,7 @@ export async function POST(request: NextRequest) {
     orgId = (membershipData as MembershipRow | null)?.org_id ?? null;
   }
 
-  const { error } = await adminClient.from('full_version_requests').insert({
+  const { error } = await db.from('full_version_requests').insert({
     org_id: orgId,
     user_id: currentUser?.id ?? null,
     full_name: emptyToNull(parsed.data.full_name),
@@ -128,13 +107,7 @@ export async function POST(request: NextRequest) {
       source: parsed.data.source,
       error: error.message,
     });
-
-    return jsonResponse(
-      { message: 'تعذر إرسال طلبك. حاول مرة أخرى.' },
-      500,
-      requestId,
-      rate,
-    );
+    return jsonResponse({ message: 'تعذر إرسال طلبك. حاول مرة أخرى.' }, 500, requestId, rate);
   }
 
   logInfo('contact_request_created', {
@@ -156,47 +129,14 @@ export async function POST(request: NextRequest) {
   );
 }
 
-async function resolveCurrentAuthUser(
-  request: NextRequest,
-  authClient: ReturnType<typeof createSupabaseServerAuthClient>,
-): Promise<AuthUser | null> {
-  const accessToken = request.cookies.get(ACCESS_COOKIE_NAME)?.value;
-  const refreshToken = request.cookies.get(REFRESH_COOKIE_NAME)?.value;
+function resolveCurrentUser(request: NextRequest): AuthUser | null {
+  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (!sessionToken) return null;
 
-  if (accessToken) {
-    const { data: accessUser, error } = await authClient.auth.getUser(accessToken);
-    if (!error && accessUser.user?.email) {
-      return { id: accessUser.user.id, email: accessUser.user.email };
-    }
-  }
+  const payload = verifySessionToken(sessionToken);
+  if (!payload) return null;
 
-  if (!refreshToken) {
-    return null;
-  }
-
-  const { data: refreshed, error: refreshError } = await authClient.auth.refreshSession({
-    refresh_token: refreshToken,
-  });
-
-  if (refreshError || !refreshed.session) {
-    logWarn('contact_request_auth_refresh_failed', {
-      reason: refreshError?.message ?? 'missing_session',
-    });
-    return null;
-  }
-
-  const { data: refreshedUser, error: refreshedUserError } = await authClient.auth.getUser(
-    refreshed.session.access_token,
-  );
-
-  if (refreshedUserError || !refreshedUser.user?.email) {
-    return null;
-  }
-
-  return {
-    id: refreshedUser.user.id,
-    email: refreshedUser.user.email,
-  };
+  return { id: payload.userId, email: payload.email };
 }
 
 function emptyToNull(value?: string) {
@@ -206,14 +146,8 @@ function emptyToNull(value?: string) {
 
 function getOrCreateRequestId(request: NextRequest) {
   const incoming = request.headers.get('x-request-id')?.trim();
-  if (incoming) {
-    return incoming;
-  }
-
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
+  if (incoming) return incoming;
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `${Date.now()}`;
 }
 
@@ -223,14 +157,7 @@ function jsonResponse(
   requestId: string,
   rate: RateLimitResult,
 ) {
-  const response = NextResponse.json(
-    {
-      ...body,
-      requestId,
-    },
-    { status },
-  );
-
+  const response = NextResponse.json({ ...body, requestId }, { status });
   response.headers.set('x-request-id', requestId);
   response.headers.set('x-ratelimit-limit', String(rate.limit));
   response.headers.set('x-ratelimit-remaining', String(rate.remaining));

@@ -2,21 +2,16 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@/lib/supabase/constants';
-import { createSupabaseServerAuthClient } from '@/lib/supabase/server';
+import { SESSION_COOKIE_NAME } from '@/lib/auth-custom';
 
 export async function signOutAction() {
-  // Invalidate the session server-side first
-  try {
-    const supabase = createSupabaseServerAuthClient();
-    await supabase.auth.signOut();
-  } catch {
-    // Continue with cookie cleanup even if signOut fails
-  }
-
   const cookieStore = cookies();
-  cookieStore.delete(ACCESS_COOKIE_NAME);
-  cookieStore.delete(REFRESH_COOKIE_NAME);
+
+  // Clear custom JWT session cookie
+  cookieStore.delete(SESSION_COOKIE_NAME);
+  // Clear old Supabase cookies (in case they linger)
+  cookieStore.delete('masar-sb-access-token');
+  cookieStore.delete('masar-sb-refresh-token');
 
   redirect('/signin');
 }

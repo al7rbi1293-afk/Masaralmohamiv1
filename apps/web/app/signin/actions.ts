@@ -41,7 +41,7 @@ export async function signInAction(formData: FormData) {
   }
 
   // Generate custom JWT session
-  const sessionToken = generateSessionToken({ userId: user.id, email: user.email });
+  const sessionToken = await generateSessionToken({ userId: user.id, email: user.email });
 
   const cookieStore = cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);

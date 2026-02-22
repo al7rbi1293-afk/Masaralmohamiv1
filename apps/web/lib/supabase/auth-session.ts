@@ -14,7 +14,7 @@ export async function getCurrentAuthUser(): Promise<CurrentAuthUser | null> {
     return null;
   }
 
-  const payload = verifySessionToken(sessionToken);
+  const payload = await verifySessionToken(sessionToken);
   if (!payload) {
     return null;
   }

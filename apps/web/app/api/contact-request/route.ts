@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   const db = createSupabaseServerClient();
 
   // Resolve current user from custom JWT
-  const currentUser = resolveCurrentUser(request);
+  const currentUser = await resolveCurrentUser(request);
 
   let orgId: string | null = null;
   if (currentUser) {
@@ -129,11 +129,11 @@ export async function POST(request: NextRequest) {
   );
 }
 
-function resolveCurrentUser(request: NextRequest): AuthUser | null {
+async function resolveCurrentUser(request: NextRequest): Promise<AuthUser | null> {
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionToken) return null;
 
-  const payload = verifySessionToken(sessionToken);
+  const payload = await verifySessionToken(sessionToken);
   if (!payload) return null;
 
   return { id: payload.userId, email: payload.email };

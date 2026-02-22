@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT session
-    const sessionToken = generateSessionToken({ userId, email });
+    const sessionToken = await generateSessionToken({ userId, email });
 
     const response = NextResponse.json(
       { redirectTo: destination, requestId },

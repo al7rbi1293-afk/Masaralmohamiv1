@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Generate custom JWT session
-  const sessionToken = generateSessionToken({ userId: user.id, email: user.email });
+  const sessionToken = await generateSessionToken({ userId: user.id, email: user.email });
 
   // Check admin status
   let defaultRedirect = '/app';

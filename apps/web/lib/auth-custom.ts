@@ -1,7 +1,7 @@
 import 'server-only';
 
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 
 // ────────────────────────────────────────────
 // Constants
@@ -55,35 +55,34 @@ export type SessionPayload = {
     email: string;
 };
 
-export function generateSessionToken(payload: SessionPayload): string {
+export async function generateSessionToken(payload: SessionPayload): Promise<string> {
     const secret = getJwtSecret();
-    return jwt.sign(
-        {
-            sub: payload.userId,
-            email: payload.email,
-        },
-        secret,
-        {
-            algorithm: JWT_ALGORITHM,
-            expiresIn: JWT_EXPIRES_IN,
-        },
-    );
+    const encodedSecret = new TextEncoder().encode(secret);
+    return new SignJWT({
+        sub: payload.userId,
+        email: payload.email,
+    })
+        .setProtectedHeader({ alg: JWT_ALGORITHM })
+        .setIssuedAt()
+        .setExpirationTime(JWT_EXPIRES_IN)
+        .sign(encodedSecret);
 }
 
-export function verifySessionToken(token: string): SessionPayload | null {
+export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
     try {
         const secret = getJwtSecret();
-        const decoded = jwt.verify(token, secret, {
+        const encodedSecret = new TextEncoder().encode(secret);
+        const { payload } = await jwtVerify(token, encodedSecret, {
             algorithms: [JWT_ALGORITHM],
-        }) as jwt.JwtPayload;
+        });
 
-        if (!decoded.sub || !decoded.email) {
+        if (!payload.sub || !payload.email) {
             return null;
         }
 
         return {
-            userId: decoded.sub,
-            email: decoded.email as string,
+            userId: payload.sub as string,
+            email: payload.email as string,
         };
     } catch {
         return null;

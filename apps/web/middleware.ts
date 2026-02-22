@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 import { computeEntitlements, type SubscriptionSnapshot, type TrialSnapshot } from './lib/entitlements';
 import { csrfProtect } from './lib/csrf';
 
@@ -77,13 +77,14 @@ function getJwtSecret(): string {
   return process.env.JWT_SECRET?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
 }
 
-function verifySessionTokenInMiddleware(token: string): { userId: string; email: string } | null {
+async function verifySessionTokenInMiddleware(token: string): Promise<{ userId: string; email: string } | null> {
   const secret = getJwtSecret();
   if (!secret) return null;
   try {
-    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
-    if (!decoded.sub || !decoded.email) return null;
-    return { userId: decoded.sub, email: decoded.email as string };
+    const encodedSecret = new TextEncoder().encode(secret);
+    const { payload } = await jwtVerify(token, encodedSecret);
+    if (!payload.sub || !payload.email) return null;
+    return { userId: payload.sub, email: payload.email as string };
   } catch {
     return null;
   }
@@ -246,7 +247,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Verify JWT
-  const session = verifySessionTokenInMiddleware(sessionToken);
+  const session = await verifySessionTokenInMiddleware(sessionToken);
   if (!session) {
     // Invalid or expired token
     const redirectResponse = redirectToSignIn(request);

@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id);
 
   // Generate session and sign them in
-  const sessionToken = generateSessionToken({ userId: user.id, email: user.email });
+  const sessionToken = await generateSessionToken({ userId: user.id, email: user.email });
 
   const response = NextResponse.json({ ok: true }, { status: 200 });
   response.cookies.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);

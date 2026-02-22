@@ -126,7 +126,7 @@ export function TeamManagementClient({
       });
       const json = (await response.json().catch(() => ({}))) as any;
       if (!response.ok) {
-        setError(String(json?.error ?? 'تعذر إضافة العضو.'));
+        setError(String(json?.error || json?.rawError || 'تعذر إضافة العضو.'));
         return;
       }
 

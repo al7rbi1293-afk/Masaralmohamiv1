@@ -33,6 +33,7 @@ export class TeamHttpError extends Error {
 
   constructor(status: number, message: string) {
     super(message);
+    this.name = 'TeamHttpError';
     this.status = status;
   }
 }

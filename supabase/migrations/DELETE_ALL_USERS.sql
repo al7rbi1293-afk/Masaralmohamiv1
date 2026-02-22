@@ -1,46 +1,50 @@
 -- ⚠️ حذف جميع المستخدمين والبيانات المرتبطة
--- شغّل هذا في Supabase SQL Editor قبل تنفيذ 0010_custom_users.sql
--- حذف كل البيانات المرتبطة بالمستخدمين (بالترتيب الصحيح لتفادي FK errors)
-TRUNCATE public.doc_generations CASCADE;
-TRUNCATE public.calendar_event_attendees CASCADE;
-TRUNCATE public.calendar_events CASCADE;
-TRUNCATE public.email_integration_accounts CASCADE;
-TRUNCATE public.email_log CASCADE;
-TRUNCATE public.najiz_packets CASCADE;
-TRUNCATE public.najiz_sync_runs CASCADE;
-TRUNCATE public.template_documents CASCADE;
-TRUNCATE public.template_fields CASCADE;
-TRUNCATE public.templates CASCADE;
-TRUNCATE public.integrations CASCADE;
-TRUNCATE public.document_versions CASCADE;
-TRUNCATE public.documents CASCADE;
-TRUNCATE public.matter_events CASCADE;
-TRUNCATE public.matter_team CASCADE;
-TRUNCATE public.tasks CASCADE;
-TRUNCATE public.matters CASCADE;
-TRUNCATE public.clients CASCADE;
-TRUNCATE public.org_invitations CASCADE;
-TRUNCATE public.invoices CASCADE;
-TRUNCATE public.billing_audit CASCADE;
-TRUNCATE public.subscriptions CASCADE;
-TRUNCATE public.payment_requests CASCADE;
-TRUNCATE public.full_version_requests CASCADE;
-TRUNCATE public.audit_log CASCADE;
-TRUNCATE public.app_admins CASCADE;
-TRUNCATE public.memberships CASCADE;
-TRUNCATE public.profiles CASCADE;
-TRUNCATE public.trial_subscriptions CASCADE;
-TRUNCATE public.organizations CASCADE;
-TRUNCATE public.leads CASCADE;
--- حذف من app_users (إذا كان موجوداً)
-DO $$ BEGIN IF EXISTS (
-    SELECT 1
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-        AND table_name = 'app_users'
-) THEN EXECUTE 'TRUNCATE public.app_users CASCADE';
-END IF;
+-- يتجاهل تلقائياً أي جدول غير موجود
+DO $$
+DECLARE t TEXT;
+tables TEXT [] := ARRAY [
+    'doc_generations',
+    'calendar_event_attendees',
+    'calendar_events',
+    'email_integration_accounts',
+    'email_log',
+    'najiz_packets',
+    'najiz_sync_runs',
+    'template_documents',
+    'template_fields',
+    'templates',
+    'integrations',
+    'document_versions',
+    'documents',
+    'matter_events',
+    'matter_team',
+    'tasks',
+    'matters',
+    'clients',
+    'org_invitations',
+    'invoices',
+    'billing_audit',
+    'subscriptions',
+    'payment_requests',
+    'full_version_requests',
+    'audit_log',
+    'app_admins',
+    'memberships',
+    'profiles',
+    'trial_subscriptions',
+    'organizations',
+    'leads',
+    'app_users'
+  ];
+BEGIN FOREACH t IN ARRAY tables LOOP BEGIN EXECUTE format('TRUNCATE public.%I CASCADE', t);
+RAISE NOTICE 'Truncated: %',
+t;
+EXCEPTION
+WHEN undefined_table THEN RAISE NOTICE 'Skipped (not found): %',
+t;
+END;
+END LOOP;
 END $$;
 -- حذف المستخدمين من auth.users
 DELETE FROM auth.users;
--- تم حذف جميع البيانات ✅
+-- تم ✅

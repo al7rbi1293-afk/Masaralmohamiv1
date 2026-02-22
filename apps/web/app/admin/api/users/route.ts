@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       phone,
       status,
       created_at,
-      email_confirmed_at,
+      email_verified,
       memberships (
         org_id,
         role,
@@ -55,9 +55,9 @@ export async function GET(request: NextRequest) {
   const allUsers = usersData ?? [];
 
   // Separate active/confirmed users and pending users
-  // Note: pending users are those without email_confirmed_at
+  // Note: pending users are those without email_verified
   const pending = allUsers
-    .filter((user) => !user.email_confirmed_at)
+    .filter((user) => !user.email_verified)
     .map((user) => {
       const createdAtDate = new Date(user.created_at);
       const ageHours = Number.isNaN(createdAtDate.getTime())
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     });
 
   const users = allUsers
-    .filter((user) => user.email_confirmed_at)
+    .filter((user) => user.email_verified)
     .map((user) => ({
       user_id: user.id,
       email: user.email,
@@ -125,7 +125,7 @@ export async function PATCH(request: NextRequest) {
     // 1. Fetch users from app_users
     const { data: userRows, error: userError } = await adminClient
       .from('app_users')
-      .select('id, email_confirmed_at')
+      .select('id, email_verified')
       .in('id', targetIds);
 
     if (userError) {
@@ -136,7 +136,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'المستخدم غير موجود.' }, { status: 404 });
     }
 
-    const hasConfirmedUser = userRows.some(row => row.email_confirmed_at !== null);
+    const hasConfirmedUser = userRows.some(row => row.email_verified === true);
     if (hasConfirmedUser) {
       return NextResponse.json({ error: 'لا يمكن حذف حساب مفعّل.' }, { status: 409 });
     }

@@ -49,6 +49,7 @@ export async function approveRequestAction(requestId: string) {
                     due_at: null,
                     clientName: userName,
                     orgName: 'مسار المحامي',
+                    logoUrl: null,
                     items: [
                         {
                             desc: `اشتراك باقة ${planName} (${request.billing_period === 'yearly' ? 'سنوي' : 'شهري'})`,

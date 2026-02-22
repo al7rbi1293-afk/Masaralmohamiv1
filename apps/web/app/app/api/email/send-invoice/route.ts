@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     const { data: org } = await rls
       .from('organizations')
-      .select('name')
+      .select('name, logo_url')
       .eq('id', orgId)
       .maybeSingle();
 
@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
         due_at: (invoice as any).due_at ? String((invoice as any).due_at) : null,
         clientName: clientName ? String(clientName) : null,
         orgName: org?.name ? String(org.name) : null,
+        logoUrl: org?.logo_url ? String(org.logo_url) : null,
         paidAmount,
         remaining,
       });

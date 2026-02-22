@@ -33,7 +33,7 @@ export async function GET(request: Request, context: { params: { id: string } })
 
     const { data: org } = await supabase
       .from('organizations')
-      .select('name')
+      .select('name, logo_url')
       .eq('id', orgId)
       .maybeSingle();
 
@@ -59,6 +59,7 @@ export async function GET(request: Request, context: { params: { id: string } })
         due_at: invoice.due_at ? String(invoice.due_at) : null,
         clientName: clientName ? String(clientName) : null,
         orgName: org?.name ? String(org.name) : null,
+        logoUrl: org?.logo_url ? String(org.logo_url) : null,
         paidAmount,
         remaining,
       });

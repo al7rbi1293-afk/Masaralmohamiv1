@@ -23,12 +23,13 @@ export type InvoicePdfPayload = {
   due_at: string | null;
   clientName: string | null;
   orgName: string | null;
+  logoUrl: string | null;
   paidAmount: number;
   remaining: number;
 };
 
 export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
-  const { Document, Font, Page, StyleSheet, Text, View, pdf } = await import('@react-pdf/renderer');
+  const { Document, Font, Image, Page, StyleSheet, Text, View, pdf } = await import('@react-pdf/renderer');
 
   if (!fontsRegistered) {
     try {
@@ -61,6 +62,16 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
     },
     header: {
       marginBottom: 14,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    headerText: {},
+    logo: {
+      width: 64,
+      height: 64,
+      objectFit: 'contain' as any,
+      borderRadius: 6,
     },
     title: {
       fontSize: 18,
@@ -129,12 +140,19 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
       React.createElement(
         View,
         { style: styles.header },
-        React.createElement(Text, { style: styles.title }, 'مسار المحامي'),
         React.createElement(
-          Text,
-          { style: styles.subtitle },
-          `${payload.orgName ?? 'المكتب'} • فاتورة ${safeNumber}`,
+          View,
+          { style: styles.headerText },
+          React.createElement(Text, { style: styles.title }, payload.orgName ?? 'مسار المحامي'),
+          React.createElement(
+            Text,
+            { style: styles.subtitle },
+            `فاتورة ${safeNumber}`,
+          ),
         ),
+        payload.logoUrl
+          ? React.createElement(Image, { style: styles.logo, src: payload.logoUrl })
+          : null,
       ),
       React.createElement(
         View,
@@ -153,11 +171,11 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
         ),
         payload.due_at
           ? React.createElement(
-              View,
-              { style: styles.row },
-              React.createElement(Text, { style: styles.label }, 'تاريخ الاستحقاق'),
-              React.createElement(Text, { style: styles.value }, formatDate(payload.due_at)),
-            )
+            View,
+            { style: styles.row },
+            React.createElement(Text, { style: styles.label }, 'تاريخ الاستحقاق'),
+            React.createElement(Text, { style: styles.value }, formatDate(payload.due_at)),
+          )
           : null,
       ),
       React.createElement(
@@ -227,7 +245,7 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
             View,
             { style: styles.row },
             React.createElement(Text, { style: styles.label }, 'الحالة'),
-            React.createElement(Text, { style: styles.value }, payload.status),
+            React.createElement(Text, { style: styles.value }, translateStatus(payload.status)),
           ),
           React.createElement(
             View,
@@ -293,7 +311,21 @@ function normalizeItems(value: any): InvoicePdfItem[] {
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('ar-SA');
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}/${mm}/${dd}`;
+}
+
+const statusMap: Record<string, string> = {
+  unpaid: 'غير مسددة',
+  partial: 'مسددة جزئياً',
+  paid: 'مدفوعة',
+  void: 'ملغاة',
+};
+
+function translateStatus(status: string): string {
+  return statusMap[status] ?? status;
 }
 
 function formatMoney(value: string | number) {

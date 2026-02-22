@@ -30,14 +30,14 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json({ success: true }, { status: 201 });
-    } catch (error) {
-        if (error instanceof TeamHttpError) {
+    } catch (error: any) {
+        if (error && error.name === 'TeamHttpError') {
             logError('team_add_member_failed', { status: error.status, message: error.message });
             return NextResponse.json({ error: error.message }, { status: error.status });
         }
 
-        const message = 'تعذر إضافة العضو. حاول مرة أخرى.';
+        const message = error instanceof Error ? error.message : 'تعذر إضافة العضو. حاول مرة أخرى.';
         logError('team_add_member_failed', { message, stack: error instanceof Error ? error.stack : undefined });
-        return NextResponse.json({ error: message }, { status: 400 });
+        return NextResponse.json({ error: message, rawError: String(error) }, { status: 400 });
     }
 }

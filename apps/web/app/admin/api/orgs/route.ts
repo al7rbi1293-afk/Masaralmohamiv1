@@ -57,9 +57,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { org_id, action, ends_at } = body as { org_id: string; action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry'; ends_at?: string };
+    const { org_id, action, ends_at, months } = body as { org_id: string; action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid'; ends_at?: string; months?: number };
 
-    if (!org_id || !['suspend', 'activate', 'grant_lifetime', 'extend_trial', 'set_expiry'].includes(action)) {
+    if (!org_id || !['suspend', 'activate', 'grant_lifetime', 'extend_trial', 'set_expiry', 'activate_paid'].includes(action)) {
         return NextResponse.json({ error: 'بيانات غير صالحة.' }, { status: 400 });
     }
 
@@ -154,6 +154,26 @@ export async function PATCH(request: NextRequest) {
         }
 
         return NextResponse.json({ success: true, newEnd: dateObj.toISOString() });
+    }
+
+    if (action === 'activate_paid') {
+        const duration = Number(months || 12);
+        const newEnd = new Date();
+        newEnd.setMonth(newEnd.getMonth() + duration);
+
+        const { error } = await adminClient.from('subscriptions').upsert({
+            org_id,
+            plan_code: 'PRO',
+            status: 'active',
+            payment_status: 'paid',
+            current_period_end: newEnd.toISOString(),
+        }, { onConflict: 'org_id' });
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, newEnd: newEnd.toISOString() });
     }
 
     return NextResponse.json({ error: 'إجراء غير معروف.' }, { status: 400 });

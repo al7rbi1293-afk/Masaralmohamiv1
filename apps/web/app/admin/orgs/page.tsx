@@ -32,7 +32,7 @@ export default function AdminOrgsPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry', extraData?: any) {
+    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid', extraData?: any) {
         if (action === 'grant_lifetime') {
             const proceed = window.confirm('هل أنت متأكد من منح هذا المكتب اشتراك مدى الحياة؟');
             if (!proceed) return;
@@ -47,6 +47,17 @@ export default function AdminOrgsPage() {
                 return;
             }
             extraData = { ends_at: dateObj.toISOString() };
+        }
+
+        if (action === 'activate_paid') {
+            const rawMonths = window.prompt('كم شهر تريد تفعيل الحساب له؟', '12');
+            if (!rawMonths) return;
+            const months = parseInt(rawMonths);
+            if (isNaN(months) || months <= 0) {
+                alert('الرجاء إدخال عدد أشهر صحيح.');
+                return;
+            }
+            extraData = { months };
         }
 
         setActionId(orgId);
@@ -127,6 +138,13 @@ export default function AdminOrgsPage() {
                                                 تفعيل
                                             </button>
                                         )}
+                                        <button
+                                            disabled={actionId === org.id}
+                                            onClick={() => handleAction(org.id, 'activate_paid')}
+                                            className="rounded bg-brand-emerald px-3 py-1 text-xs text-white hover:bg-brand-emerald/90 disabled:opacity-50"
+                                        >
+                                            تفعيل اشتراك
+                                        </button>
                                         <button
                                             disabled={actionId === org.id}
                                             onClick={() => handleAction(org.id, 'set_expiry')}

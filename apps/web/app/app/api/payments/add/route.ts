@@ -49,8 +49,9 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    const rawMessage = error instanceof Error ? error.message : String(error);
     const message = toUserMessage(error);
-    logError('payment_add_failed', { message });
+    logError('payment_add_failed', { message: rawMessage, stack: error instanceof Error ? error.stack : undefined });
     return NextResponse.json({ error: message }, { status: message === 'لا تملك صلاحية لهذا الإجراء.' ? 403 : 400 });
   }
 }

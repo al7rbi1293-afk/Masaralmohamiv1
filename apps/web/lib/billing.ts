@@ -526,20 +526,26 @@ export async function addPayment(invoiceId: string, payload: AddPaymentPayload):
 
   const paidAmount = await computeInvoicePaidAmount(invoiceId);
   const total = Number(invoice.total);
-  const status = computeInvoiceStatus(total, paidAmount);
+  const newStatus = computeInvoiceStatus(total, paidAmount);
 
-  const updatedInvoice = await updateInvoice(invoiceId, {
-    client_id: invoice.client_id,
-    matter_id: invoice.matter_id,
-    items: invoice.items,
-    tax: Number(invoice.tax),
-    due_at: invoice.due_at,
-    status,
-  });
+  // Only update the status field — do NOT re-validate/re-write items
+  const { error: statusError } = await supabase
+    .from('invoices')
+    .update({ status: newStatus })
+    .eq('org_id', orgId)
+    .eq('id', invoiceId);
+
+  if (statusError) {
+    // Payment was already recorded, log but don't fail
+    console.error('Failed to update invoice status after payment:', statusError.message);
+  }
+
+  // Re-fetch the updated invoice
+  const updatedInvoice = await getInvoiceById(invoiceId);
 
   return {
     payment: payment as Payment,
-    invoice: updatedInvoice,
+    invoice: updatedInvoice!,
     paidAmount,
   };
 }

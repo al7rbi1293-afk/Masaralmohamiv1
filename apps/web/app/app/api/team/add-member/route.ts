@@ -1,27 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
-import { addMemberDirect, TeamHttpError } from '@/lib/team';
 import { logError, logInfo } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-    const ip = getRequestIp(request);
-    const limit = await checkRateLimit({
-        key: `team_add_member:${ip}`,
-        limit: 10,
-        windowMs: 10 * 60 * 1000,
-    });
-
-    if (!limit.allowed) {
-        return NextResponse.json(
-            { error: RATE_LIMIT_MESSAGE_AR },
-            { status: 429 },
-        );
-    }
-
+    // Top-level try-catch: absolutely nothing escapes without a JSON response
     try {
+        // --- Rate Limiting (lazy import to isolate failures) ---
+        const { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } = await import('@/lib/rateLimit');
+        const ip = getRequestIp(request);
+        const limit = await checkRateLimit({
+            key: `team_add_member:${ip}`,
+            limit: 10,
+            windowMs: 10 * 60 * 1000,
+        });
+
+        if (!limit.allowed) {
+            return NextResponse.json(
+                { error: RATE_LIMIT_MESSAGE_AR },
+                { status: 429 },
+            );
+        }
+
+        // --- Parse body ---
         const body = await request.json().catch(() => ({}));
+
+        // --- Import addMemberDirect lazily to isolate module-level crashes ---
+        const { addMemberDirect } = await import('@/lib/team');
+
+        // --- Execute ---
         await addMemberDirect(body, request);
 
         logInfo('team_member_added', {
@@ -30,14 +37,28 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json({ success: true }, { status: 201 });
-    } catch (error: any) {
-        if (error && error.name === 'TeamHttpError') {
-            logError('team_add_member_failed', { status: error.status, message: error.message });
-            return NextResponse.json({ error: error.message }, { status: error.status });
+    } catch (error: unknown) {
+        // Determine the error message, status, and raw info
+        let status = 400;
+        let message = 'تعذر إضافة العضو. حاول مرة أخرى.';
+        let rawError = '';
+
+        if (error && typeof error === 'object') {
+            const err = error as Record<string, unknown>;
+
+            // Check for TeamHttpError (by name or by status property)
+            if (err.name === 'TeamHttpError' && typeof err.status === 'number') {
+                status = err.status;
+                message = String(err.message || message);
+            } else if (error instanceof Error) {
+                message = error.message || message;
+                rawError = error.stack || '';
+            }
+        } else {
+            rawError = String(error);
         }
 
-        const message = error instanceof Error ? error.message : 'تعذر إضافة العضو. حاول مرة أخرى.';
-        logError('team_add_member_failed', { message, stack: error instanceof Error ? error.stack : undefined });
-        return NextResponse.json({ error: message, rawError: String(error) }, { status: 400 });
+        logError('team_add_member_failed', { message, status, rawError });
+        return NextResponse.json({ error: message, rawError }, { status });
     }
 }

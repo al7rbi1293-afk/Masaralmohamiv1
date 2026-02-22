@@ -124,9 +124,16 @@ export function TeamManagementClient({
           role: addRole,
         }),
       });
-      const json = (await response.json().catch(() => ({}))) as any;
+      let errorMsg = 'تعذر إضافة العضو.';
       if (!response.ok) {
-        setError(String(json?.error || json?.rawError || 'تعذر إضافة العضو.'));
+        const rawText = await response.text().catch(() => '');
+        try {
+          const json = JSON.parse(rawText);
+          errorMsg = String(json?.error || json?.rawError || errorMsg);
+        } catch {
+          errorMsg = rawText ? rawText.slice(0, 100) : errorMsg; // Show first 100 chars of HTML/text crash
+        }
+        setError(errorMsg);
         return;
       }
 

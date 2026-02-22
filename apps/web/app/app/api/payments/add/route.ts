@@ -48,11 +48,25 @@ export async function POST(request: Request) {
       },
       { status: 201 },
     );
-  } catch (error) {
+  } catch (error: any) {
     const rawMessage = error instanceof Error ? error.message : String(error);
+    const supabaseCode = error?.code ?? '';
+    const supabaseDetails = error?.details ?? '';
+    const supabaseHint = error?.hint ?? '';
     const message = toUserMessage(error);
-    logError('payment_add_failed', { message: rawMessage, stack: error instanceof Error ? error.stack : undefined });
-    return NextResponse.json({ error: message }, { status: message === 'لا تملك صلاحية لهذا الإجراء.' ? 403 : 400 });
+    logError('payment_add_failed', {
+      message: rawMessage,
+      code: supabaseCode,
+      details: supabaseDetails,
+      hint: supabaseHint,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    // Include diagnostic info in the error response
+    const debugInfo = supabaseCode ? ` [${supabaseCode}]` : '';
+    return NextResponse.json(
+      { error: `${message}${debugInfo}` },
+      { status: message === 'لا تملك صلاحية لهذا الإجراء.' ? 403 : 400 },
+    );
   }
 }
 
@@ -61,6 +75,8 @@ function toUserMessage(error: unknown) {
   const normalized = message.toLowerCase();
 
   if (message.includes('لا يوجد مكتب مفعّل')) return message;
+  if (message.includes('قيمة الدفعة غير صحيحة')) return message;
+  if (message.includes('لا يمكن تسجيل دفعات')) return message;
 
   if (
     normalized.includes('permission denied') ||
@@ -74,6 +90,7 @@ function toUserMessage(error: unknown) {
     return 'الفاتورة غير موجودة.';
   }
 
+  // Pass through native Supabase/PG error for debugging
   return message || 'تعذر تسجيل الدفعة.';
 }
 

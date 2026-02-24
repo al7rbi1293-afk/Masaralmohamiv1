@@ -10,9 +10,11 @@ import { logError, logInfo } from '@/lib/logger';
 
 const matterSchema = z.object({
   title: z.string().trim().min(2, 'العنوان مطلوب ويجب أن لا يقل عن حرفين.').max(200, 'العنوان طويل جدًا.'),
-  client_id: z.string().uuid('يرجى اختيار الموكل.'),
+  client_id: z.string().uuid('يرجى اختيار الموكل.').optional().or(z.literal('')),
   status: z.enum(['new', 'in_progress', 'on_hold', 'closed', 'archived']),
   summary: z.string().trim().max(5000, 'الملخص طويل جدًا.').optional().or(z.literal('')),
+  case_type: z.string().trim().max(100, 'نوع القضية طويل جدًا.').optional().or(z.literal('')),
+  claims: z.string().trim().max(10000, 'تفاصيل المطالبات طويلة جدًا.').optional().or(z.literal('')),
   is_private: z.boolean(),
 });
 
@@ -142,6 +144,8 @@ function toPayload(formData: FormData) {
     client_id: String(formData.get('client_id') ?? ''),
     status: String(formData.get('status') ?? 'new'),
     summary: String(formData.get('summary') ?? ''),
+    case_type: String(formData.get('case_type') ?? ''),
+    claims: String(formData.get('claims') ?? ''),
     is_private: formData.get('is_private') === 'on',
   };
 }
@@ -157,9 +161,11 @@ function toEventPayload(formData: FormData) {
 function normalize(data: z.infer<typeof matterSchema>) {
   return {
     title: data.title.trim(),
-    client_id: data.client_id,
+    client_id: emptyToNull(data.client_id),
     status: data.status,
     summary: emptyToNull(data.summary),
+    case_type: emptyToNull(data.case_type),
+    claims: emptyToNull(data.claims),
     is_private: data.is_private,
   };
 }
@@ -220,10 +226,10 @@ function toEventUserMessage(error: unknown) {
 
 function diffMatterFields(
   before: Awaited<ReturnType<typeof getMatterById>>,
-  after: Awaited<ReturnType<typeof updateMatter>>,
+  after: import('@/lib/matters').Matter,
 ): string[] {
   if (!before || !after) return [];
-  const keys = ['title', 'status', 'summary', 'client_id', 'is_private', 'assigned_user_id'] as const;
+  const keys = ['title', 'status', 'summary', 'client_id', 'is_private', 'assigned_user_id', 'case_type', 'claims'] as const;
   const changed: string[] = [];
   for (const key of keys) {
     if ((before as any)[key] !== (after as any)[key]) changed.push(key);

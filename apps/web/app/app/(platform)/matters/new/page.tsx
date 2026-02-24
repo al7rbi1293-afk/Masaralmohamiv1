@@ -20,17 +20,8 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
     limit: 50,
   });
 
-  if (!clientsResult.data.length) {
-    return (
-      <Card className="p-6">
-        <EmptyState
-          title="إنشاء قضية"
-          message="لا يوجد موكلون نشطون. أضف موكلاً أولاً قبل إنشاء قضية."
-          backHref="/app/clients/new"
-          backLabel="إضافة موكل"
-        />
-      </Card>
-    );
+  if (error) {
+    // If there's an error, we don't block the page render completely, just show it.
   }
 
   return (
@@ -79,13 +70,13 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1 text-sm">
             <span className="font-medium text-slate-700 dark:text-slate-200">
-              الموكل <span className="text-red-600">*</span>
+              الموكل
             </span>
             <select
-              required
               name="client_id"
               className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
             >
+              <option value="">بدون موكل</option>
               {clientsResult.data.map((client) => (
                 <option key={client.id} value={client.id}>
                   {client.name}
@@ -110,6 +101,26 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
           </label>
         </div>
 
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">نوع القضية</span>
+            <select
+              name="case_type"
+              defaultValue=""
+              className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            >
+              <option value="">غير محدد</option>
+              <option value="commercial">تجارية</option>
+              <option value="labor">عمالية</option>
+              <option value="personal_status">أحوال شخصية</option>
+              <option value="general">عامة</option>
+              <option value="criminal">جزائية</option>
+              <option value="administrative">إدارية</option>
+              <option value="enforcement">تنفيذ</option>
+            </select>
+          </label>
+        </div>
+
         <label className="flex items-center gap-3 text-sm">
           <input
             type="checkbox"
@@ -126,7 +137,17 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
           <span className="font-medium text-slate-700 dark:text-slate-200">ملخص (اختياري)</span>
           <textarea
             name="summary"
-            rows={6}
+            rows={4}
+            className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+          />
+        </label>
+
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">المطالبات (اختياري)</span>
+          <textarea
+            name="claims"
+            rows={4}
+            placeholder="أدخل تفاصيل المطالبات..."
             className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
           />
         </label>

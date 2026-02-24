@@ -174,7 +174,7 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
       ) : tab === 'documents' ? (
         <MatterDocumentsSection
           matterId={matter.id}
-          clientId={matter.client_id}
+          clientId={matter.client_id ?? ''}
           searchParams={searchParams}
         />
       ) : (
@@ -233,15 +233,23 @@ async function MatterSummarySection({
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
           <h2 className="font-semibold text-brand-navy dark:text-slate-100">معلومات الموكل</h2>
-          <p className="mt-3 text-sm text-slate-700 dark:text-slate-200">
-            <span className="font-medium">الاسم:</span> {matter.client?.name ?? '—'}
-          </p>
-          <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">
-            <span className="font-medium">الجوال:</span> {matter.client?.phone ?? '—'}
-          </p>
-          <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">
-            <span className="font-medium">البريد:</span> {matter.client?.email ?? '—'}
-          </p>
+          {matter.client ? (
+            <>
+              <p className="mt-3 text-sm text-slate-700 dark:text-slate-200">
+                <span className="font-medium">الاسم:</span> {matter.client.name}
+              </p>
+              <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">
+                <span className="font-medium">الجوال:</span> {matter.client.phone ?? '—'}
+              </p>
+              <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">
+                <span className="font-medium">البريد:</span> {matter.client.email ?? '—'}
+              </p>
+            </>
+          ) : (
+            <p className="mt-3 text-sm text-slate-700 dark:text-slate-200">
+              بدون موكل
+            </p>
+          )}
         </section>
 
         <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700 lg:col-span-2">
@@ -249,11 +257,37 @@ async function MatterSummarySection({
           <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-200">
             {matter.summary ?? 'لا يوجد ملخص حتى الآن.'}
           </p>
+          {matter.claims ? (
+            <>
+              <h3 className="mt-4 font-semibold text-brand-navy dark:text-slate-100">المطالبات</h3>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-200">
+                {matter.claims}
+              </p>
+            </>
+          ) : null}
         </section>
 
         <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700 lg:col-span-3">
           <h2 className="font-semibold text-brand-navy dark:text-slate-100">البيانات</h2>
           <div className="mt-3 grid gap-3 text-sm text-slate-700 dark:text-slate-200 sm:grid-cols-2">
+            <p>
+              <span className="font-medium">نوع القضية:</span>{' '}
+              {matter.case_type === 'commercial'
+                ? 'تجارية'
+                : matter.case_type === 'labor'
+                  ? 'عمالية'
+                  : matter.case_type === 'personal_status'
+                    ? 'أحوال شخصية'
+                    : matter.case_type === 'general'
+                      ? 'عامة'
+                      : matter.case_type === 'criminal'
+                        ? 'جزائية'
+                        : matter.case_type === 'administrative'
+                          ? 'إدارية'
+                          : matter.case_type === 'enforcement'
+                            ? 'تنفيذ'
+                            : matter.case_type ?? 'غير محدد'}
+            </p>
             <p>
               <span className="font-medium">تاريخ الإنشاء:</span>{' '}
               {new Date(matter.created_at).toLocaleString('ar-SA')}
@@ -264,26 +298,28 @@ async function MatterSummarySection({
             </p>
           </div>
         </section>
-      </div>
+      </div >
 
-      {matter.is_private ? (
-        <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
-          <h2 className="font-semibold text-brand-navy dark:text-slate-100">الأعضاء المصرح لهم</h2>
-          <MatterMembersClient
-            matterId={matterId}
-            currentUserId={currentUser?.id ?? ''}
-            canManage={canManageMembers}
-            orgMembers={orgMembers}
-          />
-          {!canManageMembers ? (
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-              لإدارة الأعضاء (إضافة/إزالة) يجب أن تكون شريكًا (Owner) أو المسؤول عن القضية.
-            </p>
-          ) : null}
-        </section>
-      ) : null}
+      {
+        matter.is_private ? (
+          <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+            <h2 className="font-semibold text-brand-navy dark:text-slate-100">الأعضاء المصرح لهم</h2>
+            <MatterMembersClient
+              matterId={matterId}
+              currentUserId={currentUser?.id ?? ''}
+              canManage={canManageMembers}
+              orgMembers={orgMembers}
+            />
+            {!canManageMembers ? (
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                لإدارة الأعضاء (إضافة/إزالة) يجب أن تكون شريكًا (Owner) أو المسؤول عن القضية.
+              </p>
+            ) : null}
+          </section>
+        ) : null
+      }
 
-      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+      < section className="rounded-lg border border-brand-border p-4 dark:border-slate-700" >
         <h2 className="font-semibold text-brand-navy dark:text-slate-100">تعديل القضية</h2>
         <form action={updateMatterAction.bind(null, matter.id)} className="mt-4 grid gap-4">
           <label className="block space-y-1 text-sm">
@@ -301,12 +337,12 @@ async function MatterSummarySection({
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">الموكل</span>
               <select
-                required
                 name="client_id"
-                defaultValue={matter.client_id}
+                defaultValue={matter.client_id ?? ''}
                 className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
               >
-                {!selectedClientExists ? (
+                <option value="">بدون موكل</option>
+                {!selectedClientExists && matter.client_id ? (
                   <option value={matter.client_id}>{matter.client?.name ?? 'الموكل الحالي'}</option>
                 ) : null}
                 {clientsResult.data.map((client) => (
@@ -331,6 +367,24 @@ async function MatterSummarySection({
                 <option value="archived">مؤرشفة</option>
               </select>
             </label>
+
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">نوع القضية</span>
+              <select
+                name="case_type"
+                defaultValue={matter.case_type ?? ''}
+                className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              >
+                <option value="">غير محدد</option>
+                <option value="commercial">تجارية</option>
+                <option value="labor">عمالية</option>
+                <option value="personal_status">أحوال شخصية</option>
+                <option value="general">عامة</option>
+                <option value="criminal">جزائية</option>
+                <option value="administrative">إدارية</option>
+                <option value="enforcement">تنفيذ</option>
+              </select>
+            </label>
           </div>
 
           <label className="flex items-center gap-3 text-sm">
@@ -350,8 +404,19 @@ async function MatterSummarySection({
             <span className="font-medium text-slate-700 dark:text-slate-200">ملخص (اختياري)</span>
             <textarea
               name="summary"
-              rows={6}
+              rows={4}
               defaultValue={matter.summary ?? ''}
+              className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            />
+          </label>
+
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">المطالبات (اختياري)</span>
+            <textarea
+              name="claims"
+              rows={4}
+              defaultValue={matter.claims ?? ''}
+              placeholder="أدخل تفاصيل المطالبات..."
               className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
             />
           </label>
@@ -362,7 +427,7 @@ async function MatterSummarySection({
             </FormSubmitButton>
           </div>
         </form>
-      </section>
+      </section >
 
       <div className="flex flex-wrap gap-3">
         {matter.status === 'archived' ? (

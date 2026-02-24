@@ -298,7 +298,7 @@ async function MatterSummarySection({
             </p>
           </div>
         </section>
-      </div >
+      </div>
 
       {
         matter.is_private ? (
@@ -319,7 +319,7 @@ async function MatterSummarySection({
         ) : null
       }
 
-      < section className="rounded-lg border border-brand-border p-4 dark:border-slate-700" >
+      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
         <h2 className="font-semibold text-brand-navy dark:text-slate-100">تعديل القضية</h2>
         <form action={updateMatterAction.bind(null, matter.id)} className="mt-4 grid gap-4">
           <label className="block space-y-1 text-sm">
@@ -427,7 +427,7 @@ async function MatterSummarySection({
             </FormSubmitButton>
           </div>
         </form>
-      </section >
+      </section>
 
       <div className="flex flex-wrap gap-3">
         {matter.status === 'archived' ? (

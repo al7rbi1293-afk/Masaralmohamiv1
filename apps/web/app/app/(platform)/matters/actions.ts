@@ -38,6 +38,7 @@ export async function createMatterAction(formData: FormData) {
     redirect(`/app/matters/${created.id}?success=${encodeURIComponent('تم إنشاء القضية.')}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
+    console.error('CREATE_MATTER_ERROR:', error);
     const message = toUserMessage(error);
     logError('matter_create_failed', { message });
     redirect(`/app/matters/new?error=${encodeURIComponent(message)}`);
@@ -139,9 +140,12 @@ export async function createMatterEventAction(matterId: string, formData: FormDa
 }
 
 function toPayload(formData: FormData) {
+  const rawClientId = formData.get('client_id');
+  const clientIdStr = typeof rawClientId === 'string' ? rawClientId.trim() : '';
+
   return {
     title: String(formData.get('title') ?? ''),
-    client_id: String(formData.get('client_id') ?? ''),
+    client_id: clientIdStr || undefined,
     status: String(formData.get('status') ?? 'new'),
     summary: String(formData.get('summary') ?? ''),
     case_type: String(formData.get('case_type') ?? ''),

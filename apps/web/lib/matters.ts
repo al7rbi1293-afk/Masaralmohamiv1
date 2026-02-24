@@ -142,27 +142,47 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
     await assertClientInOrg(supabase, orgId, payload.client_id);
   }
 
-  const { data, error } = await supabase
-    .from('matters')
-    .insert({
-      org_id: orgId,
-      client_id: payload.client_id ?? null,
-      title: payload.title,
-      status: payload.status ?? 'new',
-      summary: payload.summary ?? null,
-      case_type: payload.case_type ?? null,
-      claims: payload.claims ?? null,
-      assigned_user_id: payload.assigned_user_id ?? currentUser.id,
-      is_private: payload.is_private ?? false,
-    })
-    .select(MATTER_SELECT)
-    .single();
+  const matterId = crypto.randomUUID();
+  const baseInsertPayload = {
+    id: matterId,
+    org_id: orgId,
+    client_id: payload.client_id ?? null,
+    title: payload.title,
+    status: payload.status ?? 'new',
+    summary: payload.summary ?? null,
+    assigned_user_id: payload.assigned_user_id ?? currentUser.id,
+    is_private: payload.is_private ?? false,
+  };
+  const extendedInsertPayload = {
+    ...baseInsertPayload,
+    case_type: payload.case_type ?? null,
+    claims: payload.claims ?? null,
+  };
 
-  if (error || !data) {
-    throw error ?? new Error('تعذر إنشاء القضية.');
+  // Avoid INSERT ... SELECT under RLS because private matters are not selectable
+  // until the creator is added to matter_members.
+  let insertError: unknown = null;
+  {
+    const { error } = await supabase.from('matters').insert(extendedInsertPayload);
+    insertError = error;
   }
 
-  const created = normalizeMatter(data as MatterRow);
+  if (insertError && supportsLegacyMattersSchema(insertError)) {
+    const { error } = await supabase.from('matters').insert(baseInsertPayload);
+    insertError = error;
+  }
+
+  if (insertError) {
+    if ((payload.client_id ?? null) === null && isClientRequiredViolation(insertError)) {
+      throw new Error('client_required');
+    }
+    throw insertError as Error;
+  }
+
+  const created = await getMatterById(matterId);
+  if (!created) {
+    throw new Error('not_found_after_insert');
+  }
 
   if (created.is_private) {
     const { error: memberError } = await supabase.from('matter_members').upsert(
@@ -179,6 +199,12 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
     if (memberError) {
       throw memberError;
     }
+
+    const visibleAfterMemberInsert = await getMatterById(matterId);
+    if (!visibleAfterMemberInsert) {
+      throw new Error('not_found_after_insert');
+    }
+    return visibleAfterMemberInsert;
   }
 
   return created;
@@ -285,4 +311,26 @@ async function assertClientInOrg(
 function cleanQuery(value?: string) {
   if (!value) return '';
   return value.replaceAll(',', ' ').trim().slice(0, 120);
+}
+
+function supportsLegacyMattersSchema(error: unknown) {
+  const text = getErrorText(error);
+  return text.includes('column "case_type" of relation "matters" does not exist') ||
+    text.includes('column "claims" of relation "matters" does not exist') ||
+    text.includes("Could not find the 'case_type' column of 'matters' in the schema cache") ||
+    text.includes("Could not find the 'claims' column of 'matters' in the schema cache");
+}
+
+function isClientRequiredViolation(error: unknown) {
+  const text = getErrorText(error);
+  return text.includes('null value in column "client_id" of relation "matters" violates not-null constraint');
+}
+
+function getErrorText(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return '';
+  }
+
+  const maybeError = error as { message?: string; details?: string; hint?: string };
+  return `${maybeError.message ?? ''} ${maybeError.details ?? ''} ${maybeError.hint ?? ''}`;
 }

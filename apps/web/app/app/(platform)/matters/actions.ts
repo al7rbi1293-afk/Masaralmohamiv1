@@ -199,6 +199,10 @@ function toUserMessage(error: unknown) {
     return 'تعذر الحفظ. حاول مرة أخرى.';
   }
 
+  if (normalized.includes('client_required')) {
+    return 'يرجى اختيار الموكل قبل حفظ القضية.';
+  }
+
   if (message.includes('لا يوجد مكتب مفعّل')) {
     return message;
   }

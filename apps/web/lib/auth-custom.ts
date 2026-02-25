@@ -25,10 +25,9 @@ export const SESSION_COOKIE_OPTIONS = {
 // ────────────────────────────────────────────
 
 function getJwtSecret(): string {
-    // Prefer a dedicated JWT_SECRET env var, fall back to SUPABASE_SERVICE_ROLE_KEY
-    const secret = process.env.JWT_SECRET?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const secret = process.env.JWT_SECRET?.trim();
     if (!secret) {
-        throw new Error('Missing JWT_SECRET or SUPABASE_SERVICE_ROLE_KEY environment variable.');
+        throw new Error('Missing JWT_SECRET environment variable.');
     }
     return secret;
 }

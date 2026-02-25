@@ -15,9 +15,7 @@ type VerifiedOAuthState = {
 };
 
 function getOAuthStateSecret() {
-    const secret =
-        process.env.MICROSOFT_OAUTH_STATE_SECRET?.trim() ||
-        process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const secret = process.env.MICROSOFT_OAUTH_STATE_SECRET?.trim();
 
     if (!secret) {
         throw new Error('oauth_state_secret_missing');

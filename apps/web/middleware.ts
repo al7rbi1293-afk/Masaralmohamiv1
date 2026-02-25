@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { CsrfError } from '@edge-csrf/nextjs';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { jwtVerify } from 'jose';
 import { computeEntitlements, type SubscriptionSnapshot, type TrialSnapshot } from './lib/entitlements';
@@ -44,6 +45,10 @@ function redirectToSignIn(request: NextRequest) {
   return setSecurityHeaders(NextResponse.redirect(url));
 }
 
+function isCsrfOnlyPublicPath(pathname: string) {
+  return pathname === '/signup' || pathname.startsWith('/signup/');
+}
+
 function isBypassedPath(pathname: string) {
   if (pathname === '/app/settings/subscription' || pathname.startsWith('/app/settings/subscription/')) {
     return true;
@@ -74,12 +79,13 @@ function isMissingRelationError(message?: string) {
 }
 
 function getJwtSecret(): string {
-  return process.env.JWT_SECRET?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
+  return process.env.JWT_SECRET?.trim() || '';
 }
 
-async function verifySessionTokenInMiddleware(token: string): Promise<{ userId: string; email: string } | null> {
-  const secret = getJwtSecret();
-  if (!secret) return null;
+async function verifySessionTokenInMiddleware(
+  token: string,
+  secret: string,
+): Promise<{ userId: string; email: string } | null> {
   try {
     const encodedSecret = new TextEncoder().encode(secret);
     const { payload } = await jwtVerify(token, encodedSecret);
@@ -221,19 +227,35 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const pathname = request.nextUrl.pathname;
+  const shouldRunCsrf = !pathname.startsWith('/app/api/') && !pathname.startsWith('/admin/api/');
 
   // Initialize response for CSRF
   const csrfResponse = NextResponse.next();
-  try {
-    await csrfProtect(request, csrfResponse);
-  } catch (err: any) {
-    console.error('CSRF Protect Middleware Error:', err?.name, err?.message);
-    if (err?.name !== 'CsrfError') {
-      console.error('Unexpected CSRF error type, continuing anyway to unblock users.', err);
+  if (shouldRunCsrf) {
+    try {
+      await csrfProtect(request, csrfResponse);
+    } catch (err: unknown) {
+      if (err instanceof CsrfError || (err as { name?: string } | null)?.name === 'CsrfError') {
+        return setSecurityHeaders(new NextResponse('فشل التحقق الأمني للطلب.', { status: 403 }));
+      }
+
+      console.error('Unexpected CSRF middleware failure:', err);
+      return setSecurityHeaders(new NextResponse('تعذر التحقق من أمان الطلب.', { status: 500 }));
     }
   }
 
+  if (isCsrfOnlyPublicPath(pathname)) {
+    const response = NextResponse.next();
+    csrfResponse.headers.forEach((value, key) => response.headers.set(key, value));
+    return setSecurityHeaders(response);
+  }
+
   if (!supabaseUrl || !serviceKey) {
+    return missingEnvResponse();
+  }
+
+  const jwtSecret = getJwtSecret();
+  if (!jwtSecret) {
     return missingEnvResponse();
   }
 
@@ -247,7 +269,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Verify JWT
-  const session = await verifySessionTokenInMiddleware(sessionToken);
+  const session = await verifySessionTokenInMiddleware(sessionToken, jwtSecret);
   if (!session) {
     // Invalid or expired token
     const redirectResponse = redirectToSignIn(request);
@@ -326,5 +348,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/admin/:path*'],
+  matcher: ['/app/:path*', '/admin/:path*', '/signup'],
 };

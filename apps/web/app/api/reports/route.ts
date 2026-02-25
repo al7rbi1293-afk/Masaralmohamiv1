@@ -69,6 +69,7 @@ export async function GET(_request: NextRequest) {
         supabase
             .from('leads')
             .select('utm')
+            .eq('org_id', orgId)
             .not('utm', 'is', null)
             .limit(500),
 

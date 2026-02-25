@@ -59,6 +59,6 @@ export async function POST(request: NextRequest) {
         }
 
         logError('team_add_member_failed', { message, status, rawError });
-        return NextResponse.json({ error: message, rawError }, { status });
+        return NextResponse.json({ error: message }, { status });
     }
 }

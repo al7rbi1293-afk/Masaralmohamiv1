@@ -1,34 +1,45 @@
 import { createCsrfProtect } from '@edge-csrf/nextjs';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+
+const CSRF_COOKIE_NAME = 'csrf_secret';
 
 // CSRF middleware initialization
 export const csrfProtect = createCsrfProtect({
     cookie: {
         secure: process.env.NODE_ENV === 'production',
-        name: 'csrf_secret',
+        name: CSRF_COOKIE_NAME,
     },
 });
 
 // For Server Actions: manual check
 export async function verifyCsrfToken(formData: FormData): Promise<boolean> {
-    // In Next.js Server Actions, edge-csrf isn't automatically wrapping the body. 
-    // We need to manually verify the token using edge-csrf internal verification or custom check.
-    // Actually edge-csrf requires the NextRequest to verify. But from Server Actions we don't have NextRequest.
-    // By getting the token sent by the client, we compare it to what's in the secret.
+    const tokenFromForm = String(formData.get('csrf_token') ?? '').trim();
+    if (!tokenFromForm) return false;
 
-    // A simpler way is to depend on the explicit next header x-csrf-token
     const requestHeaders = headers();
-    const tokenFromHeader = requestHeaders.get('x-csrf-token') || requestHeaders.get('x-csrf-token-action');
-    const tokenFromForm = formData.get('csrf_token') as string;
-    const tokenToVerify = tokenFromForm || tokenFromHeader;
+    const cookieStore = cookies();
+    const csrfSecret = cookieStore.get(CSRF_COOKIE_NAME)?.value?.trim();
+    if (!csrfSecret) return false;
 
-    if (!tokenToVerify) return false;
+    const forwardedHost = requestHeaders.get('x-forwarded-host')?.split(',')[0]?.trim();
+    const host = forwardedHost || requestHeaders.get('host')?.trim() || 'localhost:3000';
+    const forwardedProto = requestHeaders.get('x-forwarded-proto')?.split(',')[0]?.trim();
+    const proto = forwardedProto || (host.includes('localhost') ? 'http' : 'https');
+    const verifyUrl = `${proto}://${host}/_csrf-verify`;
 
-    // Since edge-csrf uses crypto to verify the signed token against the cookie,
-    // we would need access to the cookie logic. 
-    // Another way: The middleware will verify ANY POST requests if we configure edge-csrf on those paths.
-    // But Server Actions are just POST requests to the same path!
-    // If we configure csrfProtect() to run in middleware on all POST, it auto-verifies edge-csrf if `csrf_token` header is passed.
+    const verifyRequest = new NextRequest(verifyUrl, {
+        method: 'POST',
+        headers: new Headers({
+            cookie: `${CSRF_COOKIE_NAME}=${csrfSecret}`,
+            'x-csrf-token': tokenFromForm,
+        }),
+    });
 
-    return true;
+    try {
+        await csrfProtect(verifyRequest, NextResponse.next());
+        return true;
+    } catch {
+        return false;
+    }
 }

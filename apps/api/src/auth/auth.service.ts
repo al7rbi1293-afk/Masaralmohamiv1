@@ -38,8 +38,14 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
   ) {
-    this.accessSecret = this.configService.get<string>('JWT_ACCESS_SECRET', 'access-secret-demo');
-    this.refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET', 'refresh-secret-demo');
+    const accessSecret = this.configService.get<string>('JWT_ACCESS_SECRET')?.trim();
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET')?.trim();
+    if (!accessSecret || !refreshSecret) {
+      throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be configured.');
+    }
+
+    this.accessSecret = accessSecret;
+    this.refreshSecret = refreshSecret;
     this.accessTtl = this.configService.get<string>('JWT_ACCESS_TTL', '900s');
     this.refreshTtl = this.configService.get<string>('JWT_REFRESH_TTL', '7d');
   }

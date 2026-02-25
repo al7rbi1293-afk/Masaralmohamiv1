@@ -15,10 +15,15 @@ export type AccessTokenPayload = {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(configService: ConfigService) {
+    const accessSecret = configService.get<string>('JWT_ACCESS_SECRET')?.trim();
+    if (!accessSecret) {
+      throw new Error('JWT_ACCESS_SECRET must be configured.');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET', 'access-secret-demo'),
+      secretOrKey: accessSecret,
     });
   }
 

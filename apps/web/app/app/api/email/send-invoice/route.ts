@@ -6,6 +6,7 @@ import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { computeInvoicePaidAmount } from '@/lib/billing';
 import { sendEmail } from '@/lib/email';
+import { buildInvoiceEmailMessage, buildInvoiceEmailSubject } from '@/lib/invoice-email-template';
 import { CircuitOpenError, TimeoutError, renderInvoicePdfBuffer } from '@/lib/invoice-pdf';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 
@@ -115,20 +116,25 @@ export async function POST(request: NextRequest) {
       throw pdfError;
     }
 
-    const subject = `فاتورة ${invoiceNumber} - مسار المحامي`;
-    const textParts = [
-      'مرحباً،',
-      '',
-      `مرفق لك فاتورة رقم: ${invoiceNumber}`,
-      parsed.data.message_optional ? `\nرسالة:\n${parsed.data.message_optional.trim()}\n` : '',
-      'مع التحية،',
-      'مسار المحامي',
-    ].filter(Boolean);
+    const subject = buildInvoiceEmailSubject({
+      invoiceNumber,
+      dueAt: (invoice as any).due_at ? String((invoice as any).due_at) : null,
+    });
+    const defaultMessage = buildInvoiceEmailMessage({
+      invoiceNumber,
+      issuedAt: String((invoice as any).issued_at ?? ''),
+      dueAt: (invoice as any).due_at ? String((invoice as any).due_at) : null,
+      total: (invoice as any).total,
+      currency: String((invoice as any).currency ?? 'SAR'),
+      clientName: clientName ? String(clientName) : null,
+      officeName: org?.name ? String(org.name) : null,
+    });
+    const text = parsed.data.message_optional?.trim() || defaultMessage;
 
     await sendEmail({
       to: parsed.data.to_email,
       subject,
-      text: textParts.join('\n'),
+      text,
       attachments: [
         {
           filename: pdfResult.fileName,
@@ -164,7 +170,10 @@ export async function POST(request: NextRequest) {
         org_id: orgId,
         sent_by: currentUserId,
         to_email: parsed.data.to_email,
-        subject: `فاتورة ${invoiceNumber || parsed.data.invoice_id} - مسار المحامي`,
+        subject: buildInvoiceEmailSubject({
+          invoiceNumber: invoiceNumber || parsed.data.invoice_id,
+          dueAt: null,
+        }),
         template: 'invoice',
         meta: { invoice_id: parsed.data.invoice_id, number: invoiceNumber || null },
         status: 'failed',
@@ -198,4 +207,3 @@ function toUserMessage(error: unknown) {
 
   return message || 'تعذر إرسال البريد.';
 }
-

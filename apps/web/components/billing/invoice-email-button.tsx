@@ -2,20 +2,51 @@
 
 import { useState } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { buildInvoiceEmailMessage } from '@/lib/invoice-email-template';
 
 type InvoiceEmailButtonProps = {
   invoiceId: string;
+  invoiceNumber: string;
+  issuedAt?: string | null;
+  dueAt?: string | null;
+  total?: number | string | null;
+  currency?: string | null;
+  clientName?: string | null;
+  officeName?: string | null;
+  initialEmail?: string | null;
   label?: string;
   className?: string;
 };
 
-export function InvoiceEmailButton({ invoiceId, label = 'إرسال بالبريد', className = '' }: InvoiceEmailButtonProps) {
+export function InvoiceEmailButton({
+  invoiceId,
+  invoiceNumber,
+  issuedAt,
+  dueAt,
+  total,
+  currency,
+  clientName,
+  officeName,
+  initialEmail,
+  label = 'إرسال بالبريد',
+  className = '',
+}: InvoiceEmailButtonProps) {
   const [open, setOpen] = useState(false);
-  const [toEmail, setToEmail] = useState('');
+  const [toEmail, setToEmail] = useState(initialEmail?.trim() ?? '');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const defaultMessage = buildInvoiceEmailMessage({
+    invoiceNumber,
+    issuedAt,
+    dueAt,
+    total,
+    currency,
+    clientName,
+    officeName,
+  });
 
   async function submit() {
     setLoading(true);
@@ -55,6 +86,8 @@ export function InvoiceEmailButton({ invoiceId, label = 'إرسال بالبري
         className={`${buttonVariants('outline', 'sm')} ${className}`}
         onClick={() => {
           setOpen(true);
+          setToEmail(initialEmail?.trim() ?? '');
+          setMessage(defaultMessage);
           setError('');
           setSuccess('');
         }}
@@ -114,9 +147,9 @@ export function InvoiceEmailButton({ invoiceId, label = 'إرسال بالبري
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                rows={3}
+                rows={9}
                 className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-                placeholder="اكتب رسالة قصيرة..."
+                placeholder="سيتم تعبئة صياغة احترافية تلقائيًا..."
               />
             </label>
 
@@ -134,4 +167,3 @@ export function InvoiceEmailButton({ invoiceId, label = 'إرسال بالبري
     </>
   );
 }
-

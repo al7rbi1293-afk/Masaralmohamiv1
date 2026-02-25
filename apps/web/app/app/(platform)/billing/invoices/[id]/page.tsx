@@ -66,6 +66,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
 
   const matters = mattersResult.data.filter((matter) => matter.status !== 'archived');
   const items = Array.isArray(invoice.items) ? invoice.items : [];
+  const clientEmail = clientsResult.data.find((client) => client.id === invoice.client_id)?.email ?? '';
 
   const total = Number(invoice.total);
   const remaining = Math.max(0, (Number.isFinite(total) ? total : 0) - paidAmount);
@@ -97,7 +98,17 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
           >
             تصدير PDF
           </a>
-          <InvoiceEmailButton invoiceId={invoice.id} />
+          <InvoiceEmailButton
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.number}
+            issuedAt={invoice.issued_at}
+            dueAt={invoice.due_at}
+            total={invoice.total}
+            currency={invoice.currency}
+            clientName={invoice.client?.name ?? null}
+            officeName="إدارة المكتب"
+            initialEmail={clientEmail}
+          />
           <Link href="/app/billing/invoices" className={buttonVariants('outline', 'sm')}>
             رجوع
           </Link>

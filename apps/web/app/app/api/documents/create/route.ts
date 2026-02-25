@@ -7,9 +7,9 @@ import { logError, logInfo } from '@/lib/logger';
 
 const createDocumentSchema = z.object({
   title: z.string().trim().min(2, 'العنوان مطلوب.').max(200, 'العنوان طويل جدًا.'),
-  matter_id: z.string().uuid().optional().or(z.literal('')),
-  client_id: z.string().uuid().optional().or(z.literal('')),
-  folder: z.string().trim().max(300, 'المجلد طويل جدًا.').optional().or(z.literal('')),
+  matter_id: z.union([z.string().uuid(), z.literal(''), z.null()]).optional(),
+  client_id: z.union([z.string().uuid(), z.literal(''), z.null()]).optional(),
+  folder: z.union([z.string().trim().max(300, 'المجلد طويل جدًا.'), z.literal(''), z.null()]).optional(),
   tags: z.unknown().optional(),
 });
 
@@ -70,12 +70,12 @@ export async function POST(request: Request) {
   }
 }
 
-function emptyToNull(value?: string) {
-  const normalized = value?.trim();
+function emptyToNull(value?: string | null) {
+  const normalized = (value ?? '').trim();
   return normalized ? normalized : null;
 }
 
-function normalizeFolder(value?: string) {
+function normalizeFolder(value?: string | null) {
   const normalized = (value ?? '').trim();
   if (!normalized) return '/';
   if (normalized === '/') return '/';

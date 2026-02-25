@@ -6,7 +6,12 @@ import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { computeInvoicePaidAmount } from '@/lib/billing';
 import { sendEmail } from '@/lib/email';
-import { buildInvoiceEmailMessage, buildInvoiceEmailSubject } from '@/lib/invoice-email-template';
+import {
+  buildInvoiceEmailHtml,
+  buildInvoiceEmailMessage,
+  buildInvoiceEmailSubject,
+  buildRtlEmailHtmlFromText,
+} from '@/lib/invoice-email-template';
 import { CircuitOpenError, TimeoutError, renderInvoicePdfBuffer } from '@/lib/invoice-pdf';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
       invoiceNumber,
       dueAt: (invoice as any).due_at ? String((invoice as any).due_at) : null,
     });
-    const defaultMessage = buildInvoiceEmailMessage({
+    const defaultText = buildInvoiceEmailMessage({
       invoiceNumber,
       issuedAt: String((invoice as any).issued_at ?? ''),
       dueAt: (invoice as any).due_at ? String((invoice as any).due_at) : null,
@@ -129,12 +134,26 @@ export async function POST(request: NextRequest) {
       clientName: clientName ? String(clientName) : null,
       officeName: org?.name ? String(org.name) : null,
     });
-    const text = parsed.data.message_optional?.trim() || defaultMessage;
+    const defaultHtml = buildInvoiceEmailHtml({
+      invoiceNumber,
+      issuedAt: String((invoice as any).issued_at ?? ''),
+      dueAt: (invoice as any).due_at ? String((invoice as any).due_at) : null,
+      total: (invoice as any).total,
+      currency: String((invoice as any).currency ?? 'SAR'),
+      clientName: clientName ? String(clientName) : null,
+      officeName: org?.name ? String(org.name) : null,
+    });
+    const userMessage = parsed.data.message_optional?.trim();
+    const text = userMessage || defaultText;
+    const html = userMessage && userMessage !== defaultText
+      ? buildRtlEmailHtmlFromText(userMessage)
+      : defaultHtml;
 
     await sendEmail({
       to: parsed.data.to_email,
       subject,
       text,
+      html,
       attachments: [
         {
           filename: pdfResult.fileName,

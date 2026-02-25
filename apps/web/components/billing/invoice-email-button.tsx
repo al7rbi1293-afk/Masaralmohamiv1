@@ -148,7 +148,8 @@ export function InvoiceEmailButton({
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 rows={9}
-                className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                dir="rtl"
+                className="w-full rounded-lg border border-brand-border px-3 py-2 text-right outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                 placeholder="سيتم تعبئة صياغة احترافية تلقائيًا..."
               />
             </label>

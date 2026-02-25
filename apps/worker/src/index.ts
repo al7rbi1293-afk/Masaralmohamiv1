@@ -1,6 +1,5 @@
 import { PrismaClient, TaskStatus } from '@prisma/client';
-import { Worker } from 'bullmq';
-import IORedis from 'ioredis';
+import { type ConnectionOptions, Worker } from 'bullmq';
 
 type TaskReminderJob = {
   taskId: string;
@@ -12,9 +11,10 @@ type TaskReminderJob = {
 
 const prisma = new PrismaClient();
 
-const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+const connection: ConnectionOptions = {
+  url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   maxRetriesPerRequest: null,
-});
+};
 
 const worker = new Worker<TaskReminderJob>(
   'task-reminders',
@@ -81,7 +81,6 @@ worker.on('failed', (job, error) => {
 
 const shutdown = async () => {
   await worker.close();
-  await connection.quit();
   await prisma.$disconnect();
   process.exit(0);
 };

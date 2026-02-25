@@ -7,8 +7,10 @@ test('landing loads and shows main heading', async ({ page }) => {
 
 test('hero CTA scrolls to trial section', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'جرّب مجانًا 14 يوم' }).first().click();
-  await expect(page).toHaveURL(/#trial/);
+  const trialCta = page.locator('a[href$="#trial"]').first();
+  await expect(trialCta).toBeVisible();
+  await trialCta.click();
+  await expect(page).toHaveURL(/#trial$/);
   await expect(page.locator('#trial')).toBeVisible();
 });
 

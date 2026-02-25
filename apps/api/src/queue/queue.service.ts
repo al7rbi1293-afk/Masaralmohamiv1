@@ -1,6 +1,5 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
+import { type ConnectionOptions, Queue } from 'bullmq';
 
 export type TaskReminderJob = {
   taskId: string;
@@ -12,14 +11,15 @@ export type TaskReminderJob = {
 
 @Injectable()
 export class QueueService implements OnModuleDestroy {
-  private readonly connection: IORedis;
-  private readonly reminderQueue: Queue<TaskReminderJob>;
+  private readonly connection: ConnectionOptions;
+  private readonly reminderQueue: Queue<TaskReminderJob, void, 'task-reminder'>;
 
   constructor() {
-    this.connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+    this.connection = {
+      url: process.env.REDIS_URL ?? 'redis://localhost:6379',
       maxRetriesPerRequest: null,
-    });
-    this.reminderQueue = new Queue<TaskReminderJob>('task-reminders', {
+    };
+    this.reminderQueue = new Queue<TaskReminderJob, void, 'task-reminder'>('task-reminders', {
       connection: this.connection,
     });
   }
@@ -42,6 +42,5 @@ export class QueueService implements OnModuleDestroy {
 
   async onModuleDestroy() {
     await this.reminderQueue.close();
-    await this.connection.quit();
   }
 }

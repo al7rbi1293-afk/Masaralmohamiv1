@@ -19,8 +19,15 @@ import { Redis } from '@upstash/redis';
 
 // Create the Redis instance. Requires UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in env.
 const redis = (() => {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    return null;
+  }
+
   try {
-    return Redis.fromEnv();
+    return new Redis({ url, token });
   } catch (err) {
     console.warn('Upstash Redis env variables not found. Rate limiting will bypass.');
     return null;

@@ -83,6 +83,7 @@ function getJwtSecret(): string {
     process.env.JWT_SECRET?.trim() ||
     process.env.JWT_ACCESS_SECRET?.trim() ||
     process.env.JWT_REFRESH_SECRET?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
     ''
   );
 }

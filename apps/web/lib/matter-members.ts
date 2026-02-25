@@ -31,17 +31,13 @@ export async function listOrgMembers(orgId: string): Promise<OrgMemberInfo[]> {
     return [];
   }
 
-  const [profilesResult, authUsersResult] = await Promise.all([
+  const [profilesResult, appUsersResult] = await Promise.all([
     service.from('profiles').select('user_id, full_name').in('user_id', memberIds),
-    service.schema('auth').from('users').select('id, email').in('id', memberIds),
+    service.from('app_users').select('id, email, full_name').in('id', memberIds),
   ]);
 
   if (profilesResult.error) {
     throw profilesResult.error;
-  }
-
-  if (authUsersResult.error) {
-    throw authUsersResult.error;
   }
 
   const nameById = new Map<string, string>();
@@ -52,9 +48,15 @@ export async function listOrgMembers(orgId: string): Promise<OrgMemberInfo[]> {
   }
 
   const emailById = new Map<string, string>();
-  for (const row of (authUsersResult.data as any[] | null) ?? []) {
-    if (row?.id && row?.email) {
-      emailById.set(String(row.id), String(row.email));
+  for (const row of (appUsersResult.data as any[] | null) ?? []) {
+    if (row?.id) {
+      const id = String(row.id);
+      if ((row.full_name ?? '').toString().trim() && !nameById.get(id)?.trim()) {
+        nameById.set(id, String(row.full_name));
+      }
+      if (row.email) {
+        emailById.set(id, String(row.email));
+      }
     }
   }
 
@@ -78,7 +80,7 @@ export async function enrichOrgMembers(
 
   const service = createSupabaseServerClient();
 
-  const [{ data: memberships, error: membershipsError }, profilesResult, authUsersResult] =
+  const [{ data: memberships, error: membershipsError }, profilesResult, appUsersResult] =
     await Promise.all([
       service
         .from('memberships')
@@ -86,7 +88,7 @@ export async function enrichOrgMembers(
         .eq('org_id', orgId)
         .in('user_id', ids),
       service.from('profiles').select('user_id, full_name').in('user_id', ids),
-      service.schema('auth').from('users').select('id, email').in('id', ids),
+      service.from('app_users').select('id, email, full_name').in('id', ids),
     ]);
 
   if (membershipsError) {
@@ -95,10 +97,6 @@ export async function enrichOrgMembers(
   if (profilesResult.error) {
     throw profilesResult.error;
   }
-  if (authUsersResult.error) {
-    throw authUsersResult.error;
-  }
-
   const roleById = new Map<string, OrgMemberRole>();
   for (const row of (memberships as any[] | null) ?? []) {
     if (row?.user_id && row?.role) {
@@ -114,9 +112,15 @@ export async function enrichOrgMembers(
   }
 
   const emailById = new Map<string, string>();
-  for (const row of (authUsersResult.data as any[] | null) ?? []) {
-    if (row?.id && row?.email) {
-      emailById.set(String(row.id), String(row.email));
+  for (const row of (appUsersResult.data as any[] | null) ?? []) {
+    if (row?.id) {
+      const id = String(row.id);
+      if ((row.full_name ?? '').toString().trim() && !nameById.get(id)?.trim()) {
+        nameById.set(id, String(row.full_name));
+      }
+      if (row.email) {
+        emailById.set(id, String(row.email));
+      }
     }
   }
 
@@ -143,4 +147,3 @@ export async function isUserMemberOfOrg(orgId: string, userId: string): Promise<
 
   return Boolean(data);
 }
-

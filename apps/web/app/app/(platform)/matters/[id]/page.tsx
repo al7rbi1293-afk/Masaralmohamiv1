@@ -202,6 +202,14 @@ async function MatterSummarySection({
 
   const selectedClientExists = clientsResult.data.some((client) => client.id === matter.client_id);
   const currentUser = await getCurrentAuthUser();
+  let allOrgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
+  try {
+    allOrgMembers = await listOrgMembers(matter.org_id);
+  } catch {
+    allOrgMembers = [];
+  }
+  const assignableLawyers = allOrgMembers.filter((member) => member.role === 'owner' || member.role === 'lawyer');
+  const selectedAssigneeExists = assignableLawyers.some((member) => member.user_id === matter.assigned_user_id);
 
   let canManageMembers = false;
   let orgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
@@ -224,7 +232,7 @@ async function MatterSummarySection({
     canManageMembers = isOwner || isAssignee;
 
     if (canManageMembers) {
-      orgMembers = await listOrgMembers(matter.org_id);
+      orgMembers = allOrgMembers;
     }
   }
 
@@ -369,6 +377,25 @@ async function MatterSummarySection({
             </label>
 
             <label className="block space-y-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">مالك القضية (المحامي المسؤول)</span>
+              <select
+                name="assigned_user_id"
+                defaultValue={matter.assigned_user_id ?? ''}
+                className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              >
+                <option value="">غير محدد</option>
+                {!selectedAssigneeExists && matter.assigned_user_id ? (
+                  <option value={matter.assigned_user_id}>المسؤول الحالي</option>
+                ) : null}
+                {assignableLawyers.map((member) => (
+                  <option key={member.user_id} value={member.user_id}>
+                    {(member.full_name || member.email || 'محامٍ')} {member.role === 'owner' ? '(شريك)' : '(محامٍ)'}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">نوع القضية</span>
               <select
                 name="case_type"
@@ -397,7 +424,7 @@ async function MatterSummarySection({
             <span className="font-medium text-slate-700 dark:text-slate-200">قضية خاصة</span>
           </label>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            القضية الخاصة تظهر فقط للشريك والأعضاء المصرّح لهم.
+            عند تفعيل الخصوصية: اختر المحامي المسؤول، ولن تظهر القضية لباقي المحامين غير المصرح لهم.
           </p>
 
           <label className="block space-y-1 text-sm">

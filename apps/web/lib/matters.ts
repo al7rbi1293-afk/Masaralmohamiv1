@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
-import { requireOrgIdForUser } from '@/lib/org';
+import { requireOrgIdForUser, type OrgRole } from '@/lib/org';
 
 export type MatterStatus = 'new' | 'in_progress' | 'on_hold' | 'closed' | 'archived';
 
@@ -53,7 +53,12 @@ const MATTER_SELECT =
 
 export async function listMatters(params: ListMattersParams = {}): Promise<PaginatedResult<Matter>> {
   const orgId = await requireOrgIdForUser();
+  const currentUser = await getCurrentAuthUser();
+  if (!currentUser) {
+    throw new Error('not_authenticated');
+  }
   const supabase = createSupabaseServerRlsClient();
+  const currentRole = await getOrgRole(supabase, orgId, currentUser.id);
 
   const page = Math.max(1, params.page ?? 1);
   const limit = Math.min(50, Math.max(5, params.limit ?? 20));
@@ -79,7 +84,16 @@ export async function listMatters(params: ListMattersParams = {}): Promise<Pagin
     query = query.eq('client_id', clientId);
   }
 
-  if (q) {
+  if (currentRole !== 'owner') {
+    const memberMatterIds = await listMatterMemberIdsForUser(supabase, currentUser.id);
+    const visibilityClauses = buildMatterVisibilityClauses(currentUser.id, memberMatterIds);
+    if (q) {
+      const pattern = `%${q}%`;
+      query = query.or(buildSearchVisibilityFilter(pattern, visibilityClauses));
+    } else {
+      query = query.or(visibilityClauses.join(','));
+    }
+  } else if (q) {
     const pattern = `%${q}%`;
     query = query.or(`title.ilike.${pattern},summary.ilike.${pattern}`);
   }
@@ -99,6 +113,7 @@ export async function listMatters(params: ListMattersParams = {}): Promise<Pagin
 
 export async function getMatterById(id: string): Promise<Matter | null> {
   const orgId = await requireOrgIdForUser();
+  const currentUser = await getCurrentAuthUser();
   const supabase = createSupabaseServerRlsClient();
 
   const { data, error } = await supabase
@@ -116,7 +131,30 @@ export async function getMatterById(id: string): Promise<Matter | null> {
     return null;
   }
 
-  return normalizeMatter(data as MatterRow);
+  const matter = normalizeMatter(data as MatterRow);
+  if (!matter.is_private) {
+    return matter;
+  }
+
+  if (!currentUser) {
+    return null;
+  }
+
+  const currentRole = await getOrgRole(supabase, orgId, currentUser.id);
+  if (currentRole === 'owner') {
+    return matter;
+  }
+
+  if (String(matter.assigned_user_id ?? '') === currentUser.id) {
+    return matter;
+  }
+
+  const member = await isMatterMember(supabase, matter.id, currentUser.id);
+  if (member) {
+    return matter;
+  }
+
+  return null;
 }
 
 export type CreateMatterPayload = {
@@ -138,8 +176,20 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
   }
 
   const supabase = createSupabaseServerRlsClient();
+  const currentRole = await getOrgRole(supabase, orgId, currentUser.id);
   if (payload.client_id) {
     await assertClientInOrg(supabase, orgId, payload.client_id);
+  }
+  if (payload.assigned_user_id) {
+    await assertAssignableUserInOrg(supabase, orgId, payload.assigned_user_id);
+  }
+  if (
+    payload.is_private &&
+    payload.assigned_user_id &&
+    payload.assigned_user_id !== currentUser.id &&
+    currentRole !== 'owner'
+  ) {
+    throw new Error('not_allowed');
   }
 
   const matterId = crypto.randomUUID();
@@ -189,23 +239,14 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
     throw insertError as Error;
   }
 
-  const created = await getMatterById(matterId);
+  const created = await getMatterByIdUnsafe(supabase, orgId, matterId);
   if (!created) {
     throw new Error('not_found_after_insert');
   }
 
   if (created.is_private) {
-    const { error: memberError } = await supabase.from('matter_members').upsert(
-      {
-        matter_id: created.id,
-        user_id: currentUser.id,
-      },
-      {
-        onConflict: 'matter_id,user_id',
-        ignoreDuplicates: true,
-      },
-    );
-
+    const memberIds = collectPrivateMatterMemberIds(currentUser.id, created.assigned_user_id);
+    const memberError = await upsertMatterMembers(supabase, created.id, memberIds);
     if (memberError) {
       if (isMatterMemberUserForeignKeyViolation(memberError)) {
         return created;
@@ -214,10 +255,7 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
     }
 
     const visibleAfterMemberInsert = await getMatterById(matterId);
-    if (!visibleAfterMemberInsert) {
-      throw new Error('not_found_after_insert');
-    }
-    return visibleAfterMemberInsert;
+    return visibleAfterMemberInsert ?? created;
   }
 
   return created;
@@ -228,10 +266,53 @@ export type UpdateMatterPayload = Partial<CreateMatterPayload>;
 export async function updateMatter(id: string, payload: UpdateMatterPayload): Promise<Matter> {
   const orgId = await requireOrgIdForUser();
   const currentUser = await getCurrentAuthUser();
+  if (!currentUser) {
+    throw new Error('not_authenticated');
+  }
   const supabase = createSupabaseServerRlsClient();
 
   if (payload.client_id) {
     await assertClientInOrg(supabase, orgId, payload.client_id);
+  }
+  if (payload.assigned_user_id) {
+    await assertAssignableUserInOrg(supabase, orgId, payload.assigned_user_id);
+  }
+
+  const { data: existingMatter, error: existingMatterError } = await supabase
+    .from('matters')
+    .select('id, assigned_user_id')
+    .eq('org_id', orgId)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (existingMatterError) {
+    throw existingMatterError;
+  }
+
+  if (!existingMatter) {
+    throw new Error('not_found');
+  }
+
+  const currentRole = await getOrgRole(supabase, orgId, currentUser.id);
+  const canUpdate = currentRole === 'owner' || String((existingMatter as any).assigned_user_id ?? '') === currentUser.id;
+  if (!canUpdate) {
+    throw new Error('not_allowed');
+  }
+
+  if (
+    currentRole !== 'owner' &&
+    payload.assigned_user_id !== undefined &&
+    payload.assigned_user_id !== String((existingMatter as any).assigned_user_id ?? '')
+  ) {
+    throw new Error('not_allowed');
+  }
+
+  const effectiveAssigneeId =
+    payload.assigned_user_id !== undefined
+      ? payload.assigned_user_id
+      : String((existingMatter as any).assigned_user_id ?? '') || null;
+  if (payload.is_private && effectiveAssigneeId && effectiveAssigneeId !== currentUser.id && currentRole !== 'owner') {
+    throw new Error('not_allowed');
   }
 
   const update: Record<string, unknown> = {};
@@ -262,19 +343,10 @@ export async function updateMatter(id: string, payload: UpdateMatterPayload): Pr
 
   const updated = normalizeMatter(data as MatterRow);
 
-  if (updated.is_private && currentUser) {
-    const { error: memberError } = await supabase.from('matter_members').upsert(
-      {
-        matter_id: updated.id,
-        user_id: currentUser.id,
-      },
-      {
-        onConflict: 'matter_id,user_id',
-        ignoreDuplicates: true,
-      },
-    );
-
-    if (memberError) {
+  if (updated.is_private) {
+    const memberIds = collectPrivateMatterMemberIds(currentUser.id, updated.assigned_user_id);
+    const memberError = await upsertMatterMembers(supabase, updated.id, memberIds);
+    if (memberError && !isMatterMemberUserForeignKeyViolation(memberError)) {
       throw memberError;
     }
   }
@@ -300,6 +372,29 @@ function normalizeMatter(value: MatterRow): Matter {
   };
 }
 
+async function getMatterByIdUnsafe(
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>,
+  orgId: string,
+  id: string,
+) {
+  const { data, error } = await supabase
+    .from('matters')
+    .select(MATTER_SELECT)
+    .eq('org_id', orgId)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return normalizeMatter(data as MatterRow);
+}
+
 async function assertClientInOrg(
   supabase: ReturnType<typeof createSupabaseServerRlsClient>,
   orgId: string,
@@ -321,9 +416,141 @@ async function assertClientInOrg(
   }
 }
 
+async function assertAssignableUserInOrg(
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>,
+  orgId: string,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const role = (data as { role?: OrgRole } | null)?.role;
+  if (!data || (role !== 'owner' && role !== 'lawyer')) {
+    throw new Error('assignee_not_found');
+  }
+}
+
+async function getOrgRole(
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>,
+  orgId: string,
+  userId: string,
+): Promise<OrgRole | null> {
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as { role?: OrgRole } | null)?.role ?? null;
+}
+
+async function listMatterMemberIdsForUser(
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>,
+  userId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('matter_members')
+    .select('matter_id')
+    .eq('user_id', userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data as Array<{ matter_id?: string | null }> | null) ?? [])
+    .map((row) => String(row.matter_id ?? '').trim())
+    .filter(isUuidLike);
+}
+
+function buildMatterVisibilityClauses(userId: string, memberMatterIds: string[]) {
+  const safeMemberMatterIds = Array.from(new Set(memberMatterIds.filter(isUuidLike)));
+  return [`is_private.eq.false`, `assigned_user_id.eq.${userId}`, ...safeMemberMatterIds.map((id) => `id.eq.${id}`)];
+}
+
+function buildSearchVisibilityFilter(pattern: string, visibilityClauses: string[]) {
+  const searchClauses = [`title.ilike.${pattern}`, `summary.ilike.${pattern}`];
+  const combined: string[] = [];
+  for (const visibility of visibilityClauses) {
+    for (const search of searchClauses) {
+      combined.push(`and(${visibility},${search})`);
+    }
+  }
+  return combined.join(',');
+}
+
+async function isMatterMember(
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>,
+  matterId: string,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from('matter_members')
+    .select('matter_id')
+    .eq('matter_id', matterId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(data);
+}
+
+function collectPrivateMatterMemberIds(...userIds: Array<string | null | undefined>) {
+  const unique = new Set<string>();
+  for (const userId of userIds) {
+    const normalized = String(userId ?? '').trim();
+    if (isUuidLike(normalized)) {
+      unique.add(normalized);
+    }
+  }
+  return [...unique];
+}
+
+async function upsertMatterMembers(
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>,
+  matterId: string,
+  userIds: string[],
+) {
+  if (!userIds.length) {
+    return null;
+  }
+
+  const { error } = await supabase.from('matter_members').upsert(
+    userIds.map((userId) => ({
+      matter_id: matterId,
+      user_id: userId,
+    })),
+    {
+      onConflict: 'matter_id,user_id',
+      ignoreDuplicates: true,
+    },
+  );
+
+  return error;
+}
+
 function cleanQuery(value?: string) {
   if (!value) return '';
   return value.replaceAll(',', ' ').trim().slice(0, 120);
+}
+
+function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function supportsLegacyMattersSchema(error: unknown) {

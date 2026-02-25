@@ -15,7 +15,16 @@ const matterSchema = z.object({
   summary: z.string().trim().max(5000, 'الملخص طويل جدًا.').optional().or(z.literal('')),
   case_type: z.string().trim().max(100, 'نوع القضية طويل جدًا.').optional().or(z.literal('')),
   claims: z.string().trim().max(10000, 'تفاصيل المطالبات طويلة جدًا.').optional().or(z.literal('')),
+  assigned_user_id: z.string().uuid('يرجى اختيار محامٍ صحيح.').optional().or(z.literal('')),
   is_private: z.boolean(),
+}).superRefine((value, context) => {
+  if (value.is_private && !value.assigned_user_id?.trim()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'عند جعل القضية خاصة يجب اختيار مالك القضية (المحامي المسؤول).',
+      path: ['assigned_user_id'],
+    });
+  }
 });
 
 export async function createMatterAction(formData: FormData) {
@@ -142,6 +151,8 @@ export async function createMatterEventAction(matterId: string, formData: FormDa
 function toPayload(formData: FormData) {
   const rawClientId = formData.get('client_id');
   const clientIdStr = typeof rawClientId === 'string' ? rawClientId.trim() : '';
+  const rawAssignedUserId = formData.get('assigned_user_id');
+  const assignedUserIdStr = typeof rawAssignedUserId === 'string' ? rawAssignedUserId.trim() : '';
 
   return {
     title: String(formData.get('title') ?? ''),
@@ -150,6 +161,7 @@ function toPayload(formData: FormData) {
     summary: String(formData.get('summary') ?? ''),
     case_type: String(formData.get('case_type') ?? ''),
     claims: String(formData.get('claims') ?? ''),
+    assigned_user_id: assignedUserIdStr || undefined,
     is_private: formData.get('is_private') === 'on',
   };
 }
@@ -170,6 +182,7 @@ function normalize(data: z.infer<typeof matterSchema>) {
     summary: emptyToNull(data.summary),
     case_type: emptyToNull(data.case_type),
     claims: emptyToNull(data.claims),
+    assigned_user_id: emptyToNull(data.assigned_user_id),
     is_private: data.is_private,
   };
 }
@@ -191,12 +204,20 @@ function toUserMessage(error: unknown) {
     return 'لا تملك صلاحية لهذا الإجراء.';
   }
 
+  if (normalized.includes('not_allowed')) {
+    return 'لا تملك صلاحية لهذا الإجراء.';
+  }
+
   if (normalized.includes('not_found') || normalized.includes('no rows')) {
     return 'لا تملك صلاحية لهذا الإجراء.';
   }
 
   if (normalized.includes('client_not_found')) {
     return 'تعذر الحفظ. حاول مرة أخرى.';
+  }
+
+  if (normalized.includes('assignee_not_found')) {
+    return 'يرجى اختيار محامٍ من أعضاء المكتب.';
   }
 
   if (normalized.includes('client_required')) {

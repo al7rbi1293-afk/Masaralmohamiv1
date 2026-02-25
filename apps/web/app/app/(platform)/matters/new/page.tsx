@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
-import { EmptyState } from '@/components/ui/empty-state';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
+import { listOrgMembers } from '@/lib/matter-members';
+import { requireOrgIdForUser } from '@/lib/org';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createMatterAction } from '../actions';
 
 type MatterNewPageProps = {
@@ -14,11 +16,25 @@ type MatterNewPageProps = {
 export default async function MatterNewPage({ searchParams }: MatterNewPageProps) {
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
   const initialTitle = searchParams?.title ? safeDecode(searchParams.title).slice(0, 200) : '';
-  const clientsResult = await listClients({
-    status: 'active',
-    page: 1,
-    limit: 50,
-  });
+  const [clientsResult, orgId, currentUser] = await Promise.all([
+    listClients({
+      status: 'active',
+      page: 1,
+      limit: 50,
+    }),
+    requireOrgIdForUser(),
+    getCurrentAuthUser(),
+  ]);
+  let orgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
+  try {
+    orgMembers = await listOrgMembers(orgId);
+  } catch {
+    orgMembers = [];
+  }
+  const assignableLawyers = orgMembers.filter((member) => member.role === 'owner' || member.role === 'lawyer');
+  const defaultAssigneeId = assignableLawyers.some((member) => member.user_id === currentUser?.id)
+    ? currentUser?.id ?? ''
+    : assignableLawyers[0]?.user_id ?? '';
 
   if (error) {
     // If there's an error, we don't block the page render completely, just show it.
@@ -67,7 +83,7 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
           />
         </label>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block space-y-1 text-sm">
             <span className="font-medium text-slate-700 dark:text-slate-200">
               الموكل
@@ -97,6 +113,22 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
               <option value="on_hold">معلّقة</option>
               <option value="closed">مغلقة</option>
               <option value="archived">مؤرشفة</option>
+            </select>
+          </label>
+
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">مالك القضية (المحامي المسؤول)</span>
+            <select
+              name="assigned_user_id"
+              defaultValue={defaultAssigneeId}
+              className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            >
+              <option value="">غير محدد</option>
+              {assignableLawyers.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {(member.full_name || member.email || 'محامٍ')} {member.role === 'owner' ? '(شريك)' : '(محامٍ)'}
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -130,7 +162,7 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
           <span className="font-medium text-slate-700 dark:text-slate-200">قضية خاصة</span>
         </label>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          القضية الخاصة تظهر فقط للشريك والأعضاء المصرّح لهم.
+          عند تفعيل الخصوصية: اختر المحامي المسؤول، ولن تظهر القضية لباقي المحامين غير المصرح لهم.
         </p>
 
         <label className="block space-y-1 text-sm">

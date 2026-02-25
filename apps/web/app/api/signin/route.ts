@@ -132,13 +132,13 @@ export async function POST(request: NextRequest) {
 
 function redirectWithError(request: NextRequest, message: string, email?: string, next?: string) {
   const url = new URL('/signin', request.url);
-  url.searchParams.set('error', encodeURIComponent(message));
+  url.searchParams.set('error', message);
   if (email) {
-    url.searchParams.set('email', encodeURIComponent(email));
+    url.searchParams.set('email', email);
   }
   const nextPath = safeNextPath(next);
   if (nextPath) {
-    url.searchParams.set('next', encodeURIComponent(nextPath));
+    url.searchParams.set('next', nextPath);
   }
   return NextResponse.redirect(url, 303);
 }

@@ -25,7 +25,10 @@ export const SESSION_COOKIE_OPTIONS = {
 // ────────────────────────────────────────────
 
 function getJwtSecret(): string {
-    const secret = process.env.JWT_SECRET?.trim() || process.env.JWT_ACCESS_SECRET?.trim();
+    const secret =
+        process.env.JWT_SECRET?.trim() ||
+        process.env.JWT_ACCESS_SECRET?.trim() ||
+        process.env.JWT_REFRESH_SECRET?.trim();
     if (!secret) {
         throw new Error('Missing JWT secret environment variable.');
     }

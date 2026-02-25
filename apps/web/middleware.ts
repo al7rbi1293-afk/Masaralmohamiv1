@@ -79,7 +79,7 @@ function isMissingRelationError(message?: string) {
 }
 
 function getJwtSecret(): string {
-  return process.env.JWT_SECRET?.trim() || '';
+  return process.env.JWT_SECRET?.trim() || process.env.JWT_ACCESS_SECRET?.trim() || '';
 }
 
 async function verifySessionTokenInMiddleware(

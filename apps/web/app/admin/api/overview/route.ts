@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         await requireAdmin();

@@ -45,7 +45,8 @@ export async function POST(request: Request) {
 }
 
 function toUserMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
+  const message = extractErrorMessage(error);
+  const code = extractErrorCode(error);
   const normalized = message.toLowerCase();
 
   if (message.includes('لا يوجد مكتب مفعّل')) {
@@ -64,6 +65,38 @@ function toUserMessage(error: unknown) {
     return 'يرجى تسجيل الدخول.';
   }
 
+  if (code === '23503' && normalized.includes('tasks_') && normalized.includes('_fkey')) {
+    return 'بيانات المستخدم غير متوافقة مع النظام الحالي. نفّذ آخر ترحيلات قاعدة البيانات ثم أعد المحاولة.';
+  }
+
   return message || 'تعذر إنشاء المهمة.';
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+
+  return '';
+}
+
+function extractErrorCode(error: unknown): string {
+  if (typeof error === 'object' && error && 'code' in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === 'string') {
+      return code;
+    }
+  }
+  return '';
+}

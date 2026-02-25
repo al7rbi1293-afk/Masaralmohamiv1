@@ -53,9 +53,13 @@ export async function sendEmail(params: SendEmailParams) {
     return;
   }
   const { transport, env } = getTransport();
+  const fromAddress = normalizeFromAddress(env.from);
 
   await transport.sendMail({
-    from: `"مسار المحامي" <${env.from}>`,
+    from: {
+      name: 'مسار المحامي',
+      address: fromAddress,
+    },
     to: params.to,
     subject: params.subject,
     text: params.text,
@@ -108,4 +112,11 @@ export async function sendInvoiceEmail(
   } catch (error) {
     console.error('Failed to send invoice email:', error);
   }
+}
+
+function normalizeFromAddress(rawFrom: string) {
+  const trimmed = rawFrom.trim();
+  const bracketMatch = trimmed.match(/<([^>]+)>/);
+  const extracted = (bracketMatch?.[1] ?? trimmed).trim();
+  return extracted.replaceAll('<', '').replaceAll('>', '').replaceAll('"', '');
 }

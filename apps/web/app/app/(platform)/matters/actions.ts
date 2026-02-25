@@ -229,6 +229,10 @@ function toEventUserMessage(error: unknown) {
     return 'لا تملك صلاحية إضافة أحداث لهذه القضية.';
   }
 
+  if (normalized.includes('event_creator_not_found')) {
+    return 'تعذر إضافة الحدث حاليًا بسبب إعدادات قاعدة البيانات. يرجى تحديث النظام ثم المحاولة مرة أخرى.';
+  }
+
   return 'تعذر إضافة الحدث.';
 }
 

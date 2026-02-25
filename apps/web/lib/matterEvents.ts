@@ -128,6 +128,10 @@ export async function createMatterEvent(
     .select('id, org_id, matter_id, type, note, event_date, created_by, created_at')
     .single();
 
+  if (error && isCreatedByForeignKeyViolation(error)) {
+    throw new Error('event_creator_not_found');
+  }
+
   if (error || !data) {
     throw error ?? new Error('تعذر إضافة الحدث.');
   }
@@ -150,4 +154,12 @@ function parseEventDate(value?: string) {
   }
 
   return date.toISOString();
+}
+
+function isCreatedByForeignKeyViolation(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const maybeError = error as { message?: string; details?: string; hint?: string };
+  const text = `${maybeError.message ?? ''} ${maybeError.details ?? ''} ${maybeError.hint ?? ''}`.toLowerCase();
+  return text.includes('matter_events_created_by_fkey') ||
+    (text.includes('created_by') && text.includes('foreign key'));
 }

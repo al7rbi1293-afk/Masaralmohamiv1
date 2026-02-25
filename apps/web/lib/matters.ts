@@ -162,13 +162,23 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
   // Avoid INSERT ... SELECT under RLS because private matters are not selectable
   // until the creator is added to matter_members.
   let insertError: unknown = null;
+  let usingLegacySchema = false;
   {
     const { error } = await supabase.from('matters').insert(extendedInsertPayload);
     insertError = error;
   }
 
   if (insertError && supportsLegacyMattersSchema(insertError)) {
+    usingLegacySchema = true;
     const { error } = await supabase.from('matters').insert(baseInsertPayload);
+    insertError = error;
+  }
+
+  if (insertError && isAssignedUserForeignKeyViolation(insertError)) {
+    const retryPayload = usingLegacySchema
+      ? { ...baseInsertPayload, assigned_user_id: null }
+      : { ...extendedInsertPayload, assigned_user_id: null };
+    const { error } = await supabase.from('matters').insert(retryPayload);
     insertError = error;
   }
 
@@ -197,6 +207,9 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
     );
 
     if (memberError) {
+      if (isMatterMemberUserForeignKeyViolation(memberError)) {
+        return created;
+      }
       throw memberError;
     }
 
@@ -324,6 +337,22 @@ function supportsLegacyMattersSchema(error: unknown) {
 function isClientRequiredViolation(error: unknown) {
   const text = getErrorText(error);
   return text.includes('null value in column "client_id" of relation "matters" violates not-null constraint');
+}
+
+function isAssignedUserForeignKeyViolation(error: unknown) {
+  const text = getErrorText(error);
+  return (
+    text.includes('matters_assigned_user_id_fkey') ||
+    (text.includes('assigned_user_id') && text.includes('foreign key'))
+  );
+}
+
+function isMatterMemberUserForeignKeyViolation(error: unknown) {
+  const text = getErrorText(error);
+  return (
+    text.includes('matter_members_user_id_fkey') ||
+    (text.includes('matter_members') && text.includes('user_id') && text.includes('foreign key'))
+  );
 }
 
 function getErrorText(error: unknown) {

@@ -776,13 +776,17 @@ async function respondWithLocalFallback(params: {
   isRestrictedCase: boolean;
 }): Promise<NextResponse> {
   let caseBrief: string | null = null;
-  const briefResult = await params.rls
-    .from('case_briefs')
-    .select('brief_markdown')
-    .eq('org_id', params.orgId)
-    .eq('case_id', params.parsed.case_id)
-    .maybeSingle()
-    .catch(() => null);
+  let briefResult: { data?: unknown; error?: unknown } | null = null;
+  try {
+    briefResult = await params.rls
+      .from('case_briefs')
+      .select('brief_markdown')
+      .eq('org_id', params.orgId)
+      .eq('case_id', params.parsed.case_id)
+      .maybeSingle();
+  } catch {
+    briefResult = null;
+  }
 
   if (briefResult && !briefResult.error && (briefResult.data as any)?.brief_markdown) {
     caseBrief = String((briefResult.data as any).brief_markdown);

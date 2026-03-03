@@ -5,7 +5,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getCopilotEnv, isMissingEnvError } from '@/lib/env';
+import { getCopilotEnv, getOpenAiApiKey, isMissingEnvError } from '@/lib/env';
 import { logError } from '@/lib/logger';
 import {
   buildFallbackCitations,
@@ -13,14 +13,11 @@ import {
   copilotResponseSchema,
   defaultFailureResponse,
   sanitizeAndValidateCitations,
-  type CopilotRequest,
   type CopilotResponse,
-  type CopilotSource,
 } from '@/lib/copilot/schema';
 import { buildCopilotUserPrompt, buildRepairPrompt, COPILOT_SYSTEM_PROMPT } from '@/lib/copilot/prompts';
 import { chooseModelForIntent, inferIntentHeuristically } from '@/lib/copilot/routing';
 import { retrieveSources, normalizeCopilotQuery, extractQuotedTerms } from '@/lib/copilot/retrieval';
-import { selectBuiltInLegalReferences } from '@/lib/copilot/legal-references';
 import {
   buildScopedCacheKey,
   getCachePayload,
@@ -390,40 +387,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const localOnlyMode = process.env.COPILOT_LOCAL_ONLY?.trim() !== '0';
-  if (localOnlyMode) {
-    return await respondWithLocalFallback({
-      rls,
-      env,
-      requestId,
-      startedAt,
-      orgId,
-      userId: user.id,
-      parsed,
-      normalizedQuery,
-      caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
-      isRestrictedCase: Boolean((matter as any).is_private),
-      fallbackMode: 'local_forced',
-    });
-  }
-
-  const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!openAiApiKey) {
-    return await respondWithLocalFallback({
-      rls,
-      env,
-      requestId,
-      startedAt,
-      orgId,
-      userId: user.id,
-      parsed,
-      normalizedQuery,
-      caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
-      isRestrictedCase: Boolean((matter as any).is_private),
-    });
-  }
-
-  const openai = getOpenAiClient(openAiApiKey);
+  const openai = getOpenAiClient(getOpenAiApiKey());
 
   try {
   const embeddingCacheKey = buildScopedCacheKey({
@@ -711,23 +675,39 @@ export async function POST(request: NextRequest) {
   return response;
   } catch (openAiPathError) {
     if (isOpenAiProviderError(openAiPathError)) {
-      logError('copilot_openai_fallback_local', {
+      const providerMessage = mapCopilotInternalErrorToMessage(openAiPathError);
+      logError('copilot_openai_provider_error', {
         requestId,
         message: openAiPathError instanceof Error ? openAiPathError.message : String(openAiPathError),
       });
-      return await respondWithLocalFallback({
-        rls,
-        env,
+      await safeAudit(rls, {
         requestId,
-        startedAt,
         orgId,
         userId: user.id,
-        parsed,
-        normalizedQuery,
-        caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
-        isRestrictedCase: Boolean((matter as any).is_private),
-        fallbackMode: 'local_openai_unavailable',
+        caseId: parsed.case_id,
+        status: 'error',
+        model: env.midModel,
+        cached: false,
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: Date.now() - startedAt,
+        errorCode: 'openai_provider_error',
+        errorMessage: openAiPathError instanceof Error ? openAiPathError.message : String(openAiPathError),
+        meta: {
+          is_restricted_case: Boolean((matter as any).is_private),
+          template: parsed.template ?? null,
+        },
       });
+      const response = NextResponse.json(
+        defaultFailureResponse({
+          model: env.midModel,
+          latencyMs: Date.now() - startedAt,
+          message: providerMessage,
+        }),
+        { status: 502 },
+      );
+      response.headers.set('x-copilot-request-id', requestId);
+      return response;
     }
     throw openAiPathError;
   }
@@ -881,212 +861,6 @@ async function safeAudit(
   });
 }
 
-async function respondWithLocalFallback(params: {
-  rls: Awaited<ReturnType<typeof createSupabaseRlsUserClient>>;
-  env: ReturnType<typeof getCopilotEnv>;
-  requestId: string;
-  startedAt: number;
-  orgId: string;
-  userId: string;
-  parsed: CopilotRequest;
-  normalizedQuery: string;
-  caseType: string | null;
-  isRestrictedCase: boolean;
-  fallbackMode?: 'local_no_openai_key' | 'local_openai_unavailable' | 'local_forced';
-}): Promise<NextResponse> {
-  let caseBrief: string | null = null;
-  let briefResult: { data?: unknown; error?: unknown } | null = null;
-  try {
-    briefResult = await params.rls
-      .from('case_briefs')
-      .select('brief_markdown')
-      .eq('org_id', params.orgId)
-      .eq('case_id', params.parsed.case_id)
-      .maybeSingle();
-  } catch {
-    briefResult = null;
-  }
-
-  if (briefResult && !briefResult.error && (briefResult.data as any)?.brief_markdown) {
-    caseBrief = String((briefResult.data as any).brief_markdown);
-  }
-
-  const kbSources = selectBuiltInLegalReferences({
-    query: params.normalizedQuery,
-    caseType: params.caseType,
-    limit: params.env.kbTopK,
-  });
-
-  const briefSources: CopilotSource[] = caseBrief
-    ? [
-        {
-          chunkId: deterministicFallbackBriefChunkId(params.parsed.case_id),
-          label: 'Case brief',
-          content: caseBrief,
-          pageNo: null,
-          similarity: 0.82,
-          pool: 'brief',
-        },
-      ]
-    : [];
-
-  const selectedSources = fitSourcesIntoBudget({
-    sources: [...briefSources, ...kbSources],
-    modelBudget: getBudgetForModel(params.env.midModel, params.env.midModel),
-    promptOverheadTokens: 500,
-  }).slice(0, params.env.maxSources);
-
-  const fallbackResponse = buildLocalFallbackResponse({
-    request: params.parsed,
-    caseBrief,
-    sources: selectedSources,
-    model: `${params.env.midModel}-local-fallback`,
-    latencyMs: Date.now() - params.startedAt,
-    fallbackMode: params.fallbackMode ?? 'local_no_openai_key',
-  });
-
-  const sessionId = await ensureSession(params.rls, {
-    orgId: params.orgId,
-    caseId: params.parsed.case_id,
-    userId: params.userId,
-    inputSessionId: params.parsed.session_id,
-    initialTitle: params.normalizedQuery.slice(0, 100),
-  });
-
-  const userMessageId = await insertMessage(params.rls, {
-    orgId: params.orgId,
-    caseId: params.parsed.case_id,
-    userId: params.userId,
-    sessionId,
-    role: 'user',
-    messageMarkdown: params.normalizedQuery,
-    citations: [],
-    model: null,
-    tokenInput: 0,
-    tokenOutput: 0,
-    latencyMs: null,
-  });
-
-  const assistantMessageId = await insertMessage(params.rls, {
-    orgId: params.orgId,
-    caseId: params.parsed.case_id,
-    userId: params.userId,
-    sessionId,
-    role: 'assistant',
-    messageMarkdown: fallbackResponse.answer_markdown,
-    citations: fallbackResponse.citations,
-    model: fallbackResponse.meta.model,
-    tokenInput: 0,
-    tokenOutput: 0,
-    latencyMs: Date.now() - params.startedAt,
-  });
-
-  const inferredIntent = inferIntentHeuristically(params.parsed);
-  await safeAudit(params.rls, {
-    requestId: params.requestId,
-    orgId: params.orgId,
-    userId: params.userId,
-    caseId: params.parsed.case_id,
-    sessionId,
-    messageId: assistantMessageId || userMessageId,
-    status: 'ok',
-    model: fallbackResponse.meta.model,
-    intent: inferredIntent === 'ambiguous' ? 'qna' : inferredIntent,
-    cached: false,
-    inputTokens: 0,
-    outputTokens: 0,
-    latencyMs: Date.now() - params.startedAt,
-    meta: {
-      fallback_mode: params.fallbackMode ?? 'local_no_openai_key',
-      source_count: selectedSources.length,
-      is_restricted_case: params.isRestrictedCase,
-      template: params.parsed.template ?? null,
-    },
-  });
-
-  const response = NextResponse.json(fallbackResponse, { status: 200 });
-  response.headers.set('x-copilot-session-id', sessionId);
-  response.headers.set('x-copilot-request-id', params.requestId);
-  return response;
-}
-
-function buildLocalFallbackResponse(params: {
-  request: CopilotRequest;
-  sources: CopilotSource[];
-  caseBrief: string | null;
-  model: string;
-  latencyMs: number;
-  fallbackMode: 'local_no_openai_key' | 'local_openai_unavailable' | 'local_forced';
-}): CopilotResponse {
-  const kbSourceLabels = params.sources
-    .filter((source) => source.pool === 'kb')
-    .slice(0, 4)
-    .map((source) => `- ${source.label}`);
-
-  const forcedLocal = params.fallbackMode === 'local_forced';
-  const noOpenAiKey = params.fallbackMode === 'local_no_openai_key';
-
-  const sections: string[] = [
-    forcedLocal
-      ? 'الوضع المحلي فقط مفعّل: يتم توليد الاستجابة من المراجع القانونية داخل النظام بدون أي اتصال بمزود ذكاء خارجي.'
-      : noOpenAiKey
-      ? 'استجابة استرشادية مؤقتة: تم توليد هذا الرد من المراجع القانونية المضافة داخل النظام لأن تكامل OpenAI غير مفعّل في بيئة الإنتاج.'
-      : 'استجابة استرشادية مؤقتة: تعذر الاتصال بمزود الذكاء الاصطناعي، لذلك تم الاعتماد على المراجع القانونية داخل النظام.',
-  ];
-
-  if (params.caseBrief) {
-    sections.push(`ملخص الوقائع المتاح:\n${truncateText(params.caseBrief, 500)}`);
-  }
-
-  if (kbSourceLabels.length) {
-    sections.push(`أقرب المراجع النظامية لسؤالك:\n${kbSourceLabels.join('\n')}`);
-  }
-
-  sections.push(
-    forcedLocal
-      ? 'الخطوة التالية: إذا رغبت بالوضع المحلي دائمًا لا حاجة لأي إعداد إضافي.'
-      : noOpenAiKey
-      ? 'الخطوة التالية: أعد إرسال الطلب بعد تفعيل OPENAI_API_KEY للحصول على تحليل وصياغة موسعة.'
-      : 'الخطوة التالية: أعد المحاولة خلال دقائق. إذا استمرت المشكلة، تحقق من مفاتيح OpenAI وحالة الخدمة.',
-  );
-
-  const drafts =
-    params.request.template === 'draft_response'
-      ? [
-          {
-            title: 'مسودة جواب أولية (استرشادية)',
-            content_markdown:
-              'أتمسك بالدفوع الشكلية والموضوعية وفق الوقائع والمستندات المتاحة، وألتمس رفض الطلبات غير المؤسسة نظامًا مع حفظ كافة الحقوق.',
-          },
-        ]
-      : [];
-
-  return {
-    answer_markdown: sections.join('\n\n'),
-    action_items: [
-      'راجع الوقائع المؤثرة زمنيًا واربط كل واقعة بدليل واضح.',
-      'طابق الطلبات مع السند النظامي المناسب من المراجع المشار إليها.',
-      forcedLocal
-        ? 'الوضع المحلي فقط مفعّل حاليًا لتجنب أي تكلفة مرتبطة بمزود ذكاء خارجي.'
-        : noOpenAiKey
-        ? 'فعّل متغير OPENAI_API_KEY في بيئة الإنتاج لاستعادة التحليل المتقدم.'
-        : 'أعد المحاولة لاحقًا أو تحقق من صلاحية مفتاح OPENAI_API_KEY.',
-    ],
-    missing_info_questions: [
-      'ما الوقائع الجوهرية التي يمكن إثباتها حاليًا بمستندات رسمية؟',
-      'ما الطلب القضائي النهائي المطلوب بدقة (أصلي واحتياطي)؟',
-    ],
-    drafts,
-    citations: buildFallbackCitations(params.sources),
-    confidence: params.caseBrief ? 'medium' : 'low',
-    meta: {
-      model: params.model,
-      latency_ms: params.latencyMs,
-      cached: false,
-    },
-  };
-}
-
 function isOpenAiProviderError(error: unknown): boolean {
   const raw = (error instanceof Error ? error.message : String(error || '')).toLowerCase();
   return (
@@ -1111,17 +885,6 @@ function isSupabaseJwtKeyError(error: unknown): boolean {
   );
 }
 
-function deterministicFallbackBriefChunkId(caseId: string): string {
-  const suffix = caseId.replace(/-/g, '').slice(0, 12).padEnd(12, '0');
-  return `00000000-0000-0000-0000-${suffix}`;
-}
-
-function truncateText(value: string, maxChars: number): string {
-  const clean = String(value || '').trim();
-  if (clean.length <= maxChars) return clean;
-  return `${clean.slice(0, maxChars).trim()}...`;
-}
-
 function mapCopilotInternalErrorToMessage(error: unknown): string {
   if (isMissingEnvError(error)) {
     if (error.envVarName === 'SUPABASE_JWT_SECRET') {
@@ -1129,7 +892,7 @@ function mapCopilotInternalErrorToMessage(error: unknown): string {
     }
 
     if (error.envVarName === 'OPENAI_API_KEY') {
-      return 'مفتاح OPENAI_API_KEY غير مهيأ في بيئة الإنتاج. أضف المفتاح أو فعّل الوضع الاسترشادي المحلي.';
+      return 'مفتاح OPENAI_API_KEY غير مهيأ في بيئة الإنتاج. أضف المفتاح ثم أعد النشر.';
     }
 
     if (
@@ -1150,7 +913,7 @@ function mapCopilotInternalErrorToMessage(error: unknown): string {
   }
 
   if (raw.includes('openai') || raw.includes('api key') || raw.includes('authentication')) {
-    return 'تعذر الاتصال بمزود الذكاء الاصطناعي. يرجى التحقق من مفاتيح الخدمة أو المحاولة لاحقًا.';
+    return 'تعذر الاتصال بخدمة OpenAI. يرجى التحقق من المفاتيح أو المحاولة لاحقًا.';
   }
 
   if (raw.includes('quota') || raw.includes('rate limit') || raw.includes('429')) {

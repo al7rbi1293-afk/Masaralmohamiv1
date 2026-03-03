@@ -16,7 +16,7 @@ export function CopilotErrorState({ message }: CopilotErrorStateProps) {
       {isEnvIssue ? (
         <ul className="mt-2 list-disc space-y-1 pr-5 text-xs text-red-700/90 dark:text-red-300/90">
           <li>في Vercel: افتح إعدادات المشروع ثم Environment Variables.</li>
-          <li>أضف القيم المطلوبة للمساعد القانوني: SUPABASE_JWT_SECRET، و OPENAI_API_KEY للتحليل المتقدم.</li>
+          <li>أضف القيم المطلوبة للمساعد القانوني: SUPABASE_JWT_SECRET، و OPENAI_API_KEY لتشغيل الخدمة.</li>
           {missingVar ? <li>المتغير المفقود في هذه المحاولة: {missingVar}</li> : null}
           <li>أعد نشر تطبيق الويب بعد حفظ المتغيرات.</li>
         </ul>

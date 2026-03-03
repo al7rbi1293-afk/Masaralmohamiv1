@@ -4,6 +4,7 @@ import { getMatterById } from '@/lib/matters';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCopilotEnv, isMissingEnvError } from '@/lib/env';
 import { logError } from '@/lib/logger';
 import {
@@ -118,15 +119,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rls = await createSupabaseRlsUserClient(user.id);
+  let rls = await createSupabaseRlsUserClient(user.id);
   const parsed = payload.data;
 
-  const { data: matterByRls, error: matterError } = await rls
+  let matterLookupResult = await rls
     .from('matters')
     .select('id, title, is_private, case_type')
     .eq('org_id', orgId)
     .eq('id', parsed.case_id)
     .maybeSingle();
+
+  if (isSupabaseJwtKeyError(matterLookupResult.error)) {
+    logError('copilot_rls_jwt_invalid_fallback_service', {
+      requestId,
+      message: matterLookupResult.error?.message ?? 'unknown',
+    });
+    rls = createSupabaseServerClient();
+    matterLookupResult = await rls
+      .from('matters')
+      .select('id, title, is_private, case_type')
+      .eq('org_id', orgId)
+      .eq('id', parsed.case_id)
+      .maybeSingle();
+  }
+
+  const { data: matterByRls, error: matterError } = matterLookupResult;
 
   let matter = matterByRls as
     | {
@@ -1044,6 +1061,17 @@ function isOpenAiProviderError(error: unknown): boolean {
     raw.includes('insufficient_quota') ||
     raw.includes('model_not_found') ||
     raw.includes('invalid_request_error')
+  );
+}
+
+function isSupabaseJwtKeyError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const message = String((error as { message?: unknown }).message ?? '').toLowerCase();
+  return (
+    message.includes('no suitable key or wrong key type') ||
+    message.includes('jwt') && message.includes('key')
   );
 }
 

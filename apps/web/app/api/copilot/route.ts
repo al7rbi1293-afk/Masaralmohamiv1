@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { getMatterById } from '@/lib/matters';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
@@ -120,15 +121,48 @@ export async function POST(request: NextRequest) {
   const rls = await createSupabaseRlsUserClient(user.id);
   const parsed = payload.data;
 
-  const { data: matter, error: matterError } = await rls
+  const { data: matterByRls, error: matterError } = await rls
     .from('matters')
     .select('id, title, is_private, case_type')
     .eq('org_id', orgId)
     .eq('id', parsed.case_id)
     .maybeSingle();
 
+  let matter = matterByRls as
+    | {
+        id: string;
+        title: string;
+        is_private: boolean;
+        case_type: string | null;
+      }
+    | null;
+
   if (matterError) {
     logError('copilot_case_lookup_failed', { message: matterError.message, requestId });
+  }
+
+  // Keep the access decision aligned with the matter page when RLS lookup fails
+  // or returns no rows for legacy private-matter assignments.
+  if (!matter) {
+    const fallbackMatter = await getMatterById(parsed.case_id).catch((error) => {
+      logError('copilot_case_lookup_fallback_failed', {
+        requestId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    });
+
+    if (fallbackMatter && fallbackMatter.org_id === orgId) {
+      matter = {
+        id: fallbackMatter.id,
+        title: fallbackMatter.title,
+        is_private: fallbackMatter.is_private,
+        case_type: fallbackMatter.case_type ?? null,
+      };
+    }
+  }
+
+  if (!matter && matterError) {
     return NextResponse.json(
       defaultFailureResponse({
         model: env.midModel,

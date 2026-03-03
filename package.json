@@ -12,7 +12,8 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test:e2e": "npm run test:e2e --workspace @masar/web",
-    "test:rls": "tsx scripts/rls-smoke-test.ts"
+    "test:rls": "tsx scripts/rls-smoke-test.ts",
+    "test:copilot:rls": "tsx scripts/copilot-rls-smoke-test.ts"
   },
   "devDependencies": {
     "tsx": "^4.7.0"

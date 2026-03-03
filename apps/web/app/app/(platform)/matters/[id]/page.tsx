@@ -149,6 +149,12 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
         >
           المهام
         </Link>
+        <Link
+          href={`/app/matters/${matter.id}/copilot`}
+          className={`${buttonVariants('outline', 'sm')}`}
+        >
+          المساعد القانوني
+        </Link>
       </div>
 
       {success ? (

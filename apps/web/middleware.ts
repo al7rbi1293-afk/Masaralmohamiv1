@@ -233,7 +233,10 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const pathname = request.nextUrl.pathname;
-  const shouldRunCsrf = !pathname.startsWith('/app/api/') && !pathname.startsWith('/admin/api/');
+  const shouldRunCsrf =
+    !pathname.startsWith('/app/api/') &&
+    !pathname.startsWith('/admin/api/') &&
+    pathname !== '/api/copilot';
 
   // Initialize response for CSRF
   const csrfResponse = NextResponse.next();

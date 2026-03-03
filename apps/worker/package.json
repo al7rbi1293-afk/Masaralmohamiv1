@@ -7,12 +7,18 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "start:ingestion": "node dist/ingestion/index.js",
+    "dev:ingestion": "ts-node src/ingestion/index.ts",
+    "test:ingestion": "node --test dist/ingestion/tests/*.test.js",
     "prisma:generate": "prisma generate --schema ../api/prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.57.4",
     "bullmq": "^5.8.3",
-    "ioredis": "^5.4.1"
+    "ioredis": "^5.4.1",
+    "mammoth": "^1.8.0",
+    "openai": "^4.104.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

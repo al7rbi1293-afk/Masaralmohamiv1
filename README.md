@@ -75,6 +75,34 @@ Next.js (App Router) + Supabase.
   - `supabase/migrations/0019_email_log.sql`
   - `supabase/migrations/0020_integrations.sql`
 
+## Legal Copilot (Phase 10)
+
+- Copilot API endpoint:
+  - `POST /api/copilot`
+- Copilot UI:
+  - `/app/matters/[id]/copilot`
+- Retrieval pools:
+  - Case pool: `document_chunks` scoped by `org_id + case_id`
+  - Legal KB pool: `kb_chunks` (global + org-scoped)
+- Worker ingestion pipeline:
+  - `apps/worker/src/ingestion/*`
+
+### Copilot Worker Commands
+
+```bash
+npm run dev:ingestion --workspace @sijil/worker
+npm run build --workspace @sijil/worker
+npm run start:ingestion --workspace @sijil/worker
+```
+
+### New Copilot Migrations
+
+Apply these after existing migrations:
+
+- `supabase/migrations/20260303120000_copilot_init.sql`
+- `supabase/migrations/20260303121000_copilot_rls.sql`
+- `supabase/migrations/20260303122000_copilot_rpc.sql`
+
 ## Run locally
 
 ```bash
@@ -117,6 +145,18 @@ Set in `apps/web/.env.local` (see `.env.example`):
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_JWT_SECRET=YOUR_SUPABASE_PROJECT_JWT_SECRET
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+OPENAI_MODEL_EMBEDDING=text-embedding-3-small
+OPENAI_MODEL_MID=gpt-4.1-mini
+OPENAI_MODEL_STRONG=gpt-4.1
+COPILOT_REQUESTS_MONTHLY_DEFAULT=500
+COPILOT_TOKENS_MONTHLY_DEFAULT=1000000
+COPILOT_RATE_LIMIT_PER_MINUTE=20
+COPILOT_CACHE_TTL_RETRIEVAL_SEC=120
+COPILOT_CACHE_TTL_ANSWER_SEC=45
+COPILOT_WORKER_CONCURRENCY=3
+COPILOT_WORKER_POLL_INTERVAL_MS=3000
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
@@ -158,6 +198,9 @@ SMTP_FROM=
    - `supabase/migrations/0019_email_log.sql`
    - `supabase/migrations/0020_integrations.sql`
    - `supabase/migrations/0021_najiz_sync.sql`
+   - `supabase/migrations/20260303120000_copilot_init.sql`
+   - `supabase/migrations/20260303121000_copilot_rls.sql`
+   - `supabase/migrations/20260303122000_copilot_rpc.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI

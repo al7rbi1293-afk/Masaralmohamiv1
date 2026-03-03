@@ -66,6 +66,38 @@ export function getSupabaseServiceEnv(): SupabaseServiceEnv {
   return { url, serviceRoleKey };
 }
 
+export function getSupabaseJwtSecret() {
+  const secret = process.env.SUPABASE_JWT_SECRET?.trim();
+  if (!secret) {
+    throw missingEnvError('SUPABASE_JWT_SECRET');
+  }
+  return secret;
+}
+
+export function getOpenAiApiKey() {
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key) {
+    throw missingEnvError('OPENAI_API_KEY');
+  }
+  return key;
+}
+
+export function getCopilotEnv() {
+  return {
+    embeddingModel: process.env.OPENAI_MODEL_EMBEDDING?.trim() || 'text-embedding-3-small',
+    midModel: process.env.OPENAI_MODEL_MID?.trim() || 'gpt-4.1-mini',
+    strongModel: process.env.OPENAI_MODEL_STRONG?.trim() || 'gpt-4.1',
+    requestsMonthlyDefault: Math.max(1, Number(process.env.COPILOT_REQUESTS_MONTHLY_DEFAULT ?? '500') || 500),
+    tokensMonthlyDefault: Math.max(1, Number(process.env.COPILOT_TOKENS_MONTHLY_DEFAULT ?? '1000000') || 1000000),
+    rateLimitPerMinute: Math.max(1, Number(process.env.COPILOT_RATE_LIMIT_PER_MINUTE ?? '20') || 20),
+    retrievalCacheTtlSec: Math.max(1, Number(process.env.COPILOT_CACHE_TTL_RETRIEVAL_SEC ?? '120') || 120),
+    answerCacheTtlSec: Math.max(1, Number(process.env.COPILOT_CACHE_TTL_ANSWER_SEC ?? '45') || 45),
+    caseTopK: Math.max(1, Number(process.env.COPILOT_CASE_TOP_K ?? '10') || 10),
+    kbTopK: Math.max(1, Number(process.env.COPILOT_KB_TOP_K ?? '6') || 6),
+    maxSources: Math.max(1, Number(process.env.COPILOT_MAX_SOURCES ?? '14') || 14),
+  };
+}
+
 export function getPublicSiteUrl() {
   const rawValue =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||

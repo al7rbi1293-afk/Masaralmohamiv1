@@ -601,6 +601,7 @@ export async function POST(request: NextRequest) {
   response.headers.set('x-copilot-request-id', requestId);
   return response;
   } catch (error) {
+    const safeMessage = mapCopilotInternalErrorToMessage(error);
     logError('copilot_unhandled_error', {
       requestId,
       message: error instanceof Error ? error.message : String(error),
@@ -610,7 +611,7 @@ export async function POST(request: NextRequest) {
       defaultFailureResponse({
         model: env.midModel,
         latencyMs: Date.now() - startedAt,
-        message: 'تعذر إكمال طلب المساعد القانوني بسبب خطأ داخلي. حاول مرة أخرى خلال لحظات.',
+        message: safeMessage,
       }),
       { status: 500 },
     );
@@ -741,4 +742,26 @@ async function safeAudit(
       requestId: params.requestId,
     });
   });
+}
+
+function mapCopilotInternalErrorToMessage(error: unknown): string {
+  const raw = (error instanceof Error ? error.message : String(error || '')).toLowerCase();
+
+  if (raw.includes('إعدادات البيئة غير مكتملة') || raw.includes('missing required environment variable')) {
+    return 'تهيئة خدمة الذكاء غير مكتملة في بيئة الإنتاج. يرجى استكمال متغيرات البيئة وإعادة المحاولة.';
+  }
+
+  if (raw.includes('openai') || raw.includes('api key') || raw.includes('authentication')) {
+    return 'تعذر الاتصال بمزود الذكاء الاصطناعي. يرجى التحقق من مفاتيح الخدمة أو المحاولة لاحقًا.';
+  }
+
+  if (raw.includes('quota') || raw.includes('rate limit') || raw.includes('429')) {
+    return 'خدمة الذكاء مزدحمة حاليًا أو تجاوزت الحصة. حاول مرة أخرى بعد قليل.';
+  }
+
+  if (raw.includes('match_case_chunks') || raw.includes('match_kb_chunks') || raw.includes('does not exist')) {
+    return 'مكون استرجاع المراجع غير مهيأ في قاعدة البيانات. يلزم تطبيق آخر ترحيلات قاعدة البيانات.';
+  }
+
+  return 'تعذر إكمال طلب المساعد القانوني بسبب خطأ داخلي. حاول مرة أخرى خلال لحظات.';
 }

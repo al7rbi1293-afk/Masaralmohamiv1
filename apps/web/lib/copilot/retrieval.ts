@@ -65,19 +65,15 @@ export async function retrieveSources(params: {
       .maybeSingle(),
   ]);
 
-  if (caseRes.error) throw caseRes.error;
-  if (kbRes.error) throw kbRes.error;
-  if (briefRes.error) throw briefRes.error;
-
-  const caseSources = ((caseRes.data as any[]) ?? []).map((row) => mapRowToSource(row, 'case'));
-  const kbSources = ((kbRes.data as any[]) ?? []).map((row) => mapRowToSource(row, 'kb'));
+  const caseSources = caseRes.error ? [] : ((caseRes.data as any[]) ?? []).map((row) => mapRowToSource(row, 'case'));
+  const kbSources = kbRes.error ? [] : ((kbRes.data as any[]) ?? []).map((row) => mapRowToSource(row, 'kb'));
   const builtInKbSources = selectBuiltInLegalReferences({
     query: params.query,
     caseType: params.caseType ?? null,
     limit: params.builtInKbTopK ?? Math.max(4, Math.min(8, params.kbTopK)),
   });
 
-  const briefMarkdown = (briefRes.data as any)?.brief_markdown
+  const briefMarkdown = !briefRes.error && (briefRes.data as any)?.brief_markdown
     ? String((briefRes.data as any).brief_markdown)
     : null;
 

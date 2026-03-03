@@ -119,7 +119,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let rls = await createSupabaseRlsUserClient(user.id);
+  let rls: Awaited<ReturnType<typeof createSupabaseRlsUserClient>>;
+  try {
+    rls = await createSupabaseRlsUserClient(user.id);
+  } catch (error) {
+    if (isMissingEnvError(error) && error.envVarName === 'SUPABASE_JWT_SECRET') {
+      logError('copilot_rls_jwt_secret_missing_fallback_service', { requestId });
+      rls = createSupabaseServerClient();
+    } else {
+      throw error;
+    }
+  }
   const parsed = payload.data;
 
   let matterLookupResult = await rls

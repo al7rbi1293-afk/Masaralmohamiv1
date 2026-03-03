@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
   const requestId = randomUUID();
   const env = getCopilotEnv();
 
+  try {
   const origin = request.headers.get('origin');
   if (origin) {
     try {
@@ -596,6 +597,23 @@ export async function POST(request: NextRequest) {
   response.headers.set('x-copilot-session-id', sessionId);
   response.headers.set('x-copilot-request-id', requestId);
   return response;
+  } catch (error) {
+    logError('copilot_unhandled_error', {
+      requestId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+
+    const response = NextResponse.json(
+      defaultFailureResponse({
+        model: env.midModel,
+        latencyMs: Date.now() - startedAt,
+        message: 'تعذر إكمال طلب المساعد القانوني بسبب خطأ داخلي. حاول مرة أخرى خلال لحظات.',
+      }),
+      { status: 500 },
+    );
+    response.headers.set('x-copilot-request-id', requestId);
+    return response;
+  }
 }
 
 function parseCopilotResponse(raw: string): unknown | null {

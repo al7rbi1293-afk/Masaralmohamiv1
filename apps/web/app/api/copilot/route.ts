@@ -390,6 +390,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const localOnlyMode = process.env.COPILOT_LOCAL_ONLY?.trim() !== '0';
+  if (localOnlyMode) {
+    return await respondWithLocalFallback({
+      rls,
+      env,
+      requestId,
+      startedAt,
+      orgId,
+      userId: user.id,
+      parsed,
+      normalizedQuery,
+      caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
+      isRestrictedCase: Boolean((matter as any).is_private),
+      fallbackMode: 'local_forced',
+    });
+  }
+
   const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
   if (!openAiApiKey) {
     return await respondWithLocalFallback({
@@ -875,7 +892,7 @@ async function respondWithLocalFallback(params: {
   normalizedQuery: string;
   caseType: string | null;
   isRestrictedCase: boolean;
-  fallbackMode?: 'local_no_openai_key' | 'local_openai_unavailable';
+  fallbackMode?: 'local_no_openai_key' | 'local_openai_unavailable' | 'local_forced';
 }): Promise<NextResponse> {
   let caseBrief: string | null = null;
   let briefResult: { data?: unknown; error?: unknown } | null = null;
@@ -999,15 +1016,20 @@ function buildLocalFallbackResponse(params: {
   caseBrief: string | null;
   model: string;
   latencyMs: number;
-  fallbackMode: 'local_no_openai_key' | 'local_openai_unavailable';
+  fallbackMode: 'local_no_openai_key' | 'local_openai_unavailable' | 'local_forced';
 }): CopilotResponse {
   const kbSourceLabels = params.sources
     .filter((source) => source.pool === 'kb')
     .slice(0, 4)
     .map((source) => `- ${source.label}`);
 
+  const forcedLocal = params.fallbackMode === 'local_forced';
+  const noOpenAiKey = params.fallbackMode === 'local_no_openai_key';
+
   const sections: string[] = [
-    params.fallbackMode === 'local_no_openai_key'
+    forcedLocal
+      ? 'الوضع المحلي فقط مفعّل: يتم توليد الاستجابة من المراجع القانونية داخل النظام بدون أي اتصال بمزود ذكاء خارجي.'
+      : noOpenAiKey
       ? 'استجابة استرشادية مؤقتة: تم توليد هذا الرد من المراجع القانونية المضافة داخل النظام لأن تكامل OpenAI غير مفعّل في بيئة الإنتاج.'
       : 'استجابة استرشادية مؤقتة: تعذر الاتصال بمزود الذكاء الاصطناعي، لذلك تم الاعتماد على المراجع القانونية داخل النظام.',
   ];
@@ -1021,7 +1043,9 @@ function buildLocalFallbackResponse(params: {
   }
 
   sections.push(
-    params.fallbackMode === 'local_no_openai_key'
+    forcedLocal
+      ? 'الخطوة التالية: إذا رغبت بالوضع المحلي دائمًا لا حاجة لأي إعداد إضافي.'
+      : noOpenAiKey
       ? 'الخطوة التالية: أعد إرسال الطلب بعد تفعيل OPENAI_API_KEY للحصول على تحليل وصياغة موسعة.'
       : 'الخطوة التالية: أعد المحاولة خلال دقائق. إذا استمرت المشكلة، تحقق من مفاتيح OpenAI وحالة الخدمة.',
   );
@@ -1042,7 +1066,9 @@ function buildLocalFallbackResponse(params: {
     action_items: [
       'راجع الوقائع المؤثرة زمنيًا واربط كل واقعة بدليل واضح.',
       'طابق الطلبات مع السند النظامي المناسب من المراجع المشار إليها.',
-      params.fallbackMode === 'local_no_openai_key'
+      forcedLocal
+        ? 'الوضع المحلي فقط مفعّل حاليًا لتجنب أي تكلفة مرتبطة بمزود ذكاء خارجي.'
+        : noOpenAiKey
         ? 'فعّل متغير OPENAI_API_KEY في بيئة الإنتاج لاستعادة التحليل المتقدم.'
         : 'أعد المحاولة لاحقًا أو تحقق من صلاحية مفتاح OPENAI_API_KEY.',
     ],

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CopilotSource } from './schema';
+import { selectBuiltInLegalReferences } from './legal-references';
 
 export function normalizeCopilotQuery(input: string): string {
   return input.replace(/\s+/g, ' ').trim();
@@ -28,9 +29,12 @@ export async function retrieveSources(params: {
   supabase: SupabaseClient;
   orgId: string;
   caseId: string;
+  query: string;
+  caseType?: string | null;
   embedding: number[];
   caseTopK: number;
   kbTopK: number;
+  builtInKbTopK?: number;
   minSimilarity?: number;
   keywordTerms?: string[];
 }): Promise<{ sources: CopilotSource[]; caseBrief: string | null }> {
@@ -67,6 +71,11 @@ export async function retrieveSources(params: {
 
   const caseSources = ((caseRes.data as any[]) ?? []).map((row) => mapRowToSource(row, 'case'));
   const kbSources = ((kbRes.data as any[]) ?? []).map((row) => mapRowToSource(row, 'kb'));
+  const builtInKbSources = selectBuiltInLegalReferences({
+    query: params.query,
+    caseType: params.caseType ?? null,
+    limit: params.builtInKbTopK ?? Math.max(4, Math.min(8, params.kbTopK)),
+  });
 
   const briefMarkdown = (briefRes.data as any)?.brief_markdown
     ? String((briefRes.data as any).brief_markdown)
@@ -86,7 +95,7 @@ export async function retrieveSources(params: {
     : [];
 
   return {
-    sources: [...caseSources, ...kbSources, ...briefSource]
+    sources: mergeSources([...caseSources, ...kbSources, ...builtInKbSources, ...briefSource])
       .filter((source) => source.content.trim().length > 0)
       .sort((a, b) => b.similarity - a.similarity),
     caseBrief: briefMarkdown,
@@ -112,4 +121,15 @@ function deterministicBriefChunkId(caseId: string): string {
   // A fixed synthetic UUID namespace segment for case briefs.
   const suffix = caseId.replace(/-/g, '').slice(0, 12).padEnd(12, '0');
   return `00000000-0000-0000-0000-${suffix}`;
+}
+
+function mergeSources(sources: CopilotSource[]): CopilotSource[] {
+  const map = new Map<string, CopilotSource>();
+  for (const source of sources) {
+    const existing = map.get(source.chunkId);
+    if (!existing || source.similarity > existing.similarity) {
+      map.set(source.chunkId, source);
+    }
+  }
+  return Array.from(map.values());
 }

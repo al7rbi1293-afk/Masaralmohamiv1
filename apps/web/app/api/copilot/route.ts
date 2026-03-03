@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
   const { data: matter, error: matterError } = await rls
     .from('matters')
-    .select('id, title, is_private')
+    .select('id, title, is_private, case_type')
     .eq('org_id', orgId)
     .eq('id', parsed.case_id)
     .maybeSingle();
@@ -365,9 +365,12 @@ export async function POST(request: NextRequest) {
       supabase: rls,
       orgId,
       caseId: parsed.case_id,
+      query: normalizedQuery,
+      caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
       embedding,
       caseTopK: env.caseTopK,
       kbTopK: env.kbTopK,
+      builtInKbTopK: env.kbTopK,
       minSimilarity: 0.45,
       keywordTerms,
     });

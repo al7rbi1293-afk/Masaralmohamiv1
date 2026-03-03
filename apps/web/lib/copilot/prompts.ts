@@ -10,6 +10,7 @@ export const COPILOT_SYSTEM_PROMPT = [
   '5) If sources are insufficient, say what is missing and lower confidence.',
   '6) Every factual claim must be supported by citations to provided chunk IDs.',
   '7) Output ONLY valid JSON matching the required schema.',
+  '8) For legal/procedural guidance, prioritize legal references (pool:kb) when available.',
 ].join('\n');
 
 export function buildCopilotUserPrompt(params: {
@@ -37,6 +38,7 @@ export function buildCopilotUserPrompt(params: {
     'Citation rules:',
     '- citations[].chunkId must refer to provided SOURCES chunkId.',
     '- citations[].quote must be copied from that source text.',
+    '- If SOURCES include pool:kb and answer contains legal/procedural guidance, include at least one pool:kb citation.',
     '',
     templateHint,
     `User question:\n${request.message}`,

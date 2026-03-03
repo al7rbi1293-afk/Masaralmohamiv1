@@ -153,7 +153,7 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
           href={`/app/matters/${matter.id}/copilot`}
           className={`${buttonVariants('outline', 'sm')}`}
         >
-          المساعد القانوني
+          المساعد القانوني (قريباً)
         </Link>
       </div>
 

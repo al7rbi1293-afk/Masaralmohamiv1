@@ -5,7 +5,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getCopilotEnv, getOpenAiApiKey, isMissingEnvError } from '@/lib/env';
+import { getCopilotEnv, getOpenAiApiKey, isCopilotEnabled, isMissingEnvError } from '@/lib/env';
 import { logError } from '@/lib/logger';
 import {
   buildFallbackCitations,
@@ -52,6 +52,19 @@ export async function POST(request: NextRequest) {
   const env = getCopilotEnv();
 
   try {
+  if (!isCopilotEnabled()) {
+    const response = NextResponse.json(
+      defaultFailureResponse({
+        model: env.midModel,
+        latencyMs: Date.now() - startedAt,
+        message: 'ميزة الذكاء الاصطناعي موقوفة مؤقتًا وستعود قريبًا.',
+      }),
+      { status: 503 },
+    );
+    response.headers.set('x-copilot-request-id', requestId);
+    return response;
+  }
+
   const origin = request.headers.get('origin');
   if (origin) {
     try {

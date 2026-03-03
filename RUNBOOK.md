@@ -134,6 +134,7 @@
    - `20260303122000_copilot_rpc.sql`
 2. أضف متغيرات البيئة في Vercel:
    - `SUPABASE_JWT_SECRET`
+   - `COPILOT_ENABLED` (`0` لتعطيل الخدمة مؤقتًا، `1` للتفعيل)
    - `OPENAI_API_KEY`
    - `OPENAI_MODEL_EMBEDDING`
    - `OPENAI_MODEL_MID`

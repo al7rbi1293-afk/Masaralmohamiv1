@@ -119,6 +119,10 @@ export function getCopilotEnv() {
   };
 }
 
+export function isCopilotEnabled() {
+  return process.env.COPILOT_ENABLED?.trim() === '1';
+}
+
 export function getPublicSiteUrl() {
   const rawValue =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||

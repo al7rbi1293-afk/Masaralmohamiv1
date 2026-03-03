@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listMatters } from '@/lib/matters';
+import { isCopilotEnabled } from '@/lib/env';
 
 type CopilotLandingPageProps = {
   searchParams?: {
@@ -13,6 +14,25 @@ type CopilotLandingPageProps = {
 };
 
 export default async function CopilotLandingPage({ searchParams }: CopilotLandingPageProps) {
+  if (!isCopilotEnabled()) {
+    return (
+      <Card className="p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">الذكاء الاصطناعي</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              الميزة موقوفة مؤقتًا للتحكم بالتكاليف، وسيتم إطلاقها قريبًا بشكل أفضل.
+            </p>
+          </div>
+          <Badge variant="warning">قريبًا</Badge>
+        </div>
+        <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+          يمكنك متابعة إدارة القضايا والمستندات والمهام بشكل كامل حتى تفعيل الخدمة.
+        </div>
+      </Card>
+    );
+  }
+
   const q = (searchParams?.q ?? '').trim();
   const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
 

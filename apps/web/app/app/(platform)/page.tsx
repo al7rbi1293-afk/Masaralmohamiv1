@@ -7,6 +7,7 @@ import {
   Building2,
   Users,
   BriefcaseBusiness,
+  Bot,
   FileText,
   CheckCircle2,
   Calculator,
@@ -126,7 +127,7 @@ export default async function DashboardPage() {
       {/* Quick Actions */}
       <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h3 className="mb-4 font-semibold text-brand-navy dark:text-slate-100">إجراءات سريعة</h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Link href="/app/clients/new" className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-center transition-all hover:-translate-y-1 hover:border-brand-emerald hover:shadow-glow dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-500/50">
             <Users className="h-6 w-6 text-slate-400 dark:text-slate-500" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">عميل جديد</span>
@@ -150,6 +151,11 @@ export default async function DashboardPage() {
           <Link href="/app/billing/invoices/new" className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-center transition-all hover:-translate-y-1 hover:border-brand-emerald hover:shadow-glow dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-500/50">
             <Calculator className="h-6 w-6 text-slate-400 dark:text-slate-500" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">فاتورة جديدة</span>
+          </Link>
+
+          <Link href="/app/copilot" className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-center transition-all hover:-translate-y-1 hover:border-brand-emerald hover:shadow-glow dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-500/50">
+            <Bot className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">الذكاء الاصطناعي</span>
           </Link>
         </div>
       </div>

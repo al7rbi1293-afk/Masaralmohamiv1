@@ -381,6 +381,7 @@ export async function POST(request: NextRequest) {
 
   const openai = getOpenAiClient(openAiApiKey);
 
+  try {
   const embeddingCacheKey = buildScopedCacheKey({
     base: `embedding:${queryHash}`,
     orgId,
@@ -664,6 +665,28 @@ export async function POST(request: NextRequest) {
   response.headers.set('x-copilot-session-id', sessionId);
   response.headers.set('x-copilot-request-id', requestId);
   return response;
+  } catch (openAiPathError) {
+    if (isOpenAiProviderError(openAiPathError)) {
+      logError('copilot_openai_fallback_local', {
+        requestId,
+        message: openAiPathError instanceof Error ? openAiPathError.message : String(openAiPathError),
+      });
+      return await respondWithLocalFallback({
+        rls,
+        env,
+        requestId,
+        startedAt,
+        orgId,
+        userId: user.id,
+        parsed,
+        normalizedQuery,
+        caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
+        isRestrictedCase: Boolean((matter as any).is_private),
+        fallbackMode: 'local_openai_unavailable',
+      });
+    }
+    throw openAiPathError;
+  }
   } catch (error) {
     const safeMessage = mapCopilotInternalErrorToMessage(error);
     logError('copilot_unhandled_error', {
@@ -825,6 +848,7 @@ async function respondWithLocalFallback(params: {
   normalizedQuery: string;
   caseType: string | null;
   isRestrictedCase: boolean;
+  fallbackMode?: 'local_no_openai_key' | 'local_openai_unavailable';
 }): Promise<NextResponse> {
   let caseBrief: string | null = null;
   let briefResult: { data?: unknown; error?: unknown } | null = null;
@@ -874,6 +898,7 @@ async function respondWithLocalFallback(params: {
     sources: selectedSources,
     model: `${params.env.midModel}-local-fallback`,
     latencyMs: Date.now() - params.startedAt,
+    fallbackMode: params.fallbackMode ?? 'local_no_openai_key',
   });
 
   const sessionId = await ensureSession(params.rls, {
@@ -928,7 +953,7 @@ async function respondWithLocalFallback(params: {
     outputTokens: 0,
     latencyMs: Date.now() - params.startedAt,
     meta: {
-      fallback_mode: 'local_no_openai_key',
+      fallback_mode: params.fallbackMode ?? 'local_no_openai_key',
       source_count: selectedSources.length,
       is_restricted_case: params.isRestrictedCase,
       template: params.parsed.template ?? null,
@@ -947,6 +972,7 @@ function buildLocalFallbackResponse(params: {
   caseBrief: string | null;
   model: string;
   latencyMs: number;
+  fallbackMode: 'local_no_openai_key' | 'local_openai_unavailable';
 }): CopilotResponse {
   const kbSourceLabels = params.sources
     .filter((source) => source.pool === 'kb')
@@ -954,7 +980,9 @@ function buildLocalFallbackResponse(params: {
     .map((source) => `- ${source.label}`);
 
   const sections: string[] = [
-    'استجابة استرشادية مؤقتة: تم توليد هذا الرد من المراجع القانونية المضافة داخل النظام لأن تكامل OpenAI غير مفعّل في بيئة الإنتاج.',
+    params.fallbackMode === 'local_no_openai_key'
+      ? 'استجابة استرشادية مؤقتة: تم توليد هذا الرد من المراجع القانونية المضافة داخل النظام لأن تكامل OpenAI غير مفعّل في بيئة الإنتاج.'
+      : 'استجابة استرشادية مؤقتة: تعذر الاتصال بمزود الذكاء الاصطناعي، لذلك تم الاعتماد على المراجع القانونية داخل النظام.',
   ];
 
   if (params.caseBrief) {
@@ -965,7 +993,11 @@ function buildLocalFallbackResponse(params: {
     sections.push(`أقرب المراجع النظامية لسؤالك:\n${kbSourceLabels.join('\n')}`);
   }
 
-  sections.push('الخطوة التالية: أعد إرسال الطلب بعد تفعيل OPENAI_API_KEY للحصول على تحليل وصياغة موسعة.');
+  sections.push(
+    params.fallbackMode === 'local_no_openai_key'
+      ? 'الخطوة التالية: أعد إرسال الطلب بعد تفعيل OPENAI_API_KEY للحصول على تحليل وصياغة موسعة.'
+      : 'الخطوة التالية: أعد المحاولة خلال دقائق. إذا استمرت المشكلة، تحقق من مفاتيح OpenAI وحالة الخدمة.',
+  );
 
   const drafts =
     params.request.template === 'draft_response'
@@ -983,7 +1015,9 @@ function buildLocalFallbackResponse(params: {
     action_items: [
       'راجع الوقائع المؤثرة زمنيًا واربط كل واقعة بدليل واضح.',
       'طابق الطلبات مع السند النظامي المناسب من المراجع المشار إليها.',
-      'فعّل متغير OPENAI_API_KEY في بيئة الإنتاج لاستعادة التحليل المتقدم.',
+      params.fallbackMode === 'local_no_openai_key'
+        ? 'فعّل متغير OPENAI_API_KEY في بيئة الإنتاج لاستعادة التحليل المتقدم.'
+        : 'أعد المحاولة لاحقًا أو تحقق من صلاحية مفتاح OPENAI_API_KEY.',
     ],
     missing_info_questions: [
       'ما الوقائع الجوهرية التي يمكن إثباتها حاليًا بمستندات رسمية؟',
@@ -998,6 +1032,19 @@ function buildLocalFallbackResponse(params: {
       cached: false,
     },
   };
+}
+
+function isOpenAiProviderError(error: unknown): boolean {
+  const raw = (error instanceof Error ? error.message : String(error || '')).toLowerCase();
+  return (
+    raw.includes('openai') ||
+    raw.includes('api key') ||
+    raw.includes('authentication') ||
+    raw.includes('rate limit') ||
+    raw.includes('insufficient_quota') ||
+    raw.includes('model_not_found') ||
+    raw.includes('invalid_request_error')
+  );
 }
 
 function deterministicFallbackBriefChunkId(caseId: string): string {

@@ -20,6 +20,29 @@ export type SmtpEnv = {
   from: string;
 };
 
+export class MissingEnvError extends Error {
+  readonly envVarName: string;
+
+  constructor(name: string) {
+    super('إعدادات البيئة غير مكتملة. يرجى التواصل مع الدعم الفني.');
+    this.name = 'MissingEnvError';
+    this.envVarName = name;
+  }
+}
+
+export function isMissingEnvError(error: unknown): error is MissingEnvError {
+  if (error instanceof MissingEnvError) {
+    return true;
+  }
+
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as { name?: unknown; envVarName?: unknown };
+  return candidate.name === 'MissingEnvError' && typeof candidate.envVarName === 'string';
+}
+
 export function getIntegrationEncryptionKey() {
   const key = process.env.INTEGRATION_ENCRYPTION_KEY?.trim();
   if (!key) {
@@ -31,9 +54,7 @@ export function getIntegrationEncryptionKey() {
 function missingEnvError(name: string) {
   // Log the env var name only server-side, don't expose to users
   console.error(`Missing required environment variable: ${name}`);
-  return new Error(
-    'إعدادات البيئة غير مكتملة. يرجى التواصل مع الدعم الفني.',
-  );
+  return new MissingEnvError(name);
 }
 
 export function getSupabasePublicEnv(): SupabasePublicEnv {

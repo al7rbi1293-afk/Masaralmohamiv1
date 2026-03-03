@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
-import { getCopilotEnv } from '@/lib/env';
+import { getCopilotEnv, isMissingEnvError } from '@/lib/env';
 import { logError } from '@/lib/logger';
 import {
   buildFallbackCitations,
@@ -961,6 +961,26 @@ function truncateText(value: string, maxChars: number): string {
 }
 
 function mapCopilotInternalErrorToMessage(error: unknown): string {
+  if (isMissingEnvError(error)) {
+    if (error.envVarName === 'SUPABASE_JWT_SECRET') {
+      return 'تهيئة Supabase للمساعد القانوني غير مكتملة. يرجى إضافة SUPABASE_JWT_SECRET في بيئة الإنتاج ثم إعادة النشر.';
+    }
+
+    if (error.envVarName === 'OPENAI_API_KEY') {
+      return 'مفتاح OPENAI_API_KEY غير مهيأ في بيئة الإنتاج. أضف المفتاح أو فعّل الوضع الاسترشادي المحلي.';
+    }
+
+    if (
+      error.envVarName === 'NEXT_PUBLIC_SUPABASE_URL' ||
+      error.envVarName === 'NEXT_PUBLIC_SUPABASE_ANON_KEY' ||
+      error.envVarName === 'SUPABASE_SERVICE_ROLE_KEY'
+    ) {
+      return 'تهيئة اتصال Supabase غير مكتملة للمساعد القانوني. تأكد من NEXT_PUBLIC_SUPABASE_URL وNEXT_PUBLIC_SUPABASE_ANON_KEY وSUPABASE_SERVICE_ROLE_KEY.';
+    }
+
+    return `تهيئة بيئة الإنتاج غير مكتملة للمساعد القانوني (${error.envVarName}). يرجى استكمال المتغير وإعادة المحاولة.`;
+  }
+
   const raw = (error instanceof Error ? error.message : String(error || '')).toLowerCase();
 
   if (raw.includes('إعدادات البيئة غير مكتملة') || raw.includes('missing required environment variable')) {

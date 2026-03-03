@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
-import { getCopilotEnv, getOpenAiApiKey } from '@/lib/env';
+import { getCopilotEnv } from '@/lib/env';
 import { logError } from '@/lib/logger';
 import {
   buildFallbackCitations,
@@ -11,11 +11,14 @@ import {
   copilotResponseSchema,
   defaultFailureResponse,
   sanitizeAndValidateCitations,
+  type CopilotRequest,
   type CopilotResponse,
+  type CopilotSource,
 } from '@/lib/copilot/schema';
 import { buildCopilotUserPrompt, buildRepairPrompt, COPILOT_SYSTEM_PROMPT } from '@/lib/copilot/prompts';
 import { chooseModelForIntent, inferIntentHeuristically } from '@/lib/copilot/routing';
 import { retrieveSources, normalizeCopilotQuery, extractQuotedTerms } from '@/lib/copilot/retrieval';
+import { selectBuiltInLegalReferences } from '@/lib/copilot/legal-references';
 import {
   buildScopedCacheKey,
   getCachePayload,
@@ -315,7 +318,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const openai = getOpenAiClient(getOpenAiApiKey());
+  const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!openAiApiKey) {
+    return await respondWithLocalFallback({
+      rls,
+      env,
+      requestId,
+      startedAt,
+      orgId,
+      userId: user.id,
+      parsed,
+      normalizedQuery,
+      caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
+      isRestrictedCase: Boolean((matter as any).is_private),
+    });
+  }
+
+  const openai = getOpenAiClient(openAiApiKey);
 
   const embeddingCacheKey = buildScopedCacheKey({
     base: `embedding:${queryHash}`,
@@ -742,6 +761,199 @@ async function safeAudit(
       requestId: params.requestId,
     });
   });
+}
+
+async function respondWithLocalFallback(params: {
+  rls: Awaited<ReturnType<typeof createSupabaseRlsUserClient>>;
+  env: ReturnType<typeof getCopilotEnv>;
+  requestId: string;
+  startedAt: number;
+  orgId: string;
+  userId: string;
+  parsed: CopilotRequest;
+  normalizedQuery: string;
+  caseType: string | null;
+  isRestrictedCase: boolean;
+}): Promise<NextResponse> {
+  let caseBrief: string | null = null;
+  const briefResult = await params.rls
+    .from('case_briefs')
+    .select('brief_markdown')
+    .eq('org_id', params.orgId)
+    .eq('case_id', params.parsed.case_id)
+    .maybeSingle()
+    .catch(() => null);
+
+  if (briefResult && !briefResult.error && (briefResult.data as any)?.brief_markdown) {
+    caseBrief = String((briefResult.data as any).brief_markdown);
+  }
+
+  const kbSources = selectBuiltInLegalReferences({
+    query: params.normalizedQuery,
+    caseType: params.caseType,
+    limit: params.env.kbTopK,
+  });
+
+  const briefSources: CopilotSource[] = caseBrief
+    ? [
+        {
+          chunkId: deterministicFallbackBriefChunkId(params.parsed.case_id),
+          label: 'Case brief',
+          content: caseBrief,
+          pageNo: null,
+          similarity: 0.82,
+          pool: 'brief',
+        },
+      ]
+    : [];
+
+  const selectedSources = fitSourcesIntoBudget({
+    sources: [...briefSources, ...kbSources],
+    modelBudget: getBudgetForModel(params.env.midModel, params.env.midModel),
+    promptOverheadTokens: 500,
+  }).slice(0, params.env.maxSources);
+
+  const fallbackResponse = buildLocalFallbackResponse({
+    request: params.parsed,
+    caseBrief,
+    sources: selectedSources,
+    model: `${params.env.midModel}-local-fallback`,
+    latencyMs: Date.now() - params.startedAt,
+  });
+
+  const sessionId = await ensureSession(params.rls, {
+    orgId: params.orgId,
+    caseId: params.parsed.case_id,
+    userId: params.userId,
+    inputSessionId: params.parsed.session_id,
+    initialTitle: params.normalizedQuery.slice(0, 100),
+  });
+
+  const userMessageId = await insertMessage(params.rls, {
+    orgId: params.orgId,
+    caseId: params.parsed.case_id,
+    userId: params.userId,
+    sessionId,
+    role: 'user',
+    messageMarkdown: params.normalizedQuery,
+    citations: [],
+    model: null,
+    tokenInput: 0,
+    tokenOutput: 0,
+    latencyMs: null,
+  });
+
+  const assistantMessageId = await insertMessage(params.rls, {
+    orgId: params.orgId,
+    caseId: params.parsed.case_id,
+    userId: params.userId,
+    sessionId,
+    role: 'assistant',
+    messageMarkdown: fallbackResponse.answer_markdown,
+    citations: fallbackResponse.citations,
+    model: fallbackResponse.meta.model,
+    tokenInput: 0,
+    tokenOutput: 0,
+    latencyMs: Date.now() - params.startedAt,
+  });
+
+  const inferredIntent = inferIntentHeuristically(params.parsed);
+  await safeAudit(params.rls, {
+    requestId: params.requestId,
+    orgId: params.orgId,
+    userId: params.userId,
+    caseId: params.parsed.case_id,
+    sessionId,
+    messageId: assistantMessageId || userMessageId,
+    status: 'ok',
+    model: fallbackResponse.meta.model,
+    intent: inferredIntent === 'ambiguous' ? 'qna' : inferredIntent,
+    cached: false,
+    inputTokens: 0,
+    outputTokens: 0,
+    latencyMs: Date.now() - params.startedAt,
+    meta: {
+      fallback_mode: 'local_no_openai_key',
+      source_count: selectedSources.length,
+      is_restricted_case: params.isRestrictedCase,
+      template: params.parsed.template ?? null,
+    },
+  });
+
+  const response = NextResponse.json(fallbackResponse, { status: 200 });
+  response.headers.set('x-copilot-session-id', sessionId);
+  response.headers.set('x-copilot-request-id', params.requestId);
+  return response;
+}
+
+function buildLocalFallbackResponse(params: {
+  request: CopilotRequest;
+  sources: CopilotSource[];
+  caseBrief: string | null;
+  model: string;
+  latencyMs: number;
+}): CopilotResponse {
+  const kbSourceLabels = params.sources
+    .filter((source) => source.pool === 'kb')
+    .slice(0, 4)
+    .map((source) => `- ${source.label}`);
+
+  const sections: string[] = [
+    'استجابة استرشادية مؤقتة: تم توليد هذا الرد من المراجع القانونية المضافة داخل النظام لأن تكامل OpenAI غير مفعّل في بيئة الإنتاج.',
+  ];
+
+  if (params.caseBrief) {
+    sections.push(`ملخص الوقائع المتاح:\n${truncateText(params.caseBrief, 500)}`);
+  }
+
+  if (kbSourceLabels.length) {
+    sections.push(`أقرب المراجع النظامية لسؤالك:\n${kbSourceLabels.join('\n')}`);
+  }
+
+  sections.push('الخطوة التالية: أعد إرسال الطلب بعد تفعيل OPENAI_API_KEY للحصول على تحليل وصياغة موسعة.');
+
+  const drafts =
+    params.request.template === 'draft_response'
+      ? [
+          {
+            title: 'مسودة جواب أولية (استرشادية)',
+            content_markdown:
+              'أتمسك بالدفوع الشكلية والموضوعية وفق الوقائع والمستندات المتاحة، وألتمس رفض الطلبات غير المؤسسة نظامًا مع حفظ كافة الحقوق.',
+          },
+        ]
+      : [];
+
+  return {
+    answer_markdown: sections.join('\n\n'),
+    action_items: [
+      'راجع الوقائع المؤثرة زمنيًا واربط كل واقعة بدليل واضح.',
+      'طابق الطلبات مع السند النظامي المناسب من المراجع المشار إليها.',
+      'فعّل متغير OPENAI_API_KEY في بيئة الإنتاج لاستعادة التحليل المتقدم.',
+    ],
+    missing_info_questions: [
+      'ما الوقائع الجوهرية التي يمكن إثباتها حاليًا بمستندات رسمية؟',
+      'ما الطلب القضائي النهائي المطلوب بدقة (أصلي واحتياطي)؟',
+    ],
+    drafts,
+    citations: buildFallbackCitations(params.sources),
+    confidence: params.caseBrief ? 'medium' : 'low',
+    meta: {
+      model: params.model,
+      latency_ms: params.latencyMs,
+      cached: false,
+    },
+  };
+}
+
+function deterministicFallbackBriefChunkId(caseId: string): string {
+  const suffix = caseId.replace(/-/g, '').slice(0, 12).padEnd(12, '0');
+  return `00000000-0000-0000-0000-${suffix}`;
+}
+
+function truncateText(value: string, maxChars: number): string {
+  const clean = String(value || '').trim();
+  if (clean.length <= maxChars) return clean;
+  return `${clean.slice(0, maxChars).trim()}...`;
 }
 
 function mapCopilotInternalErrorToMessage(error: unknown): string {

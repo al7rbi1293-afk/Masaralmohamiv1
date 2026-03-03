@@ -237,6 +237,17 @@ export async function POST(request: NextRequest) {
     orgId,
     requestsLimit: env.requestsMonthlyDefault,
     tokensLimit: env.tokensMonthlyDefault,
+  }).catch((error) => {
+    logError('copilot_quota_error', {
+      requestId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return {
+      allowed: true,
+      requestsUsed: 0,
+      tokensUsed: 0,
+      monthStart: new Date().toISOString(),
+    };
   });
 
   if (!quota.allowed) {
@@ -726,7 +737,13 @@ async function ensureSession(
     .single();
 
   if (error || !data) {
-    throw new Error(`create_session_failed:${error?.message ?? 'unknown'}`);
+    logError('copilot_session_create_failed', {
+      message: error?.message ?? 'unknown',
+      caseId: params.caseId,
+      orgId: params.orgId,
+      userId: params.userId,
+    });
+    return params.inputSessionId || randomUUID();
   }
 
   return String((data as any).id);
@@ -1031,6 +1048,17 @@ function mapCopilotInternalErrorToMessage(error: unknown): string {
 
   if (raw.includes('match_case_chunks') || raw.includes('match_kb_chunks') || raw.includes('does not exist')) {
     return 'مكون استرجاع المراجع غير مهيأ في قاعدة البيانات. يلزم تطبيق آخر ترحيلات قاعدة البيانات.';
+  }
+
+  if (
+    raw.includes('consume_copilot_quota') ||
+    raw.includes('consume_copilot_rate_limit') ||
+    raw.includes('copilot_sessions') ||
+    raw.includes('copilot_messages') ||
+    raw.includes('copilot_usage') ||
+    raw.includes('copilot_cache')
+  ) {
+    return 'مكونات المساعد القانوني في قاعدة البيانات غير مكتملة. يلزم تطبيق آخر ترحيلات قاعدة البيانات ثم إعادة المحاولة.';
   }
 
   return 'تعذر إكمال طلب المساعد القانوني بسبب خطأ داخلي. حاول مرة أخرى خلال لحظات.';

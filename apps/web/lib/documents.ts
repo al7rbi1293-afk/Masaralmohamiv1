@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { runCascadeDelete } from '@/lib/entity-admin';
+import { isMissingColumnError } from '@/lib/shared-utils';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser } from '@/lib/org';
 
@@ -24,6 +25,10 @@ export type Document = {
 type DocumentRow = Omit<Document, 'matter' | 'client'> & {
   matter: Document['matter'] | Document['matter'][] | null;
   client: Document['client'] | Document['client'][] | null;
+};
+
+type DocumentRowLike = Omit<DocumentRow, 'is_archived'> & {
+  is_archived?: boolean;
 };
 
 export type DocumentVersion = {
@@ -64,6 +69,8 @@ export type PaginatedResult<T> = {
 
 const DOCUMENT_SELECT =
   'id, org_id, title, description, folder, tags, is_archived, created_at, matter_id, client_id, matter:matters(id, title), client:clients(id, name)';
+const DOCUMENT_SELECT_LEGACY =
+  'id, org_id, title, description, folder, tags, created_at, matter_id, client_id, matter:matters(id, title), client:clients(id, name)';
 
 export async function listDocuments(params: ListDocumentsParams = {}): Promise<PaginatedResult<DocumentWithLatest>> {
   const orgId = await requireOrgIdForUser();
@@ -78,32 +85,46 @@ export async function listDocuments(params: ListDocumentsParams = {}): Promise<P
   const matterId = params.matterId?.trim();
   const archived = params.archived ?? 'active';
 
-  let query = supabase
-    .from('documents')
-    .select(DOCUMENT_SELECT, { count: 'exact' })
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false })
-    .range(from, to);
+  let { data, error, count } = await executeListDocumentsQuery({
+    supabase,
+    orgId,
+    from,
+    to,
+    q,
+    matterId,
+    archived,
+    select: DOCUMENT_SELECT,
+    includeArchiveFilter: true,
+  });
 
-  if (matterId) {
-    query = query.eq('matter_id', matterId);
+  if (error && isMissingColumnError(error, 'documents', 'is_archived')) {
+    if (archived === 'archived') {
+      return {
+        data: [],
+        page,
+        limit,
+        total: 0,
+      };
+    }
+
+    ({ data, error, count } = await executeListDocumentsQuery({
+      supabase,
+      orgId,
+      from,
+      to,
+      q,
+      matterId,
+      archived,
+      select: DOCUMENT_SELECT_LEGACY,
+      includeArchiveFilter: false,
+    }));
   }
 
-  if (archived !== 'all') {
-    query = query.eq('is_archived', archived === 'archived');
-  }
-
-  if (q) {
-    const pattern = `%${q}%`;
-    query = query.ilike('title', pattern);
-  }
-
-  const { data, error, count } = await query;
   if (error) {
     throw error;
   }
 
-  const docs = (data as DocumentRow[] | null) ?? [];
+  const docs = (data as DocumentRowLike[] | null) ?? [];
   if (!docs.length) {
     return {
       data: [],
@@ -160,18 +181,27 @@ export async function getDocumentById(id: string): Promise<Document | null> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('documents')
     .select(DOCUMENT_SELECT)
     .eq('org_id', orgId)
     .eq('id', id)
     .maybeSingle();
 
+  if (error && isMissingColumnError(error, 'documents', 'is_archived')) {
+    ({ data, error } = await supabase
+      .from('documents')
+      .select(DOCUMENT_SELECT_LEGACY)
+      .eq('org_id', orgId)
+      .eq('id', id)
+      .maybeSingle());
+  }
+
   if (error) {
     throw error;
   }
 
-  return data ? normalizeDoc(data as DocumentRow) : null;
+  return data ? normalizeDoc(data as DocumentRowLike) : null;
 }
 
 export async function setDocumentArchived(id: string, isArchived: boolean): Promise<Document> {
@@ -186,6 +216,10 @@ export async function setDocumentArchived(id: string, isArchived: boolean): Prom
     .select(DOCUMENT_SELECT)
     .maybeSingle();
 
+  if (error && isMissingColumnError(error, 'documents', 'is_archived')) {
+    throw new Error('archive_not_supported');
+  }
+
   if (error) {
     throw error;
   }
@@ -194,7 +228,7 @@ export async function setDocumentArchived(id: string, isArchived: boolean): Prom
     throw new Error('not_found');
   }
 
-  return normalizeDoc(data as DocumentRow);
+  return normalizeDoc(data as DocumentRowLike);
 }
 
 export async function deleteDocument(id: string): Promise<void> {
@@ -221,7 +255,7 @@ export async function listDocumentVersions(documentId: string): Promise<Document
   return (data as DocumentVersion[] | null) ?? [];
 }
 
-function normalizeDoc(value: DocumentRow): Document {
+function normalizeDoc(value: DocumentRowLike): Document {
   const rawMatter = value.matter;
   const rawClient = value.client;
 
@@ -230,9 +264,44 @@ function normalizeDoc(value: DocumentRow): Document {
 
   return {
     ...value,
+    is_archived: Boolean(value.is_archived ?? false),
     matter,
     client,
   };
+}
+
+async function executeListDocumentsQuery(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  from: number;
+  to: number;
+  q: string;
+  matterId?: string;
+  archived: DocumentArchiveFilter;
+  select: string;
+  includeArchiveFilter: boolean;
+}) {
+  let query = params.supabase
+    .from('documents')
+    .select(params.select, { count: 'exact' })
+    .eq('org_id', params.orgId)
+    .order('created_at', { ascending: false })
+    .range(params.from, params.to);
+
+  if (params.matterId) {
+    query = query.eq('matter_id', params.matterId);
+  }
+
+  if (params.includeArchiveFilter && params.archived !== 'all') {
+    query = query.eq('is_archived', params.archived === 'archived');
+  }
+
+  if (params.q) {
+    const pattern = `%${params.q}%`;
+    query = query.ilike('title', pattern);
+  }
+
+  return query;
 }
 
 function cleanQuery(value?: string) {

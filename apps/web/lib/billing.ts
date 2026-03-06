@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 import { runCascadeDelete } from '@/lib/entity-admin';
 import { requireOrgIdForUser } from '@/lib/org';
+import { isMissingColumnError } from '@/lib/shared-utils';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 
@@ -62,6 +63,10 @@ type InvoiceRow = Omit<Invoice, 'client' | 'matter'> & {
   matter: { id: string; title: string } | { id: string; title: string }[] | null;
 };
 
+type InvoiceRowLike = Omit<InvoiceRow, 'is_archived'> & {
+  is_archived?: boolean;
+};
+
 export type Payment = {
   id: string;
   org_id: string;
@@ -86,6 +91,8 @@ const QUOTE_SELECT =
 
 const INVOICE_SELECT =
   'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, is_archived, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
+const INVOICE_SELECT_LEGACY =
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
 
 const itemSchema = z.object({
   desc: z.string().trim().min(1, 'وصف البند مطلوب.').max(400, 'وصف البند طويل جدًا.'),
@@ -124,6 +131,45 @@ function normalizeRowMatter<T extends { matter: any }>(row: T) {
   return { ...row, matter };
 }
 
+function normalizeInvoiceRow(row: InvoiceRowLike): Invoice {
+  const normalized = normalizeRowMatter(normalizeRowClient(row)) as InvoiceRowLike & {
+    client: Invoice['client'];
+    matter: Invoice['matter'];
+  };
+
+  return {
+    ...normalized,
+    is_archived: Boolean(row.is_archived ?? false),
+  };
+}
+
+async function executeListInvoicesQuery(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  from: number;
+  to: number;
+  status: InvoiceStatus | 'all';
+  clientId?: string;
+  archived: InvoiceArchiveFilter;
+  select: string;
+  includeArchiveFilter: boolean;
+}) {
+  let query = params.supabase
+    .from('invoices')
+    .select(params.select, { count: 'exact' })
+    .eq('org_id', params.orgId)
+    .order('issued_at', { ascending: false })
+    .range(params.from, params.to);
+
+  if (params.status !== 'all') query = query.eq('status', params.status);
+  if (params.clientId) query = query.eq('client_id', params.clientId);
+  if (params.includeArchiveFilter && params.archived !== 'all') {
+    query = query.eq('is_archived', params.archived === 'archived');
+  }
+
+  return query;
+}
+
 export async function getQuoteById(id: string): Promise<Quote | null> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
@@ -146,18 +192,26 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('invoices')
     .select(INVOICE_SELECT)
     .eq('org_id', orgId)
     .eq('id', id)
     .maybeSingle();
 
+  if (error && isMissingColumnError(error, 'invoices', 'is_archived')) {
+    ({ data, error } = await supabase
+      .from('invoices')
+      .select(INVOICE_SELECT_LEGACY)
+      .eq('org_id', orgId)
+      .eq('id', id)
+      .maybeSingle());
+  }
+
   if (error) throw error;
   if (!data) return null;
 
-  const row = normalizeRowMatter(normalizeRowClient(data as InvoiceRow));
-  return row as unknown as Invoice;
+  return normalizeInvoiceRow(data as InvoiceRowLike);
 }
 
 export type ListQuotesParams = {
@@ -324,22 +378,45 @@ export async function listInvoices(params: ListInvoicesParams = {}): Promise<Pag
   const clientId = params.clientId?.trim();
   const archived = params.archived ?? 'active';
 
-  let query = supabase
-    .from('invoices')
-    .select(INVOICE_SELECT, { count: 'exact' })
-    .eq('org_id', orgId)
-    .order('issued_at', { ascending: false })
-    .range(from, to);
+  let { data, error, count } = await executeListInvoicesQuery({
+    supabase,
+    orgId,
+    from,
+    to,
+    status,
+    clientId,
+    archived,
+    select: INVOICE_SELECT,
+    includeArchiveFilter: true,
+  });
 
-  if (status !== 'all') query = query.eq('status', status);
-  if (clientId) query = query.eq('client_id', clientId);
-  if (archived !== 'all') query = query.eq('is_archived', archived === 'archived');
+  if (error && isMissingColumnError(error, 'invoices', 'is_archived')) {
+    if (archived === 'archived') {
+      return {
+        data: [],
+        page,
+        limit,
+        total: 0,
+      };
+    }
 
-  const { data, error, count } = await query;
+    ({ data, error, count } = await executeListInvoicesQuery({
+      supabase,
+      orgId,
+      from,
+      to,
+      status,
+      clientId,
+      archived,
+      select: INVOICE_SELECT_LEGACY,
+      includeArchiveFilter: false,
+    }));
+  }
+
   if (error) throw error;
 
   return {
-    data: ((data as InvoiceRow[] | null) ?? []).map((row) => normalizeRowMatter(normalizeRowClient(row)) as unknown as Invoice),
+    data: ((data as InvoiceRowLike[] | null) ?? []).map(normalizeInvoiceRow),
     page,
     limit,
     total: count ?? 0,
@@ -483,11 +560,14 @@ export async function setInvoiceArchived(id: string, isArchived: boolean): Promi
     .select(INVOICE_SELECT)
     .maybeSingle();
 
+  if (error && isMissingColumnError(error, 'invoices', 'is_archived')) {
+    throw new Error('archive_not_supported');
+  }
+
   if (error) throw error;
   if (!data) throw new Error('not_found');
 
-  const row = normalizeRowMatter(normalizeRowClient(data as InvoiceRow));
-  return row as unknown as Invoice;
+  return normalizeInvoiceRow(data as InvoiceRowLike);
 }
 
 export async function deleteInvoice(id: string): Promise<void> {

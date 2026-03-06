@@ -33,16 +33,38 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
 
-  const [documentsResult, mattersResult] = await Promise.all([
-    listDocuments({
-      q,
-      matterId: matterId || undefined,
-      archived,
-      page,
-      limit: 10,
-    }),
-    listMatters({ status: 'all', page: 1, limit: 50 }),
-  ]);
+  let documentsResult: Awaited<ReturnType<typeof listDocuments>>;
+  let mattersResult: Awaited<ReturnType<typeof listMatters>>;
+
+  try {
+    [documentsResult, mattersResult] = await Promise.all([
+      listDocuments({
+        q,
+        matterId: matterId || undefined,
+        archived,
+        page,
+        limit: 10,
+      }),
+      listMatters({ status: 'all', page: 1, limit: 50 }),
+    ]);
+  } catch (fetchError) {
+    const message =
+      fetchError instanceof Error && fetchError.message ? fetchError.message : 'تعذر تحميل المستندات.';
+
+    return (
+      <Card className="p-6">
+        <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">المستندات</h1>
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+          {message}
+        </p>
+        <div className="mt-4">
+          <Link href="/app" className={buttonVariants('outline', 'sm')}>
+            العودة للوحة التحكم
+          </Link>
+        </div>
+      </Card>
+    );
+  }
 
   const totalPages = Math.max(1, Math.ceil(documentsResult.total / documentsResult.limit));
   const hasPrevious = documentsResult.page > 1;

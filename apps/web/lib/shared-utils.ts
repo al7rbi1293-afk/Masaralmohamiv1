@@ -33,6 +33,25 @@ export function isMissingRelationError(message?: string): boolean {
     return normalized.includes('does not exist') || normalized.includes('relation');
 }
 
+export function getErrorText(error: unknown): string {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+    if (error instanceof Error) return error.message;
+
+    const maybeError = error as { message?: string; details?: string; hint?: string };
+    return `${maybeError.message ?? ''} ${maybeError.details ?? ''} ${maybeError.hint ?? ''}`.trim();
+}
+
+export function isMissingColumnError(error: unknown, table: string, column: string): boolean {
+    const message = getErrorText(error);
+    if (!message) return false;
+
+    return (
+        message.includes(`column "${column}" of relation "${table}" does not exist`) ||
+        message.includes(`Could not find the '${column}' column of '${table}' in the schema cache`)
+    );
+}
+
 // ────────────────────────────────────────────
 // User-facing error message normalization
 // ────────────────────────────────────────────
@@ -42,7 +61,7 @@ export function isMissingRelationError(message?: string): boolean {
  * NEVER returns raw error messages to prevent leaking DB internals.
  */
 export function toUserMessage(error: unknown, fallback = 'تعذر الحفظ. حاول مرة أخرى.'): string {
-    const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+    const message = getErrorText(error);
     const normalized = message.toLowerCase();
 
     // Known Arabic messages from our own code — re-surface them
@@ -72,6 +91,10 @@ export function toUserMessage(error: unknown, fallback = 'تعذر الحفظ. �
     // Foreign key constraint
     if (normalized.includes('foreign key constraint')) {
         return 'لا يمكن الحذف لأن العنصر مرتبط ببيانات أخرى.';
+    }
+
+    if (normalized.includes('archive_not_supported')) {
+        return 'ميزة الأرشفة غير مفعلة في هذه البيئة بعد.';
     }
 
     // Never leak raw error messages

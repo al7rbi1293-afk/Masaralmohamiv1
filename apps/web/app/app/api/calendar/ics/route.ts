@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { getPublicSiteUrl } from '@/lib/env';
 import { requireOrgIdForUser } from '@/lib/org';
+import { isMissingColumnError } from '@/lib/shared-utils';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { logError } from '@/lib/logger';
@@ -111,26 +112,18 @@ export async function GET(request: NextRequest) {
         .lt('event_date', toEndExclusive.toISOString())
         .order('event_date', { ascending: true })
         .limit(1500),
-      supabase
-        .from('tasks')
-        .select('id, title, due_at, matter_id, matters(title)')
-        .eq('org_id', orgId)
-        .eq('is_archived', false)
-        .not('due_at', 'is', null)
-        .gte('due_at', fromStart.toISOString())
-        .lt('due_at', toEndExclusive.toISOString())
-        .order('due_at', { ascending: true })
-        .limit(1500),
-      supabase
-        .from('invoices')
-        .select('id, number, due_at')
-        .eq('org_id', orgId)
-        .eq('is_archived', false)
-        .not('due_at', 'is', null)
-        .gte('due_at', fromStart.toISOString())
-        .lt('due_at', toEndExclusive.toISOString())
-        .order('due_at', { ascending: true })
-        .limit(1500),
+      loadCalendarIcsTasks({
+        supabase,
+        orgId,
+        fromIso: fromStart.toISOString(),
+        toIso: toEndExclusive.toISOString(),
+      }),
+      loadCalendarIcsInvoices({
+        supabase,
+        orgId,
+        fromIso: fromStart.toISOString(),
+        toIso: toEndExclusive.toISOString(),
+      }),
     ]);
 
     if (eventsRes.error) throw eventsRes.error;
@@ -267,6 +260,66 @@ function foldLine(line: string) {
   parts.push(remaining);
 
   return parts.join('\r\n ');
+}
+
+async function loadCalendarIcsTasks(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  fromIso: string;
+  toIso: string;
+}) {
+  const run = (includeArchiveFilter: boolean) => {
+    let query = params.supabase
+      .from('tasks')
+      .select('id, title, due_at, matter_id, matters(title)')
+      .eq('org_id', params.orgId)
+      .not('due_at', 'is', null)
+      .gte('due_at', params.fromIso)
+      .lt('due_at', params.toIso);
+
+    if (includeArchiveFilter) {
+      query = query.eq('is_archived', false);
+    }
+
+    return query.order('due_at', { ascending: true }).limit(1500);
+  };
+
+  let result = await run(true);
+  if (result.error && isMissingColumnError(result.error, 'tasks', 'is_archived')) {
+    result = await run(false);
+  }
+
+  return result;
+}
+
+async function loadCalendarIcsInvoices(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  fromIso: string;
+  toIso: string;
+}) {
+  const run = (includeArchiveFilter: boolean) => {
+    let query = params.supabase
+      .from('invoices')
+      .select('id, number, due_at')
+      .eq('org_id', params.orgId)
+      .not('due_at', 'is', null)
+      .gte('due_at', params.fromIso)
+      .lt('due_at', params.toIso);
+
+    if (includeArchiveFilter) {
+      query = query.eq('is_archived', false);
+    }
+
+    return query.order('due_at', { ascending: true }).limit(1500);
+  };
+
+  let result = await run(true);
+  if (result.error && isMissingColumnError(result.error, 'invoices', 'is_archived')) {
+    result = await run(false);
+  }
+
+  return result;
 }
 
 function safeHost(siteUrl: string) {

@@ -54,21 +54,44 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
 
-  const [mattersResult, clientsResult, currentUser] = await Promise.all([
-    listMatters({
-      q,
-      status,
-      clientId: clientId || undefined,
-      page,
-      limit: 10,
-    }),
-    listClients({
-      status: 'active',
-      page: 1,
-      limit: 50,
-    }),
-    getCurrentAuthUser(),
-  ]);
+  let mattersResult: Awaited<ReturnType<typeof listMatters>>;
+  let clientsResult: Awaited<ReturnType<typeof listClients>>;
+  let currentUser: Awaited<ReturnType<typeof getCurrentAuthUser>>;
+
+  try {
+    [mattersResult, clientsResult, currentUser] = await Promise.all([
+      listMatters({
+        q,
+        status,
+        clientId: clientId || undefined,
+        page,
+        limit: 10,
+      }),
+      listClients({
+        status: 'active',
+        page: 1,
+        limit: 50,
+      }),
+      getCurrentAuthUser(),
+    ]);
+  } catch (fetchError) {
+    const message =
+      fetchError instanceof Error && fetchError.message ? fetchError.message : 'تعذر تحميل القضايا.';
+
+    return (
+      <Card className="p-6">
+        <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">القضايا</h1>
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+          {message}
+        </p>
+        <div className="mt-4">
+          <Link href="/app" className={buttonVariants('outline', 'sm')}>
+            العودة للوحة التحكم
+          </Link>
+        </div>
+      </Card>
+    );
+  }
 
   const totalPages = Math.max(1, Math.ceil(mattersResult.total / mattersResult.limit));
   const hasPrevious = mattersResult.page > 1;

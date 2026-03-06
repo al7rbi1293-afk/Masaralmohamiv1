@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { requireOrgIdForUser } from '@/lib/org';
+import { isMissingColumnError } from '@/lib/shared-utils';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
@@ -119,35 +120,23 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     : Promise.resolve({ data: [], error: null } as any);
 
   const tasksPromise = includeTasks
-    ? (() => {
-      let query = supabase
-        .from('tasks')
-        .select('id, title, due_at, status, matter_id, assignee_id, matters(title)')
-        .eq('org_id', orgId)
-        .eq('is_archived', false)
-        .not('due_at', 'is', null)
-        .gte('due_at', fetchStart.toISOString())
-        .lt('due_at', fetchEnd.toISOString());
-
-      if (mine) {
-        query = query.eq('assignee_id', user.id);
-      }
-
-      return query.order('due_at', { ascending: true }).limit(800);
-    })()
+    ? loadCalendarTasks({
+      supabase,
+      orgId,
+      userId: user.id,
+      mine,
+      fetchStartIso: fetchStart.toISOString(),
+      fetchEndIso: fetchEnd.toISOString(),
+    })
     : Promise.resolve({ data: [], error: null } as any);
 
   const invoicesPromise = includeInvoices
-    ? supabase
-      .from('invoices')
-      .select('id, number, due_at, status')
-      .eq('org_id', orgId)
-      .eq('is_archived', false)
-      .not('due_at', 'is', null)
-      .gte('due_at', fetchStart.toISOString())
-      .lt('due_at', fetchEnd.toISOString())
-      .order('due_at', { ascending: true })
-      .limit(800)
+    ? loadCalendarInvoices({
+      supabase,
+      orgId,
+      fetchStartIso: fetchStart.toISOString(),
+      fetchEndIso: fetchEnd.toISOString(),
+    })
     : Promise.resolve({ data: [], error: null } as any);
 
   const [eventsRes, tasksRes, invoicesRes] = await Promise.all([
@@ -419,6 +408,72 @@ function parseMonthKey(value: string) {
   const year = Number(yearRaw);
   const monthIndex = Math.max(0, Math.min(11, Number(monthRaw) - 1));
   return { year: Number.isFinite(year) ? year : new Date().getUTCFullYear(), monthIndex };
+}
+
+async function loadCalendarTasks(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  userId: string;
+  mine: boolean;
+  fetchStartIso: string;
+  fetchEndIso: string;
+}) {
+  const run = (includeArchiveFilter: boolean) => {
+    let query = params.supabase
+      .from('tasks')
+      .select('id, title, due_at, status, matter_id, assignee_id, matters(title)')
+      .eq('org_id', params.orgId)
+      .not('due_at', 'is', null)
+      .gte('due_at', params.fetchStartIso)
+      .lt('due_at', params.fetchEndIso);
+
+    if (includeArchiveFilter) {
+      query = query.eq('is_archived', false);
+    }
+
+    if (params.mine) {
+      query = query.eq('assignee_id', params.userId);
+    }
+
+    return query.order('due_at', { ascending: true }).limit(800);
+  };
+
+  let result = await run(true);
+  if (result.error && isMissingColumnError(result.error, 'tasks', 'is_archived')) {
+    result = await run(false);
+  }
+
+  return result;
+}
+
+async function loadCalendarInvoices(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  fetchStartIso: string;
+  fetchEndIso: string;
+}) {
+  const run = (includeArchiveFilter: boolean) => {
+    let query = params.supabase
+      .from('invoices')
+      .select('id, number, due_at, status')
+      .eq('org_id', params.orgId)
+      .not('due_at', 'is', null)
+      .gte('due_at', params.fetchStartIso)
+      .lt('due_at', params.fetchEndIso);
+
+    if (includeArchiveFilter) {
+      query = query.eq('is_archived', false);
+    }
+
+    return query.order('due_at', { ascending: true }).limit(800);
+  };
+
+  let result = await run(true);
+  if (result.error && isMissingColumnError(result.error, 'invoices', 'is_archived')) {
+    result = await run(false);
+  }
+
+  return result;
 }
 
 function formatMonthKey(value: Date) {

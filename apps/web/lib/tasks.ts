@@ -2,6 +2,7 @@ import 'server-only';
 
 import { z } from 'zod';
 import { runCascadeDelete } from '@/lib/entity-admin';
+import { isMissingColumnError } from '@/lib/shared-utils';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
@@ -38,6 +39,10 @@ type TaskRow = Omit<Task, 'matter'> & {
   matter: TaskMatter | TaskMatter[] | null;
 };
 
+type TaskRowLike = Omit<TaskRow, 'is_archived'> & {
+  is_archived?: boolean;
+};
+
 export type PaginatedResult<T> = {
   data: T[];
   page: number;
@@ -59,6 +64,8 @@ export type ListTasksParams = {
 
 const TASK_SELECT =
   'id, org_id, matter_id, title, description, assignee_id, due_at, priority, status, is_archived, created_by, created_at, updated_at, matter:matters(id, title)';
+const TASK_SELECT_LEGACY =
+  'id, org_id, matter_id, title, description, assignee_id, due_at, priority, status, created_by, created_at, updated_at, matter:matters(id, title)';
 
 export async function listTasks(params: ListTasksParams = {}): Promise<PaginatedResult<Task>> {
   const orgId = await requireOrgIdForUser();
@@ -77,45 +84,55 @@ export async function listTasks(params: ListTasksParams = {}): Promise<Paginated
   const q = cleanQuery(params.q);
   const matterId = params.matterId?.trim();
 
-  let query = supabase
-    .from('tasks')
-    .select(TASK_SELECT, { count: 'exact' })
-    .eq('org_id', orgId)
-    .order('due_at', { ascending: true, nullsFirst: false })
-    .order('updated_at', { ascending: false })
-    .range(from, to);
+  let { data, error, count } = await executeListTasksQuery({
+    supabase,
+    orgId,
+    from,
+    to,
+    status,
+    priority,
+    due,
+    assignee,
+    archived,
+    q,
+    matterId,
+    select: TASK_SELECT,
+    includeArchiveFilter: true,
+  });
 
-  if (matterId) {
-    query = query.eq('matter_id', matterId);
+  if (error && isMissingColumnError(error, 'tasks', 'is_archived')) {
+    if (archived === 'archived') {
+      return {
+        data: [],
+        page,
+        limit,
+        total: 0,
+      };
+    }
+
+    ({ data, error, count } = await executeListTasksQuery({
+      supabase,
+      orgId,
+      from,
+      to,
+      status,
+      priority,
+      due,
+      assignee,
+      archived,
+      q,
+      matterId,
+      select: TASK_SELECT_LEGACY,
+      includeArchiveFilter: false,
+    }));
   }
 
-  if (status !== 'all') {
-    query = query.eq('status', status);
-  }
-
-  if (priority !== 'all') {
-    query = query.eq('priority', priority);
-  }
-
-  if (archived !== 'all') {
-    query = query.eq('is_archived', archived === 'archived');
-  }
-
-  if (q) {
-    const pattern = `%${q}%`;
-    query = query.or(`title.ilike.${pattern},description.ilike.${pattern}`);
-  }
-
-  query = applyDueFilter(query, due);
-  query = await applyAssigneeFilter(query, assignee);
-
-  const { data, error, count } = await query;
   if (error) {
     throw error;
   }
 
   return {
-    data: ((data as TaskRow[] | null) ?? []).map(normalizeTask),
+    data: ((data as TaskRowLike[] | null) ?? []).map(normalizeTask),
     page,
     limit,
     total: count ?? 0,
@@ -126,18 +143,27 @@ export async function getTaskById(id: string): Promise<Task | null> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('tasks')
     .select(TASK_SELECT)
     .eq('org_id', orgId)
     .eq('id', id)
     .maybeSingle();
 
+  if (error && isMissingColumnError(error, 'tasks', 'is_archived')) {
+    ({ data, error } = await supabase
+      .from('tasks')
+      .select(TASK_SELECT_LEGACY)
+      .eq('org_id', orgId)
+      .eq('id', id)
+      .maybeSingle());
+  }
+
   if (error) {
     throw error;
   }
 
-  return data ? normalizeTask(data as TaskRow) : null;
+  return data ? normalizeTask(data as TaskRowLike) : null;
 }
 
 const createTaskSchema = z.object({
@@ -299,6 +325,10 @@ export async function setTaskArchived(id: string, isArchived: boolean): Promise<
     .select(TASK_SELECT)
     .maybeSingle();
 
+  if (error && isMissingColumnError(error, 'tasks', 'is_archived')) {
+    throw new Error('archive_not_supported');
+  }
+
   if (error) {
     throw error;
   }
@@ -307,21 +337,72 @@ export async function setTaskArchived(id: string, isArchived: boolean): Promise<
     throw new Error('not_found');
   }
 
-  return normalizeTask(data as TaskRow);
+  return normalizeTask(data as TaskRowLike);
 }
 
 export async function deleteTask(id: string): Promise<void> {
   await runCascadeDelete('delete_task_cascade', { p_task_id: id });
 }
 
-function normalizeTask(value: TaskRow): Task {
+function normalizeTask(value: TaskRowLike): Task {
   const rawMatter = value.matter;
   const matter = Array.isArray(rawMatter) ? rawMatter[0] ?? null : rawMatter ?? null;
 
   return {
     ...value,
+    is_archived: Boolean(value.is_archived ?? false),
     matter,
   };
+}
+
+async function executeListTasksQuery(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  from: number;
+  to: number;
+  status: TaskStatus | 'all';
+  priority: TaskPriority | 'all';
+  due: TaskDueFilter;
+  assignee: TaskAssigneeFilter;
+  archived: TaskArchiveFilter;
+  q: string;
+  matterId?: string;
+  select: string;
+  includeArchiveFilter: boolean;
+}) {
+  let query = params.supabase
+    .from('tasks')
+    .select(params.select, { count: 'exact' })
+    .eq('org_id', params.orgId)
+    .order('due_at', { ascending: true, nullsFirst: false })
+    .order('updated_at', { ascending: false })
+    .range(params.from, params.to);
+
+  if (params.matterId) {
+    query = query.eq('matter_id', params.matterId);
+  }
+
+  if (params.status !== 'all') {
+    query = query.eq('status', params.status);
+  }
+
+  if (params.priority !== 'all') {
+    query = query.eq('priority', params.priority);
+  }
+
+  if (params.includeArchiveFilter && params.archived !== 'all') {
+    query = query.eq('is_archived', params.archived === 'archived');
+  }
+
+  if (params.q) {
+    const pattern = `%${params.q}%`;
+    query = query.or(`title.ilike.${pattern},description.ilike.${pattern}`);
+  }
+
+  query = applyDueFilter(query, params.due);
+  query = await applyAssigneeFilter(query, params.assignee);
+
+  return query;
 }
 
 function emptyToNull(value?: string | null) {

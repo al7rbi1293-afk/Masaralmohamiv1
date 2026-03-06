@@ -47,7 +47,7 @@ export async function runCascadeDelete(
   return { success: true };
 }
 
-async function removeDocumentStorageObjects(storagePaths: string[]) {
+export async function removeDocumentStorageObjects(storagePaths: string[]) {
   const uniquePaths = Array.from(new Set(storagePaths.filter(Boolean)));
   if (!uniquePaths.length) {
     return;

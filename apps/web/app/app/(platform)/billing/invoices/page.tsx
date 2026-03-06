@@ -3,14 +3,17 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listClients } from '@/lib/clients';
-import { listInvoices, type InvoiceStatus } from '@/lib/billing';
+import { listInvoices, type InvoiceArchiveFilter, type InvoiceStatus } from '@/lib/billing';
+import { archiveInvoiceAction, deleteInvoiceAction, restoreInvoiceAction } from '../actions';
 
 type InvoicesPageProps = {
   searchParams?: {
     status?: string;
     client?: string;
+    archived?: string;
     page?: string;
     success?: string;
     error?: string;
@@ -39,6 +42,11 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
       : 'all';
 
   const clientId = (searchParams?.client ?? '').trim();
+  const archivedRaw = (searchParams?.archived ?? 'active').trim();
+  const archived: InvoiceArchiveFilter =
+    archivedRaw === 'all' || archivedRaw === 'archived' || archivedRaw === 'active'
+      ? archivedRaw
+      : 'active';
   const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
 
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
@@ -52,6 +60,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
       listInvoices({
         status,
         clientId: clientId || undefined,
+        archived,
         page,
         limit: 10,
       }),
@@ -78,8 +87,8 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
   const hasPrevious = result.page > 1;
   const hasNext = result.page < totalPages;
 
-  const previousQuery = buildQuery({ status, client: clientId, page: Math.max(1, result.page - 1) });
-  const nextQuery = buildQuery({ status, client: clientId, page: Math.min(totalPages, result.page + 1) });
+  const previousQuery = buildQuery({ status, client: clientId, archived, page: Math.max(1, result.page - 1) });
+  const nextQuery = buildQuery({ status, client: clientId, archived, page: Math.min(totalPages, result.page + 1) });
 
   return (
     <Card className="p-6">
@@ -116,7 +125,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
         </p>
       ) : null}
 
-      <form className="mt-5 grid gap-3 sm:grid-cols-[220px_1fr_auto]">
+      <form className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[220px_1fr_180px_auto]">
         <label className="block">
           <span className="sr-only">الحالة</span>
           <select
@@ -145,6 +154,19 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
                 {client.name}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="sr-only">الأرشفة</span>
+          <select
+            name="archived"
+            defaultValue={archived}
+            className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+          >
+            <option value="active">نشطة</option>
+            <option value="archived">مؤرشفة</option>
+            <option value="all">الكل</option>
           </select>
         </label>
 
@@ -187,15 +209,53 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
                       {formatMoney(invoice.total)} SAR
                     </td>
                     <td className="px-3 py-3">
-                      <Badge variant={statusVariant[invoice.status]}>{statusLabel[invoice.status]}</Badge>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant={statusVariant[invoice.status]}>{statusLabel[invoice.status]}</Badge>
+                        {invoice.is_archived ? <Badge variant="warning">مؤرشفة</Badge> : null}
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
                       {new Date(invoice.issued_at).toLocaleDateString('ar-SA')}
                     </td>
                     <td className="px-3 py-3">
-                      <Link href={`/app/billing/invoices/${invoice.id}`} className={buttonVariants('ghost', 'sm')}>
-                        عرض
-                      </Link>
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/app/billing/invoices/${invoice.id}`} className={buttonVariants('ghost', 'sm')}>
+                          عرض
+                        </Link>
+                        {invoice.is_archived ? (
+                          <ConfirmActionForm
+                            action={restoreInvoiceAction.bind(null, invoice.id, '/app/billing/invoices')}
+                            triggerLabel="استعادة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="استعادة الفاتورة"
+                            confirmMessage="هل تريد استعادة هذه الفاتورة؟"
+                            confirmLabel="استعادة"
+                            destructive={false}
+                          />
+                        ) : (
+                          <ConfirmActionForm
+                            action={archiveInvoiceAction.bind(null, invoice.id, '/app/billing/invoices')}
+                            triggerLabel="أرشفة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="أرشفة الفاتورة"
+                            confirmMessage="هل تريد أرشفة هذه الفاتورة؟ يمكنك استعادتها لاحقًا."
+                            confirmLabel="أرشفة"
+                            destructive
+                          />
+                        )}
+                        <ConfirmActionForm
+                          action={deleteInvoiceAction.bind(null, invoice.id, '/app/billing/invoices')}
+                          triggerLabel="حذف"
+                          triggerVariant="outline"
+                          triggerSize="sm"
+                          confirmTitle="حذف الفاتورة نهائيًا"
+                          confirmMessage="سيتم حذف الفاتورة وكل الدفعات المرتبطة بها نهائيًا."
+                          confirmLabel="حذف نهائي"
+                          destructive
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -230,10 +290,11 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
   );
 }
 
-function buildQuery(params: { status: InvoiceStatus | 'all'; client: string; page: number }) {
+function buildQuery(params: { status: InvoiceStatus | 'all'; client: string; archived: InvoiceArchiveFilter; page: number }) {
   const query: Record<string, string> = { page: String(params.page) };
   if (params.status !== 'all') query.status = params.status;
   if (params.client) query.client = params.client;
+  if (params.archived !== 'active') query.archived = params.archived;
   return query;
 }
 

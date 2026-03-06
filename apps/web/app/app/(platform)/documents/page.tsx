@@ -2,16 +2,19 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { EmptyState } from '@/components/ui/empty-state';
-import { DocumentShareButton } from '@/components/documents/document-share-button';
 import { DocumentDownloadButton } from '@/components/documents/document-download-button';
-import { listDocuments } from '@/lib/documents';
+import { DocumentShareButton } from '@/components/documents/document-share-button';
+import { type DocumentArchiveFilter, listDocuments } from '@/lib/documents';
 import { listMatters } from '@/lib/matters';
+import { archiveDocumentAction, deleteDocumentAction, restoreDocumentAction } from './actions';
 
 type DocumentsPageProps = {
   searchParams?: {
     q?: string;
     matter?: string;
+    archived?: string;
     page?: string;
     success?: string;
     error?: string;
@@ -21,6 +24,11 @@ type DocumentsPageProps = {
 export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
   const q = (searchParams?.q ?? '').trim();
   const matterId = (searchParams?.matter ?? '').trim();
+  const archivedRaw = (searchParams?.archived ?? 'active').trim();
+  const archived: DocumentArchiveFilter =
+    archivedRaw === 'all' || archivedRaw === 'archived' || archivedRaw === 'active'
+      ? archivedRaw
+      : 'active';
   const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
@@ -29,6 +37,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
     listDocuments({
       q,
       matterId: matterId || undefined,
+      archived,
       page,
       limit: 10,
     }),
@@ -38,8 +47,8 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   const totalPages = Math.max(1, Math.ceil(documentsResult.total / documentsResult.limit));
   const hasPrevious = documentsResult.page > 1;
   const hasNext = documentsResult.page < totalPages;
-  const previousQuery = buildQuery({ q, matter: matterId, page: Math.max(1, documentsResult.page - 1) });
-  const nextQuery = buildQuery({ q, matter: matterId, page: Math.min(totalPages, documentsResult.page + 1) });
+  const previousQuery = buildQuery({ q, matter: matterId, archived, page: Math.max(1, documentsResult.page - 1) });
+  const nextQuery = buildQuery({ q, matter: matterId, archived, page: Math.min(totalPages, documentsResult.page + 1) });
 
   return (
     <Card className="p-6">
@@ -67,7 +76,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         </p>
       ) : null}
 
-      <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_260px_auto]">
+      <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_220px_180px_auto]">
         <label className="block">
           <span className="sr-only">بحث</span>
           <input
@@ -91,6 +100,19 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                 {matter.title}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="sr-only">الأرشفة</span>
+          <select
+            name="archived"
+            defaultValue={archived}
+            className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+          >
+            <option value="active">نشطة</option>
+            <option value="archived">مؤرشفة</option>
+            <option value="all">الكل</option>
           </select>
         </label>
 
@@ -124,7 +146,12 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
               <tbody className="divide-y divide-brand-border dark:divide-slate-800">
                 {documentsResult.data.map((doc) => (
                   <tr key={doc.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
-                    <td className="py-3 font-medium text-brand-navy dark:text-slate-100">{doc.title}</td>
+                    <td className="py-3">
+                      <div className="flex flex-wrap items-center gap-2 font-medium text-brand-navy dark:text-slate-100">
+                        <span>{doc.title}</span>
+                        {doc.is_archived ? <Badge variant="warning">مؤرشف</Badge> : null}
+                      </div>
+                    </td>
                     <td className="py-3 text-slate-700 dark:text-slate-200">{doc.matter?.title ?? '—'}</td>
                     <td className="py-3">
                       {doc.latestVersion ? (
@@ -145,6 +172,39 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                         </Link>
                         <DocumentDownloadButton storagePath={doc.latestVersion?.storage_path} variant="ghost" size="sm" />
                         <DocumentShareButton documentId={doc.id} />
+                        {doc.is_archived ? (
+                          <ConfirmActionForm
+                            action={restoreDocumentAction.bind(null, doc.id, '/app/documents')}
+                            triggerLabel="استعادة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="استعادة المستند"
+                            confirmMessage="هل تريد استعادة هذا المستند؟"
+                            confirmLabel="استعادة"
+                            destructive={false}
+                          />
+                        ) : (
+                          <ConfirmActionForm
+                            action={archiveDocumentAction.bind(null, doc.id, '/app/documents')}
+                            triggerLabel="أرشفة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="أرشفة المستند"
+                            confirmMessage="هل تريد أرشفة هذا المستند؟ يمكنك استعادته لاحقًا."
+                            confirmLabel="أرشفة"
+                            destructive
+                          />
+                        )}
+                        <ConfirmActionForm
+                          action={deleteDocumentAction.bind(null, doc.id, '/app/documents')}
+                          triggerLabel="حذف"
+                          triggerVariant="outline"
+                          triggerSize="sm"
+                          confirmTitle="حذف المستند نهائيًا"
+                          confirmMessage="سيتم حذف المستند وكل نسخه وروابط مشاركته نهائيًا."
+                          confirmLabel="حذف نهائي"
+                          destructive
+                        />
                       </div>
                     </td>
                   </tr>
@@ -180,13 +240,14 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   );
 }
 
-function buildQuery(params: { q: string; matter: string; page: number }) {
+function buildQuery(params: { q: string; matter: string; archived: DocumentArchiveFilter; page: number }) {
   const query: Record<string, string> = {
     page: String(params.page),
   };
 
   if (params.q) query.q = params.q;
   if (params.matter) query.matter = params.matter;
+  if (params.archived !== 'active') query.archived = params.archived;
 
   return query;
 }
@@ -198,4 +259,3 @@ function safeDecode(value: string) {
     return value;
   }
 }
-

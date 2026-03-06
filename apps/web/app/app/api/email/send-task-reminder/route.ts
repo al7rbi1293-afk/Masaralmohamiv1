@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
       .from('tasks')
       .select('id, title, status, due_at, matter_id, matters(title)')
       .eq('org_id', orgId)
+      .eq('is_archived', false)
       .eq('id', parsed.data.task_id)
       .maybeSingle();
 
@@ -148,4 +149,3 @@ function toUserMessage(error: unknown) {
 
   return message || 'تعذر إرسال البريد.';
 }
-

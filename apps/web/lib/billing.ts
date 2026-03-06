@@ -1,12 +1,14 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { runCascadeDelete } from '@/lib/entity-admin';
 import { requireOrgIdForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
 export type InvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'void';
+export type InvoiceArchiveFilter = 'active' | 'archived' | 'all';
 
 export type BillingItem = {
   desc: string;
@@ -47,6 +49,7 @@ export type Invoice = {
   total: string;
   currency: string;
   status: InvoiceStatus;
+  is_archived: boolean;
   issued_at: string;
   due_at: string | null;
   created_by: string;
@@ -77,6 +80,12 @@ export type PaginatedResult<T> = {
   limit: number;
   total: number;
 };
+
+const QUOTE_SELECT =
+  'id, org_id, client_id, matter_id, number, items, total, currency, status, created_by, created_at, client:clients(id, name), matter:matters(id, title)';
+
+const INVOICE_SELECT =
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, is_archived, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
 
 const itemSchema = z.object({
   desc: z.string().trim().min(1, 'وصف البند مطلوب.').max(400, 'وصف البند طويل جدًا.'),
@@ -121,9 +130,7 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
 
   const { data, error } = await supabase
     .from('quotes')
-    .select(
-      'id, org_id, client_id, matter_id, number, items, total, currency, status, created_by, created_at, client:clients(id, name), matter:matters(id, title)',
-    )
+    .select(QUOTE_SELECT)
     .eq('org_id', orgId)
     .eq('id', id)
     .maybeSingle();
@@ -141,9 +148,7 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
 
   const { data, error } = await supabase
     .from('invoices')
-    .select(
-      'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)',
-    )
+    .select(INVOICE_SELECT)
     .eq('org_id', orgId)
     .eq('id', id)
     .maybeSingle();
@@ -176,10 +181,7 @@ export async function listQuotes(params: ListQuotesParams = {}): Promise<Paginat
 
   let query = supabase
     .from('quotes')
-    .select(
-      'id, org_id, client_id, matter_id, number, items, total, currency, status, created_by, created_at, client:clients(id, name), matter:matters(id, title)',
-      { count: 'exact' },
-    )
+    .select(QUOTE_SELECT, { count: 'exact' })
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -243,9 +245,7 @@ export async function createQuote(payload: CreateQuotePayload): Promise<Quote> {
         status: payload.status ?? 'draft',
         created_by: user.id,
       })
-      .select(
-        'id, org_id, client_id, matter_id, number, items, total, currency, status, created_by, created_at, client:clients(id, name), matter:matters(id, title)',
-      )
+      .select(QUOTE_SELECT)
       .single();
 
     if (!error && data) {
@@ -293,9 +293,7 @@ export async function updateQuote(id: string, payload: UpdateQuotePayload): Prom
     })
     .eq('org_id', orgId)
     .eq('id', id)
-    .select(
-      'id, org_id, client_id, matter_id, number, items, total, currency, status, created_by, created_at, client:clients(id, name), matter:matters(id, title)',
-    )
+    .select(QUOTE_SELECT)
     .maybeSingle();
 
   if (error) throw error;
@@ -308,6 +306,7 @@ export async function updateQuote(id: string, payload: UpdateQuotePayload): Prom
 export type ListInvoicesParams = {
   status?: InvoiceStatus | 'all';
   clientId?: string;
+  archived?: InvoiceArchiveFilter;
   page?: number;
   limit?: number;
 };
@@ -323,19 +322,18 @@ export async function listInvoices(params: ListInvoicesParams = {}): Promise<Pag
 
   const status = params.status ?? 'all';
   const clientId = params.clientId?.trim();
+  const archived = params.archived ?? 'active';
 
   let query = supabase
     .from('invoices')
-    .select(
-      'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)',
-      { count: 'exact' },
-    )
+    .select(INVOICE_SELECT, { count: 'exact' })
     .eq('org_id', orgId)
     .order('issued_at', { ascending: false })
     .range(from, to);
 
   if (status !== 'all') query = query.eq('status', status);
   if (clientId) query = query.eq('client_id', clientId);
+  if (archived !== 'all') query = query.eq('is_archived', archived === 'archived');
 
   const { data, error, count } = await query;
   if (error) throw error;
@@ -399,9 +397,7 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<Invo
         due_at: payload.due_at ?? null,
         created_by: user.id,
       })
-      .select(
-        'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)',
-      )
+      .select(INVOICE_SELECT)
       .single();
 
     if (!error && data) {
@@ -465,9 +461,7 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
     })
     .eq('org_id', orgId)
     .eq('id', id)
-    .select(
-      'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)',
-    )
+    .select(INVOICE_SELECT)
     .maybeSingle();
 
   if (error) throw error;
@@ -475,6 +469,29 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
 
   const row = normalizeRowMatter(normalizeRowClient(data as InvoiceRow));
   return row as unknown as Invoice;
+}
+
+export async function setInvoiceArchived(id: string, isArchived: boolean): Promise<Invoice> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({ is_archived: isArchived })
+    .eq('org_id', orgId)
+    .eq('id', id)
+    .select(INVOICE_SELECT)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error('not_found');
+
+  const row = normalizeRowMatter(normalizeRowClient(data as InvoiceRow));
+  return row as unknown as Invoice;
+}
+
+export async function deleteInvoice(id: string): Promise<void> {
+  await runCascadeDelete('delete_invoice_cascade', { p_invoice_id: id });
 }
 
 export type AddPaymentPayload = {
@@ -633,4 +650,3 @@ function isUniqueViolation(error: any) {
   const message = String(error?.message ?? '').toLowerCase();
   return code === '23505' || message.includes('duplicate key') || message.includes('unique');
 }
-

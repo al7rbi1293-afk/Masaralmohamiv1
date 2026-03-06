@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TaskUpsertModal, type TaskUpsertMatterOption, type TaskUpsertInitialTask } from './task-upsert-modal';
 import { TaskEmailReminderButton } from './task-email-reminder-button';
@@ -21,6 +22,7 @@ export type TaskTableItem = {
   due_at: string | null;
   priority: TaskPriority;
   status: TaskStatus;
+  is_archived: boolean;
   updated_at: string;
   matter: { id: string; title: string } | null;
 };
@@ -66,6 +68,10 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
   const [busyTaskId, setBusyTaskId] = useState<string>('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [confirmAction, setConfirmAction] = useState<{
+    taskId: string;
+    mode: 'archive' | 'restore' | 'delete';
+  } | null>(null);
 
   const now = useMemo(() => Date.now(), []);
 
@@ -122,6 +128,58 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
       router.refresh();
     } catch {
       setError('تعذر تغيير حالة المهمة.');
+    } finally {
+      setBusyTaskId('');
+    }
+  }
+
+  async function changeArchive(taskId: string, archived: boolean) {
+    setBusyTaskId(taskId);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await fetch('/app/api/tasks/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId, archived }),
+      });
+      const json = (await response.json().catch(() => ({}))) as any;
+      if (!response.ok) {
+        setError(String(json?.error ?? 'تعذر تحديث أرشفة المهمة.'));
+        return;
+      }
+
+      setMessage(archived ? 'تمت أرشفة المهمة.' : 'تمت استعادة المهمة.');
+      router.refresh();
+    } catch {
+      setError(archived ? 'تعذر أرشفة المهمة.' : 'تعذر استعادة المهمة.');
+    } finally {
+      setBusyTaskId('');
+    }
+  }
+
+  async function removeTask(taskId: string) {
+    setBusyTaskId(taskId);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await fetch('/app/api/tasks/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId }),
+      });
+      const json = (await response.json().catch(() => ({}))) as any;
+      if (!response.ok) {
+        setError(String(json?.error ?? 'تعذر حذف المهمة.'));
+        return;
+      }
+
+      setMessage('تم حذف المهمة نهائيًا.');
+      router.refresh();
+    } catch {
+      setError('تعذر حذف المهمة.');
     } finally {
       setBusyTaskId('');
     }
@@ -198,7 +256,10 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
                       <Badge variant={priorityVariant[task.priority]}>{priorityLabel[task.priority]}</Badge>
                     </td>
                     <td className="px-3 py-3">
-                      <Badge variant={statusVariant[task.status]}>{statusLabel[task.status]}</Badge>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant={statusVariant[task.status]}>{statusLabel[task.status]}</Badge>
+                        {task.is_archived ? <Badge variant="warning">مؤرشفة</Badge> : null}
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
                       {task.assignee_id ? (task.assignee_id === currentUserId ? 'أنا' : 'عضو الفريق') : '—'}
@@ -208,6 +269,7 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
                         <button
                           type="button"
                           className={buttonVariants('outline', 'sm')}
+                          disabled={busyTaskId === task.id}
                           onClick={() => openEdit(task)}
                         >
                           عرض/تعديل
@@ -215,7 +277,7 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
                         <button
                           type="button"
                           className={buttonVariants('outline', 'sm')}
-                          disabled={busyTaskId === task.id || task.status === 'done' || task.status === 'canceled'}
+                          disabled={busyTaskId === task.id || task.is_archived || task.status === 'done' || task.status === 'canceled'}
                           onClick={() => changeStatus(task.id, 'done')}
                         >
                           تم
@@ -223,12 +285,28 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
                         <button
                           type="button"
                           className={buttonVariants('outline', 'sm')}
-                          disabled={busyTaskId === task.id || task.status === 'canceled'}
+                          disabled={busyTaskId === task.id || task.is_archived || task.status === 'canceled'}
                           onClick={() => changeStatus(task.id, 'canceled')}
                         >
                           إلغاء
                         </button>
-                        <TaskEmailReminderButton taskId={task.id} />
+                        <button
+                          type="button"
+                          className={buttonVariants('outline', 'sm')}
+                          disabled={busyTaskId === task.id}
+                          onClick={() => setConfirmAction({ taskId: task.id, mode: task.is_archived ? 'restore' : 'archive' })}
+                        >
+                          {task.is_archived ? 'استعادة' : 'أرشفة'}
+                        </button>
+                        <button
+                          type="button"
+                          className={buttonVariants('outline', 'sm')}
+                          disabled={busyTaskId === task.id}
+                          onClick={() => setConfirmAction({ taskId: task.id, mode: 'delete' })}
+                        >
+                          حذف
+                        </button>
+                        <TaskEmailReminderButton taskId={task.id} disabled={task.is_archived || busyTaskId === task.id} />
                       </div>
                     </td>
                   </tr>
@@ -250,6 +328,43 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
           setMessage(msg);
           setError('');
           router.refresh();
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmAction)}
+        title={
+          confirmAction?.mode === 'delete'
+            ? 'حذف المهمة نهائيًا'
+            : confirmAction?.mode === 'restore'
+              ? 'استعادة المهمة'
+              : 'أرشفة المهمة'
+        }
+        message={
+          confirmAction?.mode === 'delete'
+            ? 'سيتم حذف المهمة نهائيًا ولا يمكن التراجع عن هذا الإجراء.'
+            : confirmAction?.mode === 'restore'
+              ? 'هل تريد استعادة هذه المهمة إلى القائمة النشطة؟'
+              : 'هل تريد أرشفة هذه المهمة؟ يمكنك استعادتها لاحقًا.'
+        }
+        confirmLabel={
+          confirmAction?.mode === 'delete'
+            ? 'حذف نهائي'
+            : confirmAction?.mode === 'restore'
+              ? 'استعادة'
+              : 'أرشفة'
+        }
+        destructive={confirmAction?.mode !== 'restore'}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={async () => {
+          const pending = confirmAction;
+          setConfirmAction(null);
+          if (!pending) return;
+          if (pending.mode === 'delete') {
+            await removeTask(pending.taskId);
+            return;
+          }
+          await changeArchive(pending.taskId, pending.mode === 'archive');
         }}
       />
     </div>

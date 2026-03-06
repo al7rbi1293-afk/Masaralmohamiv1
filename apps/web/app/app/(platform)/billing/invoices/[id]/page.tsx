@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { BillingItemsEditor } from '@/components/billing/items-editor';
 import { PaymentAddButton } from '@/components/billing/payment-add-button';
 import { InvoiceEmailButton } from '@/components/billing/invoice-email-button';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
@@ -15,7 +16,7 @@ import {
   listPayments,
   type InvoiceStatus,
 } from '@/lib/billing';
-import { updateInvoiceAction } from '../../actions';
+import { archiveInvoiceAction, deleteInvoiceAction, restoreInvoiceAction, updateInvoiceAction } from '../../actions';
 
 type InvoiceDetailsPageProps = {
   params: { id: string };
@@ -89,6 +90,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant={statusVariant[invoice.status]}>{statusLabel[invoice.status]}</Badge>
             <Badge variant="default">{formatMoney(invoice.total)} SAR</Badge>
+            {invoice.is_archived ? <Badge variant="warning">مؤرشفة</Badge> : null}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -112,6 +114,39 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
           <Link href="/app/billing/invoices" className={buttonVariants('outline', 'sm')}>
             رجوع
           </Link>
+          {invoice.is_archived ? (
+            <ConfirmActionForm
+              action={restoreInvoiceAction.bind(null, invoice.id, `/app/billing/invoices/${invoice.id}`)}
+              triggerLabel="استعادة"
+              triggerVariant="outline"
+              triggerSize="sm"
+              confirmTitle="استعادة الفاتورة"
+              confirmMessage="هل تريد استعادة هذه الفاتورة؟"
+              confirmLabel="استعادة"
+              destructive={false}
+            />
+          ) : (
+            <ConfirmActionForm
+              action={archiveInvoiceAction.bind(null, invoice.id, `/app/billing/invoices/${invoice.id}`)}
+              triggerLabel="أرشفة"
+              triggerVariant="outline"
+              triggerSize="sm"
+              confirmTitle="أرشفة الفاتورة"
+              confirmMessage="هل تريد أرشفة هذه الفاتورة؟ يمكنك استعادتها لاحقًا."
+              confirmLabel="أرشفة"
+              destructive
+            />
+          )}
+          <ConfirmActionForm
+            action={deleteInvoiceAction.bind(null, invoice.id, '/app/billing/invoices')}
+            triggerLabel="حذف نهائي"
+            triggerVariant="outline"
+            triggerSize="sm"
+            confirmTitle="حذف الفاتورة نهائيًا"
+            confirmMessage="سيتم حذف الفاتورة وكل الدفعات المرتبطة بها نهائيًا."
+            confirmLabel="حذف نهائي"
+            destructive
+          />
         </div>
       </div>
 
@@ -243,7 +278,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
               تسجيل دفعات يدوية وتحديث حالة الفاتورة تلقائيًا.
             </p>
           </div>
-          <PaymentAddButton invoiceId={invoice.id} disabled={invoice.status === 'void'} />
+          <PaymentAddButton invoiceId={invoice.id} disabled={invoice.status === 'void' || invoice.is_archived} />
         </div>
 
         {!payments.length ? (

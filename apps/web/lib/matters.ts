@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { runCascadeDelete } from '@/lib/entity-admin';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser, type OrgRole } from '@/lib/org';
@@ -360,6 +361,10 @@ export async function archiveMatter(id: string): Promise<Matter> {
 
 export async function restoreMatter(id: string): Promise<Matter> {
   return updateMatter(id, { status: 'new' });
+}
+
+export async function deleteMatter(id: string): Promise<void> {
+  await runCascadeDelete('delete_matter_cascade', { p_matter_id: id });
 }
 
 function normalizeMatter(value: MatterRow): Matter {

@@ -1,9 +1,10 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
-import { archiveMatter, createMatter, getMatterById, restoreMatter, updateMatter } from '@/lib/matters';
+import { archiveMatter, createMatter, deleteMatter, getMatterById, restoreMatter, updateMatter } from '@/lib/matters';
 import { createMatterEvent, createMatterEventSchema } from '@/lib/matterEvents';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
@@ -94,6 +95,8 @@ export async function archiveMatterAction(id: string, redirectTo = '/app/matters
       meta: { changed: ['status'] },
     });
     logInfo('matter_archived', { matterId: id });
+    revalidatePath('/app/matters');
+    revalidatePath(`/app/matters/${id}`);
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة القضية.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -113,11 +116,34 @@ export async function restoreMatterAction(id: string, redirectTo = '/app/matters
       meta: { changed: ['status'] },
     });
     logInfo('matter_restored', { matterId: id });
+    revalidatePath('/app/matters');
+    revalidatePath(`/app/matters/${id}`);
     redirect(withToast(redirectTo, 'success', 'تمت استعادة القضية.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('matter_restore_failed', { matterId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
+  }
+}
+
+export async function deleteMatterAction(id: string, redirectTo = '/app/matters') {
+  try {
+    await deleteMatter(id);
+    await logAudit({
+      action: 'matter.deleted',
+      entityType: 'matter',
+      entityId: id,
+      meta: {},
+    });
+    logInfo('matter_deleted', { matterId: id });
+    revalidatePath('/app/matters');
+    revalidatePath(`/app/matters/${id}`);
+    redirect(withToast(redirectTo, 'success', 'تم حذف القضية نهائيًا.'));
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message = toUserMessage(error);
+    logError('matter_delete_failed', { matterId: id, message });
     redirect(withToast(redirectTo, 'error', message));
   }
 }

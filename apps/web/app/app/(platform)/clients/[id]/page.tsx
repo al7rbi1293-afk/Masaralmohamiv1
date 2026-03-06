@@ -6,7 +6,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getClientById } from '@/lib/clients';
-import { archiveClientAction, restoreClientAction, updateClientAction } from '../actions';
+import { archiveClientAction, deleteClientAction, restoreClientAction, updateClientAction } from '../actions';
 
 type ClientDetailsPageProps = {
   params: { id: string };
@@ -151,7 +151,7 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
         </div>
       </form>
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap gap-3">
         {client.status === 'active' ? (
           <ConfirmActionForm
             action={archiveClientAction.bind(null, client.id, `/app/clients/${client.id}`)}
@@ -175,6 +175,16 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
             destructive={false}
           />
         )}
+        <ConfirmActionForm
+          action={deleteClientAction.bind(null, client.id, '/app/clients')}
+          triggerLabel="حذف نهائي"
+          triggerVariant="outline"
+          triggerSize="md"
+          confirmTitle="حذف العميل نهائيًا"
+          confirmMessage="سيتم حذف العميل وكل القضايا والفواتير والمهام والمستندات المرتبطة به نهائيًا. لا يمكن التراجع عن هذا الإجراء."
+          confirmLabel="حذف نهائي"
+          destructive
+        />
       </div>
     </Card>
   );

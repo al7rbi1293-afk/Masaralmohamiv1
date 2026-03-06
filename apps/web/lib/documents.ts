@@ -1,7 +1,10 @@
 import 'server-only';
 
+import { runCascadeDelete } from '@/lib/entity-admin';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser } from '@/lib/org';
+
+export type DocumentArchiveFilter = 'active' | 'archived' | 'all';
 
 export type Document = {
   id: string;
@@ -12,6 +15,7 @@ export type Document = {
   description: string | null;
   folder: string;
   tags: unknown;
+  is_archived: boolean;
   created_at: string;
   matter: { id: string; title: string } | null;
   client: { id: string; name: string } | null;
@@ -46,6 +50,7 @@ export type DocumentWithLatest = Document & {
 export type ListDocumentsParams = {
   q?: string;
   matterId?: string;
+  archived?: DocumentArchiveFilter;
   page?: number;
   limit?: number;
 };
@@ -58,7 +63,7 @@ export type PaginatedResult<T> = {
 };
 
 const DOCUMENT_SELECT =
-  'id, org_id, title, description, folder, tags, created_at, matter_id, client_id, matter:matters(id, title), client:clients(id, name)';
+  'id, org_id, title, description, folder, tags, is_archived, created_at, matter_id, client_id, matter:matters(id, title), client:clients(id, name)';
 
 export async function listDocuments(params: ListDocumentsParams = {}): Promise<PaginatedResult<DocumentWithLatest>> {
   const orgId = await requireOrgIdForUser();
@@ -71,6 +76,7 @@ export async function listDocuments(params: ListDocumentsParams = {}): Promise<P
 
   const q = cleanQuery(params.q);
   const matterId = params.matterId?.trim();
+  const archived = params.archived ?? 'active';
 
   let query = supabase
     .from('documents')
@@ -81,6 +87,10 @@ export async function listDocuments(params: ListDocumentsParams = {}): Promise<P
 
   if (matterId) {
     query = query.eq('matter_id', matterId);
+  }
+
+  if (archived !== 'all') {
+    query = query.eq('is_archived', archived === 'archived');
   }
 
   if (q) {
@@ -162,6 +172,33 @@ export async function getDocumentById(id: string): Promise<Document | null> {
   }
 
   return data ? normalizeDoc(data as DocumentRow) : null;
+}
+
+export async function setDocumentArchived(id: string, isArchived: boolean): Promise<Document> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+
+  const { data, error } = await supabase
+    .from('documents')
+    .update({ is_archived: isArchived })
+    .eq('org_id', orgId)
+    .eq('id', id)
+    .select(DOCUMENT_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error('not_found');
+  }
+
+  return normalizeDoc(data as DocumentRow);
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  await runCascadeDelete('delete_document_cascade', { p_document_id: id });
 }
 
 export async function listDocumentVersions(documentId: string): Promise<DocumentVersion[]> {

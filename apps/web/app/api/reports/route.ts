@@ -52,6 +52,7 @@ export async function GET(_request: NextRequest) {
             .from('tasks')
             .select('id, title, due_at, matter_id')
             .eq('org_id', orgId)
+            .eq('is_archived', false)
             .neq('status', 'done')
             .lt('due_at', now.toISOString())
             .order('due_at', { ascending: true })

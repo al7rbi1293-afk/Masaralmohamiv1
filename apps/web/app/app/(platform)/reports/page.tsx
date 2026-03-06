@@ -29,6 +29,7 @@ export default async function ReportsPage() {
       .from('tasks')
       .select('id', { count: 'exact', head: true })
       .eq('org_id', orgId)
+      .eq('is_archived', false)
       .not('due_at', 'is', null)
       .lt('due_at', nowIso)
       .in('status', ['todo', 'doing'])
@@ -37,6 +38,7 @@ export default async function ReportsPage() {
       .from('invoices')
       .select('total, status')
       .eq('org_id', orgId)
+      .eq('is_archived', false)
       .in('status', ['unpaid', 'partial'])
       .then(({ data }) => {
         const rows = (data as Array<{ total: string; status: string }> | null) ?? [];
@@ -120,4 +122,3 @@ function formatMoney(value: number) {
   const safe = Number.isFinite(value) ? value : 0;
   return safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-

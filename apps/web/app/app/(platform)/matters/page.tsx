@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listClients } from '@/lib/clients';
 import { listMatters, type MatterStatus } from '@/lib/matters';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { archiveMatterAction, deleteMatterAction, restoreMatterAction } from './actions';
 
 type MattersPageProps = {
   searchParams?: {
@@ -203,9 +205,44 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                       {new Date(matter.updated_at).toLocaleDateString('ar-SA')}
                     </td>
                     <td className="py-3">
-                      <Link href={`/app/matters/${matter.id}`} className={buttonVariants('ghost', 'sm')}>
-                        عرض
-                      </Link>
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/app/matters/${matter.id}`} className={buttonVariants('ghost', 'sm')}>
+                          عرض
+                        </Link>
+                        {matter.status === 'archived' ? (
+                          <ConfirmActionForm
+                            action={restoreMatterAction.bind(null, matter.id, '/app/matters')}
+                            triggerLabel="استعادة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="استعادة القضية"
+                            confirmMessage="هل تريد استعادة هذه القضية؟"
+                            confirmLabel="استعادة"
+                            destructive={false}
+                          />
+                        ) : (
+                          <ConfirmActionForm
+                            action={archiveMatterAction.bind(null, matter.id, '/app/matters')}
+                            triggerLabel="أرشفة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="أرشفة القضية"
+                            confirmMessage="هل تريد أرشفة هذه القضية؟ يمكنك استعادتها لاحقًا."
+                            confirmLabel="أرشفة"
+                            destructive
+                          />
+                        )}
+                        <ConfirmActionForm
+                          action={deleteMatterAction.bind(null, matter.id, '/app/matters')}
+                          triggerLabel="حذف"
+                          triggerVariant="outline"
+                          triggerSize="sm"
+                          confirmTitle="حذف القضية نهائيًا"
+                          confirmMessage="سيتم حذف القضية وكل المهام والمستندات والفواتير وعروض الأسعار المرتبطة بها نهائيًا."
+                          confirmLabel="حذف نهائي"
+                          destructive
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

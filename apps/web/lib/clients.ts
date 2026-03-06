@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { runCascadeDelete } from '@/lib/entity-admin';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser } from '@/lib/org';
 
@@ -183,23 +184,7 @@ export async function setClientStatus(id: string, status: ClientStatus): Promise
 }
 
 export async function deleteClient(id: string): Promise<void> {
-  const orgId = await requireOrgIdForUser();
-  const supabase = createSupabaseServerRlsClient();
-
-  const { error } = await supabase
-    .from('clients')
-    .delete()
-    .eq('org_id', orgId)
-    .eq('id', id)
-    .select('id')
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      throw new Error('لم يتم العثور على العميل أو لا تملك صلاحية حذفه.');
-    }
-    throw error;
-  }
+  await runCascadeDelete('delete_client_cascade', { p_client_id: id });
 }
 
 function cleanQuery(value?: string) {

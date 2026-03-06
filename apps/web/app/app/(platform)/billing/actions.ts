@@ -1,9 +1,19 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
-import { createInvoice, createQuote, getInvoiceById, itemsSchema, updateInvoice, updateQuote } from '@/lib/billing';
+import {
+  createInvoice,
+  createQuote,
+  deleteInvoice,
+  getInvoiceById,
+  itemsSchema,
+  setInvoiceArchived,
+  updateInvoice,
+  updateQuote,
+} from '@/lib/billing';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 import { toUserMessage, emptyToNull } from '@/lib/shared-utils';
@@ -186,12 +196,77 @@ export async function updateInvoiceAction(id: string, formData: FormData) {
     });
 
     logInfo('invoice_updated', { invoiceId: updated.id });
+    revalidatePath('/app/billing/invoices');
+    revalidatePath(`/app/billing/invoices/${updated.id}`);
     redirect(`/app/billing/invoices/${updated.id}?success=${encodeURIComponent('تم تحديث الفاتورة.')}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('invoice_update_failed', { invoiceId: id, message });
     redirect(`/app/billing/invoices/${id}?error=${encodeURIComponent(message)}`);
+  }
+}
+
+export async function archiveInvoiceAction(id: string, redirectTo = '/app/billing/invoices') {
+  try {
+    await setInvoiceArchived(id, true);
+    await logAudit({
+      action: 'invoice.archived',
+      entityType: 'invoice',
+      entityId: id,
+      meta: { changed: ['is_archived'] },
+    });
+    logInfo('invoice_archived', { invoiceId: id });
+    revalidatePath('/app/billing/invoices');
+    revalidatePath(`/app/billing/invoices/${id}`);
+    redirect(withToast(redirectTo, 'success', 'تمت أرشفة الفاتورة.'));
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message = toUserMessage(error, 'تعذر أرشفة الفاتورة.');
+    logError('invoice_archive_failed', { invoiceId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
+  }
+}
+
+export async function restoreInvoiceAction(id: string, redirectTo = '/app/billing/invoices') {
+  try {
+    await setInvoiceArchived(id, false);
+    await logAudit({
+      action: 'invoice.restored',
+      entityType: 'invoice',
+      entityId: id,
+      meta: { changed: ['is_archived'] },
+    });
+    logInfo('invoice_restored', { invoiceId: id });
+    revalidatePath('/app/billing/invoices');
+    revalidatePath(`/app/billing/invoices/${id}`);
+    redirect(withToast(redirectTo, 'success', 'تمت استعادة الفاتورة.'));
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message = toUserMessage(error, 'تعذر استعادة الفاتورة.');
+    logError('invoice_restore_failed', { invoiceId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
+  }
+}
+
+export async function deleteInvoiceAction(id: string, redirectTo = '/app/billing/invoices') {
+  try {
+    await deleteInvoice(id);
+    await logAudit({
+      action: 'invoice.deleted',
+      entityType: 'invoice',
+      entityId: id,
+      meta: {},
+    });
+    logInfo('invoice_deleted', { invoiceId: id });
+    revalidatePath('/app/billing/invoices');
+    revalidatePath(`/app/billing/invoices/${id}`);
+    redirect(withToast(redirectTo, 'success', 'تم حذف الفاتورة نهائيًا.'));
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message = toUserMessage(error, 'تعذر حذف الفاتورة.');
+    logError('invoice_delete_failed', { invoiceId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
   }
 }
 
@@ -242,6 +317,10 @@ function normalizeDateTimeIso(value?: string) {
   return date.toISOString();
 }
 
+function withToast(path: string, key: 'success' | 'error', message: string) {
+  const [pathname] = path.split('?');
+  return `${pathname}?${key}=${encodeURIComponent(message)}`;
+}
 
 function diffInvoiceFields(
   before: Awaited<ReturnType<typeof getInvoiceById>>,

@@ -3,12 +3,14 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { DocumentShareButton } from '@/components/documents/document-share-button';
 import { DocumentEmailShareButton } from '@/components/documents/document-email-share-button';
 import { DocumentVersionActions } from '@/components/documents/document-version-actions';
 import { DocumentDownloadButton } from '@/components/documents/document-download-button';
 import { getDocumentById, listDocumentVersions } from '@/lib/documents';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { archiveDocumentAction, deleteDocumentAction, restoreDocumentAction } from '../actions';
 
 type DocumentDetailsPageProps = {
   params: { id: string };
@@ -62,6 +64,9 @@ export default async function DocumentDetailsPage({ params, searchParams }: Docu
             {document.matter ? `مرتبط بالقضية: ${document.matter.title}` : 'غير مرتبط بقضية'}{' '}
             {document.client ? `· الموكل: ${document.client.name}` : ''}
           </p>
+          <div className="mt-2">
+            {document.is_archived ? <Badge variant="warning">مؤرشف</Badge> : <Badge variant="success">نشط</Badge>}
+          </div>
         </div>
         <Link href="/app/documents" className={buttonVariants('outline', 'sm')}>
           رجوع
@@ -88,6 +93,39 @@ export default async function DocumentDetailsPage({ params, searchParams }: Docu
         <DocumentShareButton documentId={document.id} label="مشاركة" />
         <DocumentEmailShareButton documentId={document.id} />
         <Badge variant="default">عدد النسخ: {versions.length}</Badge>
+        {document.is_archived ? (
+          <ConfirmActionForm
+            action={restoreDocumentAction.bind(null, document.id, `/app/documents/${document.id}`)}
+            triggerLabel="استعادة"
+            triggerVariant="outline"
+            triggerSize="sm"
+            confirmTitle="استعادة المستند"
+            confirmMessage="هل تريد استعادة هذا المستند؟"
+            confirmLabel="استعادة"
+            destructive={false}
+          />
+        ) : (
+          <ConfirmActionForm
+            action={archiveDocumentAction.bind(null, document.id, `/app/documents/${document.id}`)}
+            triggerLabel="أرشفة"
+            triggerVariant="outline"
+            triggerSize="sm"
+            confirmTitle="أرشفة المستند"
+            confirmMessage="هل تريد أرشفة هذا المستند؟ يمكنك استعادته لاحقًا."
+            confirmLabel="أرشفة"
+            destructive
+          />
+        )}
+        <ConfirmActionForm
+          action={deleteDocumentAction.bind(null, document.id, '/app/documents')}
+          triggerLabel="حذف نهائي"
+          triggerVariant="outline"
+          triggerSize="sm"
+          confirmTitle="حذف المستند نهائيًا"
+          confirmMessage="سيتم حذف المستند وكل نسخه وروابط مشاركته نهائيًا."
+          confirmLabel="حذف نهائي"
+          destructive
+        />
       </div>
 
       <section className="grid gap-5 lg:grid-cols-2">

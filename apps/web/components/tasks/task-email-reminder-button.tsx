@@ -5,9 +5,10 @@ import { Button, buttonVariants } from '@/components/ui/button';
 
 type TaskEmailReminderButtonProps = {
   taskId: string;
+  disabled?: boolean;
 };
 
-export function TaskEmailReminderButton({ taskId }: TaskEmailReminderButtonProps) {
+export function TaskEmailReminderButton({ taskId, disabled = false }: TaskEmailReminderButtonProps) {
   const [open, setOpen] = useState(false);
   const [toEmail, setToEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -48,7 +49,7 @@ export function TaskEmailReminderButton({ taskId }: TaskEmailReminderButtonProps
 
   return (
     <>
-      <button type="button" className={buttonVariants('outline', 'sm')} onClick={() => setOpen(true)}>
+      <button type="button" className={buttonVariants('outline', 'sm')} disabled={disabled} onClick={() => setOpen(true)}>
         تذكير بالبريد
       </button>
 
@@ -124,4 +125,3 @@ export function TaskEmailReminderButton({ taskId }: TaskEmailReminderButtonProps
     </>
   );
 }
-

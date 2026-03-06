@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
         .from('documents')
         .select('id, title, matter_id, client_id, description', { count: 'exact' })
         .eq('org_id', orgId)
+        .eq('is_archived', false)
         .or(`title.ilike.${pattern},description.ilike.${pattern}`)
         .order('created_at', { ascending: false })
         .range(0, 9),
@@ -135,6 +136,7 @@ export async function GET(request: NextRequest) {
         .from('tasks')
         .select('id, title, status, due_at, matter_id, description', { count: 'exact' })
         .eq('org_id', orgId)
+        .eq('is_archived', false)
         .or(`title.ilike.${pattern},description.ilike.${pattern}`)
         .order('updated_at', { ascending: false })
         .range(0, 9),
@@ -219,5 +221,4 @@ function normalizeSearchInput(value: string) {
 function escapeOrTerm(value: string) {
   return value.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
 }
-
 

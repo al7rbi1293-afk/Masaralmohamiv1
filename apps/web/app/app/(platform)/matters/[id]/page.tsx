@@ -17,9 +17,11 @@ import { getMatterById, type MatterStatus } from '@/lib/matters';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { listTasks } from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { archiveDocumentAction, deleteDocumentAction, restoreDocumentAction } from '../../documents/actions';
 import {
   archiveMatterAction,
   createMatterEventAction,
+  deleteMatterAction,
   restoreMatterAction,
   updateMatterAction,
 } from '../actions';
@@ -486,6 +488,16 @@ async function MatterSummarySection({
             destructive
           />
         )}
+        <ConfirmActionForm
+          action={deleteMatterAction.bind(null, matterId, '/app/matters')}
+          triggerLabel="حذف نهائي"
+          triggerVariant="outline"
+          triggerSize="md"
+          confirmTitle="حذف القضية نهائيًا"
+          confirmMessage="سيتم حذف القضية وكل المهام والمستندات والفواتير وعروض الأسعار المرتبطة بها نهائيًا. لا يمكن التراجع عن هذا الإجراء."
+          confirmLabel="حذف نهائي"
+          destructive
+        />
       </div>
     </>
   );
@@ -698,6 +710,7 @@ async function MatterDocumentsSection({
   const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
   const documentsResult = await listDocuments({
     matterId,
+    archived: 'all',
     page,
     limit: 10,
   });
@@ -745,7 +758,12 @@ async function MatterDocumentsSection({
               <tbody className="divide-y divide-brand-border dark:divide-slate-800">
                 {documentsResult.data.map((doc) => (
                   <tr key={doc.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
-                    <td className="px-3 py-3 font-medium text-brand-navy dark:text-slate-100">{doc.title}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap items-center gap-2 font-medium text-brand-navy dark:text-slate-100">
+                        <span>{doc.title}</span>
+                        {doc.is_archived ? <Badge variant="warning">مؤرشف</Badge> : null}
+                      </div>
+                    </td>
                     <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
                       {doc.latestVersion ? `v${doc.latestVersion.version_no} · ${doc.latestVersion.file_name}` : '—'}
                     </td>
@@ -759,6 +777,39 @@ async function MatterDocumentsSection({
                         </Link>
                         <DocumentDownloadButton storagePath={doc.latestVersion?.storage_path} variant="ghost" size="sm" />
                         <DocumentShareButton documentId={doc.id} />
+                        {doc.is_archived ? (
+                          <ConfirmActionForm
+                            action={restoreDocumentAction.bind(null, doc.id, `/app/matters/${matterId}?tab=documents`)}
+                            triggerLabel="استعادة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="استعادة المستند"
+                            confirmMessage="هل تريد استعادة هذا المستند؟"
+                            confirmLabel="استعادة"
+                            destructive={false}
+                          />
+                        ) : (
+                          <ConfirmActionForm
+                            action={archiveDocumentAction.bind(null, doc.id, `/app/matters/${matterId}?tab=documents`)}
+                            triggerLabel="أرشفة"
+                            triggerVariant="outline"
+                            triggerSize="sm"
+                            confirmTitle="أرشفة المستند"
+                            confirmMessage="هل تريد أرشفة هذا المستند؟ يمكنك استعادته لاحقًا."
+                            confirmLabel="أرشفة"
+                            destructive
+                          />
+                        )}
+                        <ConfirmActionForm
+                          action={deleteDocumentAction.bind(null, doc.id, `/app/matters/${matterId}?tab=documents`)}
+                          triggerLabel="حذف"
+                          triggerVariant="outline"
+                          triggerSize="sm"
+                          confirmTitle="حذف المستند نهائيًا"
+                          confirmMessage="سيتم حذف المستند وكل نسخه وروابط مشاركته نهائيًا."
+                          confirmLabel="حذف نهائي"
+                          destructive
+                        />
                       </div>
                     </td>
                   </tr>
@@ -814,6 +865,7 @@ async function MatterTasksSection({
     priority: 'all',
     due: 'all',
     assignee: 'any',
+    archived: 'all',
     page: 1,
     limit: 20,
   });
@@ -827,6 +879,7 @@ async function MatterTasksSection({
     due_at: task.due_at,
     priority: task.priority,
     status: task.status,
+    is_archived: task.is_archived,
   }));
 
   return (

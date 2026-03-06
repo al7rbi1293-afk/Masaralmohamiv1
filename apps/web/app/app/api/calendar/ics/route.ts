@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
         .from('tasks')
         .select('id, title, due_at, matter_id, matters(title)')
         .eq('org_id', orgId)
+        .eq('is_archived', false)
         .not('due_at', 'is', null)
         .gte('due_at', fromStart.toISOString())
         .lt('due_at', toEndExclusive.toISOString())
@@ -124,6 +125,7 @@ export async function GET(request: NextRequest) {
         .from('invoices')
         .select('id, number, due_at')
         .eq('org_id', orgId)
+        .eq('is_archived', false)
         .not('due_at', 'is', null)
         .gte('due_at', fromStart.toISOString())
         .lt('due_at', toEndExclusive.toISOString())
@@ -289,4 +291,3 @@ function toUserMessage(error: unknown) {
 
   return message || 'تعذر إنشاء ملف التقويم. حاول مرة أخرى.';
 }
-

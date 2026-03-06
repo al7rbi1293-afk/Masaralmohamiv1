@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { runCascadeDelete } from '@/lib/entity-admin';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
@@ -9,6 +10,7 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'todo' | 'doing' | 'done' | 'canceled';
 export type TaskDueFilter = 'overdue' | 'today' | 'week' | 'all';
 export type TaskAssigneeFilter = 'me' | 'unassigned' | 'any';
+export type TaskArchiveFilter = 'active' | 'archived' | 'all';
 
 export type TaskMatter = {
   id: string;
@@ -25,6 +27,7 @@ export type Task = {
   due_at: string | null;
   priority: TaskPriority;
   status: TaskStatus;
+  is_archived: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -48,13 +51,14 @@ export type ListTasksParams = {
   priority?: TaskPriority | 'all';
   due?: TaskDueFilter;
   assignee?: TaskAssigneeFilter;
+  archived?: TaskArchiveFilter;
   matterId?: string;
   page?: number;
   limit?: number;
 };
 
 const TASK_SELECT =
-  'id, org_id, matter_id, title, description, assignee_id, due_at, priority, status, created_by, created_at, updated_at, matter:matters(id, title)';
+  'id, org_id, matter_id, title, description, assignee_id, due_at, priority, status, is_archived, created_by, created_at, updated_at, matter:matters(id, title)';
 
 export async function listTasks(params: ListTasksParams = {}): Promise<PaginatedResult<Task>> {
   const orgId = await requireOrgIdForUser();
@@ -69,6 +73,7 @@ export async function listTasks(params: ListTasksParams = {}): Promise<Paginated
   const priority = params.priority ?? 'all';
   const due = params.due ?? 'all';
   const assignee = params.assignee ?? 'any';
+  const archived = params.archived ?? 'active';
   const q = cleanQuery(params.q);
   const matterId = params.matterId?.trim();
 
@@ -90,6 +95,10 @@ export async function listTasks(params: ListTasksParams = {}): Promise<Paginated
 
   if (priority !== 'all') {
     query = query.eq('priority', priority);
+  }
+
+  if (archived !== 'all') {
+    query = query.eq('is_archived', archived === 'archived');
   }
 
   if (q) {
@@ -278,6 +287,33 @@ export async function setTaskStatus(id: string, payload: SetTaskStatusPayload): 
   return normalizeTask(data as TaskRow);
 }
 
+export async function setTaskArchived(id: string, isArchived: boolean): Promise<Task> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({ is_archived: isArchived })
+    .eq('org_id', orgId)
+    .eq('id', id)
+    .select(TASK_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error('not_found');
+  }
+
+  return normalizeTask(data as TaskRow);
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await runCascadeDelete('delete_task_cascade', { p_task_id: id });
+}
+
 function normalizeTask(value: TaskRow): Task {
   const rawMatter = value.matter;
   const matter = Array.isArray(rawMatter) ? rawMatter[0] ?? null : rawMatter ?? null;
@@ -342,4 +378,3 @@ async function applyAssigneeFilter(query: any, assignee: TaskAssigneeFilter) {
 
   return query.eq('assignee_id', currentUser.id);
 }
-

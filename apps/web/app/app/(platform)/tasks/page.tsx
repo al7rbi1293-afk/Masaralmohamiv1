@@ -4,7 +4,14 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TasksTableClient } from '@/components/tasks/tasks-table-client';
 import { listMatters } from '@/lib/matters';
-import { listTasks, type TaskAssigneeFilter, type TaskDueFilter, type TaskPriority, type TaskStatus } from '@/lib/tasks';
+import {
+  listTasks,
+  type TaskArchiveFilter,
+  type TaskAssigneeFilter,
+  type TaskDueFilter,
+  type TaskPriority,
+  type TaskStatus,
+} from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 type TasksPageProps = {
@@ -14,6 +21,7 @@ type TasksPageProps = {
     priority?: string;
     due?: string;
     assignee?: string;
+    archived?: string;
     page?: string;
     error?: string;
     new?: string;
@@ -24,6 +32,7 @@ const allowedStatuses: Array<TaskStatus | 'all'> = ['all', 'todo', 'doing', 'don
 const allowedPriorities: Array<TaskPriority | 'all'> = ['all', 'low', 'medium', 'high'];
 const allowedDue: TaskDueFilter[] = ['all', 'overdue', 'today', 'week'];
 const allowedAssignee: TaskAssigneeFilter[] = ['any', 'me', 'unassigned'];
+const allowedArchived: TaskArchiveFilter[] = ['active', 'archived', 'all'];
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
   const q = (searchParams?.q ?? '').trim();
@@ -41,6 +50,8 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
   const assigneeRaw = (searchParams?.assignee ?? 'any').trim();
   const assignee: TaskAssigneeFilter = allowedAssignee.includes(assigneeRaw as any) ? (assigneeRaw as any) : 'any';
+  const archivedRaw = (searchParams?.archived ?? 'active').trim();
+  const archived: TaskArchiveFilter = allowedArchived.includes(archivedRaw as any) ? (archivedRaw as any) : 'active';
 
   const page = Math.max(1, Number(searchParams?.page ?? '1') || 1);
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
@@ -58,6 +69,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         priority,
         due,
         assignee,
+        archived,
         page,
         limit: 10,
       }),
@@ -109,6 +121,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     due_at: task.due_at,
     priority: task.priority,
     status: task.status,
+    is_archived: task.is_archived,
     updated_at: task.updated_at,
     matter: task.matter ? { id: task.matter.id, title: task.matter.title } : null,
   }));
@@ -119,6 +132,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     priority,
     due,
     assignee,
+    archived,
     page: Math.max(1, tasksResult.page - 1),
   });
 
@@ -128,6 +142,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     priority,
     due,
     assignee,
+    archived,
     page: Math.min(totalPages, tasksResult.page + 1),
   });
 
@@ -146,7 +161,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         </p>
       ) : null}
 
-      <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-[1fr_150px_150px_150px_150px_auto]">
+      <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-[1fr_140px_140px_140px_150px_150px_auto]">
         <label className="block">
           <span className="sr-only">بحث</span>
           <input
@@ -213,6 +228,19 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           </select>
         </label>
 
+        <label className="block">
+          <span className="sr-only">الأرشفة</span>
+          <select
+            name="archived"
+            defaultValue={archived}
+            className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+          >
+            <option value="active">نشطة</option>
+            <option value="archived">مؤرشفة</option>
+            <option value="all">الكل</option>
+          </select>
+        </label>
+
         <button type="submit" className={buttonVariants('outline', 'sm')}>
           فلترة
         </button>
@@ -258,6 +286,7 @@ function buildQuery(params: {
   priority: TaskPriority | 'all';
   due: TaskDueFilter;
   assignee: TaskAssigneeFilter;
+  archived: TaskArchiveFilter;
   page: number;
 }) {
   const query: Record<string, string> = { page: String(params.page) };
@@ -267,6 +296,7 @@ function buildQuery(params: {
   if (params.priority !== 'all') query.priority = params.priority;
   if (params.due !== 'all') query.due = params.due;
   if (params.assignee !== 'any') query.assignee = params.assignee;
+  if (params.archived !== 'active') query.archived = params.archived;
 
   return query;
 }

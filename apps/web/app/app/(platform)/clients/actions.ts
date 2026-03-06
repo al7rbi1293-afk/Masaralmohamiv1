@@ -142,6 +142,7 @@ export async function deleteClientAction(id: string, redirectTo = '/app/clients'
     });
     logInfo('client_deleted', { clientId: id });
     revalidatePath('/app/clients');
+    revalidatePath(`/app/clients/${id}`);
     redirect(withToast(redirectTo, 'success', 'تم حذف العميل بنجاح.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -189,4 +190,3 @@ function diffClientFields(before: Awaited<ReturnType<typeof getClientById>>, aft
   }
   return changed;
 }
-

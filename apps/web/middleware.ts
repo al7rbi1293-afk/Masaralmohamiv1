@@ -65,6 +65,19 @@ function isBypassedPath(pathname: string) {
   return false;
 }
 
+function isServerActionRequest(request: NextRequest) {
+  if (request.method !== 'POST') {
+    return false;
+  }
+
+  const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
+
+  // Next.js server actions submit as multipart form posts and enhanced requests
+  // also carry the Next-Action header. Running the generic CSRF middleware on
+  // these requests blocks built-in form actions such as logout and delete.
+  return request.headers.has('next-action') || contentType.includes('multipart/form-data');
+}
+
 function missingEnvResponse() {
   return new NextResponse(
     'إعدادات البيئة غير مكتملة.',
@@ -233,7 +246,9 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const pathname = request.nextUrl.pathname;
+  const isServerAction = isServerActionRequest(request);
   const shouldRunCsrf =
+    !isServerAction &&
     !pathname.startsWith('/app/api/') &&
     !pathname.startsWith('/admin/api/') &&
     pathname !== '/api/copilot';

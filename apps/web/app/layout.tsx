@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import { Analytics as VercelAnalytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { IBM_Plex_Sans_Arabic, Inter } from 'next/font/google';
 import { Footer } from '@/components/layout/footer';
 import { Navbar } from '@/components/layout/navbar';
 import { ThemeProvider } from '@/components/layout/theme-provider';
-import { Analytics } from '@/components/analytics/analytics';
+import { MarketingAnalytics } from '@/components/analytics/analytics';
 import { getPublicSiteUrl } from '@/lib/env';
 import { siteConfig } from '@/lib/site';
 import './globals.css';
@@ -21,6 +23,7 @@ const inter = Inter({
 });
 
 const siteUrl = getPublicSiteUrl();
+const isVercelDeployment = Boolean(process.env.VERCEL);
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -58,7 +61,9 @@ export default function RootLayout({
           <main id="main-content">{children}</main>
           <Footer />
         </ThemeProvider>
-        <Analytics />
+        <MarketingAnalytics />
+        {isVercelDeployment ? <VercelAnalytics /> : null}
+        {isVercelDeployment ? <SpeedInsights /> : null}
       </body>
     </html>
   );

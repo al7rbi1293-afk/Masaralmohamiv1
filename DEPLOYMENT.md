@@ -18,6 +18,12 @@
 
 ملاحظة: بعد أول نشر، اضبط `NEXT_PUBLIC_SITE_URL` على رابط الإنتاج في Vercel ثم أعد النشر لتحديث canonical وOpenGraph وsitemap وrobots.
 
+## Pro Features Enabled
+
+- `Vercel Web Analytics` و`Speed Insights` أصبحا مدمجين تلقائيًا داخل `apps/web/app/layout.tsx` وسيعملان على أي نشر داخل Vercel بدون إضافة سكربتات خارجية.
+- شعارات المكاتب أصبحت تُعرض عبر `Supabase Storage Image Transformations` بدل الرابط الخام، وهذا يحسن حجم الصورة والتحميل من CDN في صفحات المنصة والإعدادات.
+- إذا فعّلت `Supabase Custom Domain` لاحقًا، حدّث `NEXT_PUBLIC_SUPABASE_URL` إلى الدومين المخصص نفسه حتى تستمر مسارات الصور المحوّلة بالعمل على نفس النطاق.
+
 ## Method 1: Vercel Dashboard (UI)
 
 1. افتح Vercel Dashboard ثم `Add New` -> `Project`.

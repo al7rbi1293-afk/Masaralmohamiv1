@@ -1,4 +1,20 @@
 /** @type {import('next').NextConfig} */
+const supabaseRemotePattern = (() => {
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!rawUrl) return null;
+
+  try {
+    const url = new URL(rawUrl);
+    return {
+      protocol: url.protocol.replace(':', ''),
+      hostname: url.hostname,
+      pathname: '/storage/v1/**',
+    };
+  } catch {
+    return null;
+  }
+})();
+
 const securityHeaders = [
   {
     key: 'X-Content-Type-Options',
@@ -40,6 +56,10 @@ const nextConfig = {
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: supabaseRemotePattern ? [supabaseRemotePattern] : [],
   },
   async headers() {
     return [

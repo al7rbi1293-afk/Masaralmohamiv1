@@ -47,6 +47,7 @@ const navItemsBase = [
 
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { getSupabaseOfficeLogoUrl } from '@/lib/supabase/public-assets';
 import Image from 'next/image';
 
 export default async function PlatformLayout({ children }: PlatformLayoutProps) {
@@ -72,7 +73,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
 
     if (data) {
       orgName = data.name || orgName;
-      orgLogo = data.logo_url || '';
+      orgLogo = getSupabaseOfficeLogoUrl(data.logo_url || '', 80);
     }
   }
 
@@ -93,7 +94,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
           <div className="flex items-center gap-3">
             {orgLogo ? (
               <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <Image src={orgLogo} alt={orgName} fill className="object-contain" unoptimized />
+                <Image src={orgLogo} alt={orgName} fill className="object-contain" sizes="40px" />
               </div>
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-emerald text-white shadow-sm">

@@ -18,6 +18,7 @@ export function OfficeIdentityForm({ currentName, currentLogoUrl, csrfToken }: O
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const isLocalPreview = previewUrl.startsWith('blob:') || previewUrl.startsWith('data:');
 
     async function handleSubmit(formData: FormData) {
         setIsSubmitting(true);
@@ -89,7 +90,8 @@ export function OfficeIdentityForm({ currentName, currentLogoUrl, csrfToken }: O
                                     alt="Office Logo Preview"
                                     fill
                                     className="object-contain p-1"
-                                    unoptimized
+                                    sizes="80px"
+                                    unoptimized={isLocalPreview}
                                 />
                             ) : (
                                 <span className="text-xs text-slate-400">لا يوجد شعار</span>

@@ -2,21 +2,21 @@
 
 import Script from 'next/script';
 
-export function Analytics() {
-    const gaId = process.env.NEXT_PUBLIC_GA_ID;
-    const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+export function MarketingAnalytics() {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
-    return (
+  return (
+    <>
+      {/* Google Analytics 4 */}
+      {gaId ? (
         <>
-            {/* Google Analytics 4 */}
-            {gaId ? (
-                <>
-                    <Script
-                        src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-                        strategy="afterInteractive"
-                    />
-                    <Script id="ga4-init" strategy="afterInteractive">
-                        {`
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+            strategy="afterInteractive"
+          />
+          <Script id="ga4-init" strategy="afterInteractive">
+            {`
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
@@ -25,14 +25,14 @@ export function Analytics() {
                 send_page_view: true,
               });
             `}
-                    </Script>
-                </>
-            ) : null}
+          </Script>
+        </>
+      ) : null}
 
-            {/* Meta Pixel */}
-            {pixelId ? (
-                <Script id="meta-pixel-init" strategy="afterInteractive">
-                    {`
+      {/* Meta Pixel */}
+      {pixelId ? (
+        <Script id="meta-pixel-init" strategy="afterInteractive">
+          {`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
             n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -44,8 +44,10 @@ export function Analytics() {
             fbq('init', '${pixelId}');
             fbq('track', 'PageView');
           `}
-                </Script>
-            ) : null}
-        </>
-    );
+        </Script>
+      ) : null}
+    </>
+  );
 }
+
+export const Analytics = MarketingAnalytics;

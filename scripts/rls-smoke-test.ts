@@ -81,10 +81,33 @@ async function createUser(
     throw new Error(`createUser failed: ${error?.message ?? 'unknown_error'}`);
   }
 
+  // memberships and related FKs now reference public.app_users.
+  // Keep auth.users and app_users aligned for RLS smoke setup.
+  const { error: appUserError } = await service.from('app_users').upsert(
+    {
+      id: data.user.id,
+      email,
+      password_hash: '',
+      full_name: fullName,
+      email_verified: true,
+      status: 'active',
+    },
+    { onConflict: 'id' },
+  );
+
+  if (appUserError) {
+    throw new Error(`createAppUser failed: ${appUserError.message}`);
+  }
+
   return { id: data.user.id, password };
 }
 
 async function deleteUser(service: SupabaseClient, userId: string) {
+  try {
+    await service.from('app_users').delete().eq('id', userId);
+  } catch {
+    // best-effort
+  }
   try {
     await service.auth.admin.deleteUser(userId);
   } catch {
@@ -487,4 +510,3 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
-

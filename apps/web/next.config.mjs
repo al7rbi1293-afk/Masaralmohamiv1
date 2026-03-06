@@ -34,6 +34,8 @@ const securityHeaders = [
 
 import { withSentryConfig } from '@sentry/nextjs';
 
+const hasSentryAuthToken = Boolean(process.env.SENTRY_AUTH_TOKEN?.trim());
+
 const nextConfig = {
   reactStrictMode: true,
   eslint: {
@@ -53,6 +55,7 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options
 
+  authToken: process.env.SENTRY_AUTH_TOKEN,
   org: process.env.SENTRY_ORG || "masar",
   project: process.env.SENTRY_PROJECT || "web",
 
@@ -63,7 +66,7 @@ export default withSentryConfig(nextConfig, {
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
   // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
+  widenClientFileUpload: hasSentryAuthToken,
 
   // Automatically annotate React components to show their full name in breadcrumbs and session replay
   reactComponentAnnotation: {
@@ -79,6 +82,16 @@ export default withSentryConfig(nextConfig, {
   // Hides source maps from generated client bundles
   hideSourceMaps: true,
 
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: hasSentryAuthToken,
+    disable: !hasSentryAuthToken,
+  },
+
+  release: {
+    create: hasSentryAuthToken,
+    finalize: hasSentryAuthToken,
+  },
+
   // Automatically tree-shake Sentry logger statements to reduce bundle size
   disableLogger: true,
 
@@ -87,4 +100,8 @@ export default withSentryConfig(nextConfig, {
   // https://docs.sentry.io/product/crons/
   // https://vercel.com/docs/cron-jobs
   automaticVercelMonitors: true,
+
+  unstable_sentryWebpackPluginOptions: {
+    disable: !hasSentryAuthToken,
+  },
 });

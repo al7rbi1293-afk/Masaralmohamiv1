@@ -2,9 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
-import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
-import { SentryClientInit } from '@/components/observability/sentry-client-init';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { isAppAdmin } from '@/lib/admin';
 import {
@@ -89,8 +87,6 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-brand-background dark:bg-slate-950">
-      <SentryClientInit />
-
       {/* Modern Sticky Glass Header */}
       <header className="sticky top-0 z-40 w-full border-b border-brand-border/60 bg-white/70 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
         <Container className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">

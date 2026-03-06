@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
 import { Container } from '@/components/ui/container';
-import { SentryClientInit } from '@/components/observability/sentry-client-init';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { isAppAdmin } from '@/lib/admin';
 import { LogOut, ShieldAlert } from 'lucide-react';
@@ -30,7 +29,6 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
 
     return (
         <div className="flex min-h-screen flex-col">
-            <SentryClientInit />
             <header className="border-b border-gray-200 bg-white">
                 <Container className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                     <Link href="/admin" className="text-lg font-semibold text-gray-900">

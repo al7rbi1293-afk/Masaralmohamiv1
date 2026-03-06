@@ -1,11 +1,28 @@
 import * as Sentry from '@sentry/nextjs';
 
-Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+function scrubEvent(event: any) {
+  if (event?.request?.url) {
+    event.request.url = String(event.request.url).split('?')[0] ?? event.request.url;
+  }
 
-    // Adjust this value in production, or use tracesSampler for greater control
-    tracesSampleRate: 1,
+  if (event?.request) {
+    delete event.request.cookies;
+    delete event.request.headers;
+    delete event.request.data;
+    delete event.request.query_string;
+  }
 
-    // Setting this option to true will print useful information to the console while you're setting up Sentry.
-    debug: false,
-});
+  delete event.user;
+  return event;
+}
+
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
+
+if (dsn) {
+  Sentry.init({
+    dsn,
+    sendDefaultPii: false,
+    tracesSampleRate: 0,
+    beforeSend: scrubEvent,
+  });
+}

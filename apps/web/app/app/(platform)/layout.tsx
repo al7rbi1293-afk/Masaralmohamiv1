@@ -62,6 +62,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   const orgId = trial.orgId;
   let orgName = 'مسار المحامي';
   let orgLogo = '';
+  const defaultBrandName = 'مسار المحامي';
 
   if (orgId) {
     const supabase = createSupabaseServerRlsClient();
@@ -102,7 +103,19 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
               </div>
             )}
             <div>
-              <h1 className="text-base font-bold tracking-tight text-brand-navy dark:text-slate-100">{orgName}</h1>
+              {orgName === defaultBrandName ? (
+                <Image
+                  src="/masar-logo.png"
+                  alt={orgName}
+                  width={600}
+                  height={400}
+                  className="h-10 w-auto"
+                  sizes="(max-width: 640px) 120px, 160px"
+                  priority
+                />
+              ) : (
+                <h1 className="text-base font-bold tracking-tight text-brand-navy dark:text-slate-100">{orgName}</h1>
+              )}
               <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 منصة العمليات
               </p>

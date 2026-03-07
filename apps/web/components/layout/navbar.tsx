@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { navLinks, siteConfig } from '@/lib/site';
 import { Container } from '../ui/container';
 import { buttonVariants } from '../ui/button';
@@ -11,9 +12,18 @@ export function Navbar() {
         <div className="flex items-center justify-between gap-4">
           <Link
             href="/"
-            className="text-lg font-bold tracking-tight text-brand-navy dark:text-slate-100"
+            className="inline-flex items-center"
+            aria-label={siteConfig.nameAr}
           >
-            {siteConfig.nameAr}
+            <Image
+              src="/masar-logo.png"
+              alt={siteConfig.nameAr}
+              width={1536}
+              height={1024}
+              className="h-12 w-auto"
+              sizes="(max-width: 640px) 112px, 160px"
+              priority
+            />
           </Link>
 
           <div className="flex items-center gap-2">

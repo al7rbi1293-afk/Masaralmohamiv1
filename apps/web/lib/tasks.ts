@@ -43,6 +43,10 @@ type TaskRowLike = Omit<TaskRow, 'is_archived'> & {
   is_archived?: boolean;
 };
 
+type TaskIdRow = {
+  id: string;
+};
+
 export type PaginatedResult<T> = {
   data: T[];
   page: number;
@@ -143,21 +147,11 @@ export async function getTaskById(id: string): Promise<Task | null> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
 
-  let { data, error } = await supabase
-    .from('tasks')
-    .select(TASK_SELECT)
-    .eq('org_id', orgId)
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error && isMissingColumnError(error, 'tasks', 'is_archived')) {
-    ({ data, error } = await supabase
-      .from('tasks')
-      .select(TASK_SELECT_LEGACY)
-      .eq('org_id', orgId)
-      .eq('id', id)
-      .maybeSingle());
-  }
+  const { data, error } = await selectTaskByIdWithArchiveFallback({
+    supabase,
+    orgId,
+    id,
+  });
 
   if (error) {
     throw error;
@@ -207,7 +201,7 @@ export async function createTask(payload: CreateTaskPayload): Promise<Task> {
   const assigneeIdRaw = emptyToNull(parsed.data.assignee_id);
   const assigneeId = parsed.data.assignee_id === null ? null : assigneeIdRaw ?? currentUser.id;
 
-  const { data, error } = await supabase
+  const { data: inserted, error: insertError } = await supabase
     .from('tasks')
     .insert({
       org_id: orgId,
@@ -220,14 +214,24 @@ export async function createTask(payload: CreateTaskPayload): Promise<Task> {
       status: parsed.data.status ?? 'todo',
       created_by: currentUser.id,
     })
-    .select(TASK_SELECT)
+    .select('id')
     .single();
+
+  if (insertError || !inserted) {
+    throw insertError ?? new Error('تعذر إنشاء المهمة.');
+  }
+
+  const { data, error } = await selectTaskByIdWithArchiveFallback({
+    supabase,
+    orgId,
+    id: (inserted as TaskIdRow).id,
+  });
 
   if (error || !data) {
     throw error ?? new Error('تعذر إنشاء المهمة.');
   }
 
-  return normalizeTask(data as TaskRow);
+  return normalizeTask(data);
 }
 
 const updateTaskSchema = createTaskSchema.partial().extend({
@@ -260,13 +264,27 @@ export async function updateTask(id: string, payload: UpdateTaskPayload): Promis
   if (parsed.data.priority !== undefined) update.priority = parsed.data.priority;
   if (parsed.data.status !== undefined) update.status = parsed.data.status;
 
-  const { data, error } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('tasks')
     .update(update)
     .eq('org_id', orgId)
     .eq('id', id)
-    .select(TASK_SELECT)
+    .select('id')
     .maybeSingle();
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  if (!updated) {
+    throw new Error('not_found');
+  }
+
+  const { data, error } = await selectTaskByIdWithArchiveFallback({
+    supabase,
+    orgId,
+    id: (updated as TaskIdRow).id,
+  });
 
   if (error) {
     throw error;
@@ -276,7 +294,7 @@ export async function updateTask(id: string, payload: UpdateTaskPayload): Promis
     throw new Error('not_found');
   }
 
-  return normalizeTask(data as TaskRow);
+  return normalizeTask(data);
 }
 
 const setTaskStatusSchema = z.object({
@@ -294,13 +312,27 @@ export async function setTaskStatus(id: string, payload: SetTaskStatusPayload): 
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
 
-  const { data, error } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('tasks')
     .update({ status: parsed.data.status })
     .eq('org_id', orgId)
     .eq('id', id)
-    .select(TASK_SELECT)
+    .select('id')
     .maybeSingle();
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  if (!updated) {
+    throw new Error('not_found');
+  }
+
+  const { data, error } = await selectTaskByIdWithArchiveFallback({
+    supabase,
+    orgId,
+    id: (updated as TaskIdRow).id,
+  });
 
   if (error) {
     throw error;
@@ -310,7 +342,7 @@ export async function setTaskStatus(id: string, payload: SetTaskStatusPayload): 
     throw new Error('not_found');
   }
 
-  return normalizeTask(data as TaskRow);
+  return normalizeTask(data);
 }
 
 export async function setTaskArchived(id: string, isArchived: boolean): Promise<Task> {
@@ -352,6 +384,33 @@ function normalizeTask(value: TaskRowLike): Task {
     ...value,
     is_archived: Boolean(value.is_archived ?? false),
     matter,
+  };
+}
+
+async function selectTaskByIdWithArchiveFallback(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  id: string;
+}) {
+  let { data, error } = await params.supabase
+    .from('tasks')
+    .select(TASK_SELECT)
+    .eq('org_id', params.orgId)
+    .eq('id', params.id)
+    .maybeSingle();
+
+  if (error && isMissingColumnError(error, 'tasks', 'is_archived')) {
+    ({ data, error } = await params.supabase
+      .from('tasks')
+      .select(TASK_SELECT_LEGACY)
+      .eq('org_id', params.orgId)
+      .eq('id', params.id)
+      .maybeSingle());
+  }
+
+  return {
+    data: (data as TaskRowLike | null) ?? null,
+    error,
   };
 }
 

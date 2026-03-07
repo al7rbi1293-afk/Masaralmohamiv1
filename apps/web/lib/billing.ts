@@ -67,6 +67,10 @@ type InvoiceRowLike = Omit<InvoiceRow, 'is_archived'> & {
   is_archived?: boolean;
 };
 
+type InvoiceIdRow = {
+  id: string;
+};
+
 export type Payment = {
   id: string;
   org_id: string;
@@ -192,26 +196,16 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
 
-  let { data, error } = await supabase
-    .from('invoices')
-    .select(INVOICE_SELECT)
-    .eq('org_id', orgId)
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error && isMissingColumnError(error, 'invoices', 'is_archived')) {
-    ({ data, error } = await supabase
-      .from('invoices')
-      .select(INVOICE_SELECT_LEGACY)
-      .eq('org_id', orgId)
-      .eq('id', id)
-      .maybeSingle());
-  }
+  const { data, error } = await selectInvoiceByIdWithArchiveFallback({
+    supabase,
+    orgId,
+    id,
+  });
 
   if (error) throw error;
   if (!data) return null;
 
-  return normalizeInvoiceRow(data as InvoiceRowLike);
+  return normalizeInvoiceRow(data);
 }
 
 export type ListQuotesParams = {
@@ -474,12 +468,22 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<Invo
         due_at: payload.due_at ?? null,
         created_by: user.id,
       })
-      .select(INVOICE_SELECT)
+      .select('id')
       .single();
 
     if (!error && data) {
-      const row = normalizeRowMatter(normalizeRowClient(data as InvoiceRow));
-      return row as unknown as Invoice;
+      const insertedId = (data as InvoiceIdRow).id;
+      const selected = await selectInvoiceByIdWithArchiveFallback({
+        supabase,
+        orgId,
+        id: insertedId,
+      });
+
+      if (selected.error || !selected.data) {
+        throw selected.error ?? new Error('تعذر إنشاء الفاتورة.');
+      }
+
+      return normalizeInvoiceRow(selected.data);
     }
 
     if (error && isUniqueViolation(error)) {
@@ -538,14 +542,22 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
     })
     .eq('org_id', orgId)
     .eq('id', id)
-    .select(INVOICE_SELECT)
+    .select('id')
     .maybeSingle();
 
   if (error) throw error;
   if (!data) throw new Error('not_found');
 
-  const row = normalizeRowMatter(normalizeRowClient(data as InvoiceRow));
-  return row as unknown as Invoice;
+  const selected = await selectInvoiceByIdWithArchiveFallback({
+    supabase,
+    orgId,
+    id: (data as InvoiceIdRow).id,
+  });
+
+  if (selected.error) throw selected.error;
+  if (!selected.data) throw new Error('not_found');
+
+  return normalizeInvoiceRow(selected.data);
 }
 
 export async function setInvoiceArchived(id: string, isArchived: boolean): Promise<Invoice> {
@@ -572,6 +584,33 @@ export async function setInvoiceArchived(id: string, isArchived: boolean): Promi
 
 export async function deleteInvoice(id: string): Promise<void> {
   await runCascadeDelete('delete_invoice_cascade', { p_invoice_id: id });
+}
+
+async function selectInvoiceByIdWithArchiveFallback(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  id: string;
+}) {
+  let { data, error } = await params.supabase
+    .from('invoices')
+    .select(INVOICE_SELECT)
+    .eq('org_id', params.orgId)
+    .eq('id', params.id)
+    .maybeSingle();
+
+  if (error && isMissingColumnError(error, 'invoices', 'is_archived')) {
+    ({ data, error } = await params.supabase
+      .from('invoices')
+      .select(INVOICE_SELECT_LEGACY)
+      .eq('org_id', params.orgId)
+      .eq('id', params.id)
+      .maybeSingle());
+  }
+
+  return {
+    data: (data as InvoiceRowLike | null) ?? null,
+    error,
+  };
 }
 
 export type AddPaymentPayload = {

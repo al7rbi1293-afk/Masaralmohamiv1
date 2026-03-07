@@ -124,12 +124,17 @@ export function isCopilotEnabled() {
 }
 
 export function getPublicSiteUrl() {
-  const rawValue =
+  const vercelEnv = process.env.VERCEL_ENV?.trim();
+  const productionUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  const deploymentUrl =
     process.env.NEXT_PUBLIC_VERCEL_URL?.trim() ||
-    process.env.VERCEL_URL?.trim() ||
-    LOCAL_SITE_URL;
+    process.env.VERCEL_URL?.trim();
+  const rawValue =
+    vercelEnv && vercelEnv !== 'production'
+      ? deploymentUrl || productionUrl || LOCAL_SITE_URL
+      : productionUrl || deploymentUrl || LOCAL_SITE_URL;
 
   try {
     let url = rawValue;
@@ -144,7 +149,7 @@ export function getPublicSiteUrl() {
     return normalized.toString().replace(/\/$/, '');
   } catch {
     throw new Error(
-      `قيمة NEXT_PUBLIC_SITE_URL غير صحيحة. NEXT_PUBLIC_SITE_URL or Vercel URLs must be valid. Received: ${rawValue}`,
+      `قيمة NEXT_PUBLIC_SITE_URL غير صحيحة. NEXT_PUBLIC_SITE_URL أو Vercel deployment URLs must be valid. Received: ${rawValue}`,
     );
   }
 }

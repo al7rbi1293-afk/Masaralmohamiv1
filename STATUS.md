@@ -6,7 +6,7 @@
 
 - Endpoint: `GET /api/health`
 - مثال:
-  - `https://masaralmohamiproject-pied.vercel.app/api/health`
+  - `https://masaralmohami.com/api/health`
 
 يرجع:
 ```json
@@ -47,4 +47,3 @@
 
 على Sentry:
 - Issues -> تُظهر الأخطاء حسب البيئة.
-

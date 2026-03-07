@@ -40,7 +40,7 @@ Ensure these are set in your production environment (Vercel):
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anonymous key for client-side requests. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Secret** key for admin tasks (User management, cron jobs). |
-| `NEXT_PUBLIC_SITE_URL` | The production URL (e.g., `https://masaralmohamiproject-pied.vercel.app`). |
+| `NEXT_PUBLIC_SITE_URL` | The production URL (e.g., `https://masaralmohami.com`). |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Google Analytics 4 Measurement ID. |
 | `NEXT_PUBLIC_FB_PIXEL_ID` | Meta Pixel ID. |
 | `AZURE_AD_CLIENT_ID` | Microsoft App Client ID (for Email). |

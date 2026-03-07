@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-https://masaralmohamiproject-pied.vercel.app}"
-DOMAIN="${DOMAIN:-masaralmohamiproject-pied.vercel.app}"
+BASE_URL="${BASE_URL:-https://masaralmohami.com}"
+DOMAIN="${DOMAIN:-masaralmohami.com}"
 HEALTH_PATH="${HEALTH_PATH:-/api/health}"
 OUT_DIR="${OUT_DIR:-./tmp/maintenance}"
 mkdir -p "$OUT_DIR"

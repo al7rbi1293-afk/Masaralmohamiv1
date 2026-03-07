@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 async function testPayment() {
   console.log('Testing payment add...');
   try {
-    const res = await fetch('https://masaralmohamiproject-pied.vercel.app/app/api/payments/add', {
+    const res = await fetch('https://masaralmohami.com/app/api/payments/add', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

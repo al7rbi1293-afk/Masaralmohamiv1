@@ -16,7 +16,11 @@
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 
-ملاحظة: بعد أول نشر، اضبط `NEXT_PUBLIC_SITE_URL` على رابط الإنتاج في Vercel ثم أعد النشر لتحديث canonical وOpenGraph وsitemap وrobots.
+ملاحظة: في بيئة `Production` اضبط `NEXT_PUBLIC_SITE_URL` على الدومين الرسمي:
+
+- `https://masaralmohami.com`
+
+وفي `Preview` يمكنك تركه فارغًا ليستخدم Vercel رابط المعاينة تلقائيًا، ثم أعد النشر لتحديث canonical وOpenGraph وsitemap وrobots.
 
 ## Pro Features Enabled
 
@@ -34,15 +38,15 @@
    - Root Directory: `apps/web`
    - Install Command: `npm install`
    - Build Command: `npm run build` (في الجذر هذا السكربت مهيأ لبناء `@masar/web` فقط)
-4. أضف Environment Variables (لكل من Preview وProduction):
+4. أضف Environment Variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `NEXT_PUBLIC_SITE_URL`
+   - `NEXT_PUBLIC_SITE_URL` = `https://masaralmohami.com` في `Production`
 5. اضغط Deploy.
 6. بعد أول Deploy:
-   - انسخ رابط الإنتاج (مثال: `https://your-project.vercel.app`)
-   - حدث `NEXT_PUBLIC_SITE_URL` بهذه القيمة
+   - اربط الدومين `masaralmohami.com` كمجال الإنتاج
+   - حدّث `NEXT_PUBLIC_SITE_URL` إلى `https://masaralmohami.com`
    - أعد النشر Redeploy.
 
 ## Method 2: Vercel CLI
@@ -64,7 +68,7 @@ vercel --prod
 npm run build:all
 ```
 
-ملاحظة: إذا كانت `NEXT_PUBLIC_SITE_URL` لم تُضبط بعد رابط الإنتاج الحقيقي، حدّثها بعد أول نشر ثم نفّذ:
+ملاحظة: إذا كانت `NEXT_PUBLIC_SITE_URL` لا تزال تشير إلى رابط مؤقت، حدّثها إلى `https://masaralmohami.com` ثم نفّذ:
 
 ```bash
 vercel --prod

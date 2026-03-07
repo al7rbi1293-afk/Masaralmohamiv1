@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { requireOrgIdForUser } from '@/lib/org';
-import { isMissingColumnError } from '@/lib/shared-utils';
+import { getErrorText, isMissingColumnError } from '@/lib/shared-utils';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
@@ -97,26 +97,15 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     source === 'hearings' ? ['hearing'] : source === 'meetings' ? ['meeting'] : ['hearing', 'meeting'];
 
   const eventsPromise = includeEvents
-    ? (() => {
-      let query = supabase
-        .from('matter_events')
-        .select(
-          mine
-            ? 'id, type, event_date, matter_id, matters!inner(title, assigned_user_id)'
-            : 'id, type, event_date, matter_id, matters(title, assigned_user_id)',
-        )
-        .eq('org_id', orgId)
-        .in('type', eventTypes)
-        .not('event_date', 'is', null)
-        .gte('event_date', fetchStart.toISOString())
-        .lt('event_date', fetchEnd.toISOString());
-
-      if (mine) {
-        query = query.eq('matters.assigned_user_id', user.id);
-      }
-
-      return query.order('event_date', { ascending: true }).limit(600);
-    })()
+    ? loadCalendarMatterEvents({
+      supabase,
+      orgId,
+      userId: user.id,
+      mine,
+      fetchStartIso: fetchStart.toISOString(),
+      fetchEndIso: fetchEnd.toISOString(),
+      eventTypes,
+    })
     : Promise.resolve({ data: [], error: null } as any);
 
   const tasksPromise = includeTasks
@@ -163,7 +152,8 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   }
 
   const eventItems = (eventsRes.data as any[]).map((row) => {
-    const matterTitle = row.matters?.title ? String(row.matters.title) : 'قضية';
+    const matter = eventsRes.matterById.get(String(row.matter_id ?? ''));
+    const matterTitle = matter?.title || 'قضية';
     const kind: 'hearing' | 'meeting' = row.type === 'meeting' ? 'meeting' : 'hearing';
     const title = kind === 'hearing' ? `جلسة: ${matterTitle}` : `اجتماع: ${matterTitle}`;
     return {
@@ -421,7 +411,7 @@ async function loadCalendarTasks(params: {
   const run = (includeArchiveFilter: boolean) => {
     let query = params.supabase
       .from('tasks')
-      .select('id, title, due_at, status, matter_id, assignee_id, matters(title)')
+      .select('id, title, due_at, status, matter_id, assignee_id')
       .eq('org_id', params.orgId)
       .not('due_at', 'is', null)
       .gte('due_at', params.fetchStartIso)
@@ -444,6 +434,78 @@ async function loadCalendarTasks(params: {
   }
 
   return result;
+}
+
+async function loadCalendarMatterEvents(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  userId: string;
+  mine: boolean;
+  fetchStartIso: string;
+  fetchEndIso: string;
+  eventTypes: Array<'hearing' | 'meeting'>;
+}) {
+  const eventsResult = await params.supabase
+    .from('matter_events')
+    .select('id, type, event_date, matter_id')
+    .eq('org_id', params.orgId)
+    .in('type', params.eventTypes)
+    .not('event_date', 'is', null)
+    .gte('event_date', params.fetchStartIso)
+    .lt('event_date', params.fetchEndIso)
+    .order('event_date', { ascending: true })
+    .limit(600);
+
+  if (eventsResult.error) {
+    return { data: [], matterById: new Map<string, { title: string; assigned_user_id?: string | null }>(), error: eventsResult.error };
+  }
+
+  const events = ((eventsResult.data as any[]) ?? []).filter((row) => row?.matter_id);
+  const matterIds = Array.from(new Set(events.map((row) => String(row.matter_id))));
+  const matterById = new Map<string, { title: string; assigned_user_id?: string | null }>();
+
+  if (!matterIds.length) {
+    return { data: events, matterById, error: null };
+  }
+
+  const loadMatters = async (withAssignedUserId: boolean) => {
+    const select = withAssignedUserId ? 'id, title, assigned_user_id' : 'id, title';
+    return params.supabase
+      .from('matters')
+      .select(select)
+      .eq('org_id', params.orgId)
+      .in('id', matterIds);
+  };
+
+  let mattersResult = await loadMatters(true);
+  if (
+    mattersResult.error &&
+    isMissingColumnError(mattersResult.error, 'matters', 'assigned_user_id')
+  ) {
+    mattersResult = await loadMatters(false);
+  }
+
+  if (mattersResult.error) {
+    return { data: [], matterById, error: mattersResult.error };
+  }
+
+  for (const matter of (mattersResult.data as any[]) ?? []) {
+    const id = String(matter.id ?? '');
+    if (!id) continue;
+    matterById.set(id, {
+      title: String(matter.title ?? 'قضية'),
+      assigned_user_id: matter.assigned_user_id ? String(matter.assigned_user_id) : null,
+    });
+  }
+
+  const filtered = params.mine
+    ? events.filter((row) => {
+      const matter = matterById.get(String(row.matter_id));
+      return Boolean(matter?.assigned_user_id && matter.assigned_user_id === params.userId);
+    })
+    : events;
+
+  return { data: filtered, matterById, error: null };
 }
 
 async function loadCalendarInvoices(params: {
@@ -539,7 +601,7 @@ function formatDateTime(value: string) {
 }
 
 function toUserMessage(error: any) {
-  const message = error instanceof Error ? error.message : '';
+  const message = getErrorText(error);
   const normalized = message.toLowerCase();
 
   if (

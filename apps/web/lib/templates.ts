@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { requireOrgIdForUser } from '@/lib/org';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 
 export type TemplateVariableSource = 'client' | 'matter' | 'org' | 'user' | 'computed' | 'manual';
@@ -33,6 +34,7 @@ export type TemplateVersion = {
   file_size: number;
   mime_type: string | null;
   variables: TemplateVersionVariable[];
+  uploaded_by: string;
   created_at: string;
 };
 
@@ -115,6 +117,90 @@ export async function listTemplates(params: ListTemplatesParams = {}): Promise<P
     limit,
     total: count ?? 0,
   };
+}
+
+export async function createTemplate(payload: {
+  name: string;
+  category: string;
+  description?: string | null;
+}): Promise<Template> {
+  const orgId = await requireOrgIdForUser();
+  const currentUser = await getCurrentAuthUser();
+  if (!currentUser) {
+    throw new Error('not_authenticated');
+  }
+
+  const supabase = createSupabaseServerRlsClient();
+  const { data, error } = await supabase
+    .from('templates')
+    .insert({
+      org_id: orgId,
+      name: payload.name.trim(),
+      category: cleanCategory(payload.category) || 'عام',
+      template_type: 'docx',
+      description: payload.description?.trim() ? payload.description.trim() : null,
+      created_by: currentUser.id,
+    })
+    .select(
+      'id, org_id, name, category, template_type, description, status, created_by, created_at, updated_at',
+    )
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as Template;
+}
+
+export async function getTemplateById(id: string): Promise<Template | null> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+
+  const { data, error } = await supabase
+    .from('templates')
+    .select(
+      'id, org_id, name, category, template_type, description, status, created_by, created_at, updated_at',
+    )
+    .eq('org_id', orgId)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    ...(data as Template),
+    template_type: 'docx',
+  };
+}
+
+export async function listTemplateVersions(templateId: string): Promise<TemplateVersion[]> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+
+  const { data, error } = await supabase
+    .from('template_versions')
+    .select('id, template_id, version_no, storage_path, file_name, file_size, mime_type, variables, uploaded_by, created_at')
+    .eq('org_id', orgId)
+    .eq('template_id', templateId)
+    .order('version_no', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data as Array<Omit<TemplateVersion, 'variables'> & { variables?: unknown }> | null) ?? [];
+
+  return rows.map((row) => ({
+    ...row,
+    variables: Array.isArray(row.variables) ? (row.variables as TemplateVersionVariable[]) : [],
+  }));
 }
 
 export async function listTemplateCategories(): Promise<string[]> {

@@ -91,17 +91,17 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-brand-background dark:bg-slate-950">
       {/* Modern Sticky Glass Header */}
       <header className="sticky top-0 z-40 w-full border-b border-brand-border/60 bg-white/70 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-        <Container className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Container className="flex min-h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             {orgLogo ? (
               <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <Image src={orgLogo} alt={orgName} fill className="object-contain" sizes="40px" />
               </div>
-            ) : (
+            ) : orgName !== defaultBrandName ? (
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-emerald text-white shadow-sm">
                 <Briefcase className="h-5 w-5" />
               </div>
-            )}
+            ) : null}
             <div>
               {orgName === defaultBrandName ? (
                 <Image
@@ -109,8 +109,8 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
                   alt={orgName}
                   width={600}
                   height={400}
-                  className="h-10 w-auto"
-                  sizes="(max-width: 640px) 120px, 160px"
+                  className="h-14 w-auto"
+                  sizes="(max-width: 640px) 170px, 230px"
                   priority
                 />
               ) : (

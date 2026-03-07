@@ -20,8 +20,8 @@ export function Navbar() {
               alt={siteConfig.nameAr}
               width={1536}
               height={1024}
-              className="h-12 w-auto"
-              sizes="(max-width: 640px) 112px, 160px"
+              className="h-16 w-auto sm:h-20"
+              sizes="(max-width: 640px) 180px, 260px"
               priority
             />
           </Link>

@@ -21,6 +21,11 @@ import {
   ShieldAlert,
   LogOut
 } from 'lucide-react';
+import Image from 'next/image';
+import { OfficeLogoImage } from '@/components/branding/office-logo-image';
+import { getTrialStatusForCurrentUser } from '@/lib/trial';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { getSupabaseOfficeLogoUrl, getSupabasePublicAssetUrl } from '@/lib/supabase/public-assets';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -45,11 +50,6 @@ const navItemsBase = [
   { href: '/app/settings', label: 'الإعدادات', icon: Settings },
 ] as const;
 
-import { getTrialStatusForCurrentUser } from '@/lib/trial';
-import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
-import { getSupabaseOfficeLogoUrl } from '@/lib/supabase/public-assets';
-import Image from 'next/image';
-
 export default async function PlatformLayout({ children }: PlatformLayoutProps) {
   const user = await getCurrentAuthUser();
 
@@ -62,6 +62,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   const orgId = trial.orgId;
   let orgName = 'مسار المحامي';
   let orgLogo = '';
+  let orgLogoFallback = '';
   const defaultBrandName = 'مسار المحامي';
 
   if (orgId) {
@@ -74,7 +75,9 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
 
     if (data) {
       orgName = data.name || orgName;
-      orgLogo = getSupabaseOfficeLogoUrl(data.logo_url || '', 80);
+      const rawLogoUrl = String(data.logo_url || '').trim();
+      orgLogo = getSupabaseOfficeLogoUrl(rawLogoUrl, 80);
+      orgLogoFallback = getSupabasePublicAssetUrl(rawLogoUrl);
     }
   }
 
@@ -95,7 +98,14 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
           <div className="flex items-center gap-3">
             {orgLogo ? (
               <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <Image src={orgLogo} alt={orgName} fill className="object-contain" sizes="40px" />
+                <OfficeLogoImage
+                  src={orgLogo}
+                  fallbackSrc={orgLogoFallback}
+                  alt={orgName}
+                  sizes="40px"
+                  className="object-contain"
+                  onMissing={<Briefcase className="h-5 w-5 text-slate-400 dark:text-slate-500" />}
+                />
               </div>
             ) : orgName !== defaultBrandName ? (
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-emerald text-white shadow-sm">

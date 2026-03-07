@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
-import { getSupabaseOfficeLogoUrl } from '@/lib/supabase/public-assets';
+import { getSupabaseOfficeLogoUrl, getSupabasePublicAssetUrl } from '@/lib/supabase/public-assets';
 import { OfficeIdentityForm } from './client';
 
 export const metadata = {
@@ -45,6 +45,7 @@ export default async function OfficeIdentityPage() {
         .maybeSingle();
 
     const csrfToken = headers().get('X-CSRF-Token') || '';
+    const rawLogoUrl = String(organization?.logo_url || '').trim();
 
     return (
         <Card className="p-6">
@@ -57,7 +58,8 @@ export default async function OfficeIdentityPage() {
 
             <OfficeIdentityForm
                 currentName={organization?.name || ''}
-                currentLogoUrl={getSupabaseOfficeLogoUrl(organization?.logo_url || '', 160)}
+                currentLogoUrl={getSupabaseOfficeLogoUrl(rawLogoUrl, 160)}
+                currentLogoFallbackUrl={getSupabasePublicAssetUrl(rawLogoUrl)}
                 csrfToken={csrfToken}
             />
         </Card>

@@ -4,21 +4,26 @@ import { useState } from 'react';
 import { buttonVariants } from '@/components/ui/button';
 import { updateOfficeIdentityAction } from './actions';
 import { Building2 } from 'lucide-react';
-
-import Image from 'next/image';
+import { OfficeLogoImage } from '@/components/branding/office-logo-image';
 
 type OfficeIdentityFormProps = {
     currentName: string;
     currentLogoUrl: string;
+    currentLogoFallbackUrl: string;
     csrfToken: string;
 };
 
-export function OfficeIdentityForm({ currentName, currentLogoUrl, csrfToken }: OfficeIdentityFormProps) {
+export function OfficeIdentityForm({
+    currentName,
+    currentLogoUrl,
+    currentLogoFallbackUrl,
+    csrfToken,
+}: OfficeIdentityFormProps) {
     const [previewUrl, setPreviewUrl] = useState(currentLogoUrl);
+    const [previewFallbackUrl, setPreviewFallbackUrl] = useState(currentLogoFallbackUrl);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const isLocalPreview = previewUrl.startsWith('blob:') || previewUrl.startsWith('data:');
 
     async function handleSubmit(formData: FormData) {
         setIsSubmitting(true);
@@ -85,13 +90,13 @@ export function OfficeIdentityForm({ currentName, currentLogoUrl, csrfToken }: O
                     <div className="mt-2 flex items-center gap-4">
                         <div className="relative flex h-20 w-20 shrink-0 overflow-hidden items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
                             {previewUrl ? (
-                                <Image
+                                <OfficeLogoImage
                                     src={previewUrl}
+                                    fallbackSrc={previewFallbackUrl}
                                     alt="Office Logo Preview"
-                                    fill
-                                    className="object-contain p-1"
                                     sizes="80px"
-                                    unoptimized={isLocalPreview}
+                                    className="object-contain p-1"
+                                    onMissing={<span className="text-xs text-slate-400">لا يوجد شعار</span>}
                                 />
                             ) : (
                                 <span className="text-xs text-slate-400">لا يوجد شعار</span>
@@ -107,7 +112,10 @@ export function OfficeIdentityForm({ currentName, currentLogoUrl, csrfToken }: O
                                     accept="image/png, image/jpeg, image/webp"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
-                                        if (file) setPreviewUrl(URL.createObjectURL(file));
+                                        if (file) {
+                                            setPreviewUrl(URL.createObjectURL(file));
+                                            setPreviewFallbackUrl('');
+                                        }
                                     }}
                                 />
                             </label>

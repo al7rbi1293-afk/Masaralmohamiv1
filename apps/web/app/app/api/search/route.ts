@@ -6,7 +6,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { logAudit } from '@/lib/audit';
 import { logError } from '@/lib/logger';
-import { toUserMessage } from '@/lib/shared-utils';
+import { isMissingColumnError, toUserMessage } from '@/lib/shared-utils';
 
 export const runtime = 'nodejs';
 
@@ -108,7 +108,8 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseServerRlsClient();
     const pattern = `%${escapeOrTerm(q)}%`;
 
-    const [clientsRes, mattersRes, documentsRes, tasksRes] = await Promise.all([
+    const [clientsRes, mattersRes, documentsResWithArchiveFilter, tasksResWithArchiveFilter] =
+      await Promise.all([
       supabase
         .from('clients')
         .select('id, name, type, status', { count: 'exact' })
@@ -142,6 +143,28 @@ export async function GET(request: NextRequest) {
         .range(0, 9),
     ]);
 
+    let documentsRes = documentsResWithArchiveFilter;
+    if (documentsRes.error && isMissingColumnError(documentsRes.error, 'documents', 'is_archived')) {
+      documentsRes = await supabase
+        .from('documents')
+        .select('id, title, matter_id, client_id, description', { count: 'exact' })
+        .eq('org_id', orgId)
+        .or(`title.ilike.${pattern},description.ilike.${pattern}`)
+        .order('created_at', { ascending: false })
+        .range(0, 9);
+    }
+
+    let tasksRes = tasksResWithArchiveFilter;
+    if (tasksRes.error && isMissingColumnError(tasksRes.error, 'tasks', 'is_archived')) {
+      tasksRes = await supabase
+        .from('tasks')
+        .select('id, title, status, due_at, matter_id, description', { count: 'exact' })
+        .eq('org_id', orgId)
+        .or(`title.ilike.${pattern},description.ilike.${pattern}`)
+        .order('updated_at', { ascending: false })
+        .range(0, 9);
+    }
+
     const response = {
       q,
       clients: normalizeGroup<ClientItem>(clientsRes),
@@ -170,7 +193,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    const message = toUserMessage(error);
+    const message = toUserMessage(error, 'تعذر البحث. حاول مرة أخرى.');
     logError('search_failed', { message });
     const status =
       message === 'الرجاء تسجيل الدخول.' ? 401 : message === 'اكتب كلمتين على الأقل للبحث.' ? 400 : 400;
@@ -221,4 +244,3 @@ function normalizeSearchInput(value: string) {
 function escapeOrTerm(value: string) {
   return value.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
 }
-

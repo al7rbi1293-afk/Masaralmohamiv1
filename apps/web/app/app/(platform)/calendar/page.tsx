@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { requireOrgIdForUser } from '@/lib/org';
-import { getErrorText, isMissingColumnError } from '@/lib/shared-utils';
+import { getErrorText, isMissingColumnError, isMissingRelationError } from '@/lib/shared-utils';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
@@ -612,7 +612,15 @@ function toUserMessage(error: any) {
     return 'لا تملك صلاحية الوصول.';
   }
 
-  return message || 'تعذر تحميل التقويم. حاول مرة أخرى.';
+  if (
+    isMissingColumnError(error, 'tasks', 'is_archived') ||
+    isMissingColumnError(error, 'invoices', 'is_archived') ||
+    isMissingRelationError(message)
+  ) {
+    return 'تعذر تحميل التقويم حاليًا بسبب عدم اكتمال ترقية قاعدة البيانات. حاول مرة أخرى بعد قليل.';
+  }
+
+  return 'تعذر تحميل التقويم. حاول مرة أخرى.';
 }
 
 function buildQuery(params: { type: CalendarSource; mine: boolean }) {

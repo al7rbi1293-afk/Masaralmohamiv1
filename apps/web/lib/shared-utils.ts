@@ -45,10 +45,19 @@ export function getErrorText(error: unknown): string {
 export function isMissingColumnError(error: unknown, table: string, column: string): boolean {
     const message = getErrorText(error);
     if (!message) return false;
+    const normalized = message.toLowerCase();
+    const tableName = table.toLowerCase();
+    const columnName = column.toLowerCase();
 
     return (
-        message.includes(`column "${column}" of relation "${table}" does not exist`) ||
-        message.includes(`Could not find the '${column}' column of '${table}' in the schema cache`)
+        normalized.includes(`column "${columnName}" of relation "${tableName}" does not exist`) ||
+        normalized.includes(`column ${tableName}.${columnName} does not exist`) ||
+        normalized.includes(`column "${tableName}"."${columnName}" does not exist`) ||
+        normalized.includes(`could not find the '${columnName}' column of '${tableName}' in the schema cache`) ||
+        (
+            normalized.includes(`column "${columnName}" does not exist`) &&
+            (normalized.includes(`relation "${tableName}"`) || normalized.includes(`${tableName}.`))
+        )
     );
 }
 

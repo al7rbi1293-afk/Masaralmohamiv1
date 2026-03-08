@@ -11,22 +11,20 @@ type MembershipRow = {
 
 export type OrgRole = 'owner' | 'lawyer' | 'assistant';
 
-export async function getCurrentOrgIdForUser(): Promise<string | null> {
-  const currentUser = await getCurrentAuthUser();
-  if (!currentUser) {
-    return null;
-  }
-
+export async function getCurrentOrgIdForUserId(
+  userId: string,
+  activeOrgId?: string | null,
+): Promise<string | null> {
   const supabase = createSupabaseServerRlsClient();
 
-  // 1. Check if there's an active_org_id cookie
-  const activeOrgId = cookies().get('active_org_id')?.value;
-  if (activeOrgId) {
+  // 1. Check if there's an active org to keep org context stable
+  const normalizedActiveOrgId = (activeOrgId ?? '').trim();
+  if (normalizedActiveOrgId) {
     const { data: cookieMembership } = await supabase
       .from('memberships')
       .select('org_id')
-      .eq('user_id', currentUser.id)
-      .eq('org_id', activeOrgId)
+      .eq('user_id', userId)
+      .eq('org_id', normalizedActiveOrgId)
       .maybeSingle();
 
     if (cookieMembership) {
@@ -38,7 +36,7 @@ export async function getCurrentOrgIdForUser(): Promise<string | null> {
   const { data, error } = await supabase
     .from('memberships')
     .select('org_id, created_at')
-    .eq('user_id', currentUser.id)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -48,6 +46,16 @@ export async function getCurrentOrgIdForUser(): Promise<string | null> {
   }
 
   return (data as MembershipRow | null)?.org_id ?? null;
+}
+
+export async function getCurrentOrgIdForUser(): Promise<string | null> {
+  const currentUser = await getCurrentAuthUser();
+  if (!currentUser) {
+    return null;
+  }
+
+  const activeOrgId = cookies().get('active_org_id')?.value ?? null;
+  return getCurrentOrgIdForUserId(currentUser.id, activeOrgId);
 }
 
 export async function requireOrgIdForUser(): Promise<string> {

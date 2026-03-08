@@ -7,6 +7,17 @@ import 'server-only';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
+export async function isUserAppAdmin(userId: string): Promise<boolean> {
+    const supabase = createSupabaseServerRlsClient();
+    const { data } = await supabase
+        .from('app_admins')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    return !!data;
+}
+
 /**
  * Check if the current authenticated user is a super admin.
  */
@@ -14,14 +25,7 @@ export async function isAppAdmin(): Promise<boolean> {
     const user = await getCurrentAuthUser();
     if (!user) return false;
 
-    const supabase = createSupabaseServerRlsClient();
-    const { data } = await supabase
-        .from('app_admins')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-    return !!data;
+    return isUserAppAdmin(user.id);
 }
 
 /**
@@ -34,14 +38,8 @@ export async function requireAdmin(): Promise<string> {
         throw new Error('not_authenticated');
     }
 
-    const supabase = createSupabaseServerRlsClient();
-    const { data } = await supabase
-        .from('app_admins')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-    if (!data) {
+    const isAdmin = await isUserAppAdmin(user.id);
+    if (!isAdmin) {
         throw new Error('not_admin');
     }
 

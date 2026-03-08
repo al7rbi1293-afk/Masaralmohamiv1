@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/app/actions';
 import { Container } from '@/components/ui/container';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
-import { isAppAdmin } from '@/lib/admin';
+import { isUserAppAdmin } from '@/lib/admin';
 import {
   LayoutDashboard,
   Search,
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { OfficeLogoImage } from '@/components/branding/office-logo-image';
-import { getTrialStatusForCurrentUser } from '@/lib/trial';
+import { getCurrentOrgIdForUserId } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getSupabaseOfficeLogoUrl, getSupabasePublicAssetUrl } from '@/lib/supabase/public-assets';
 
@@ -57,9 +58,13 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
     redirect('/signin');
   }
 
+  const activeOrgId = cookies().get('active_org_id')?.value ?? null;
+  const [orgId, isAdmin] = await Promise.all([
+    getCurrentOrgIdForUserId(user.id, activeOrgId),
+    isUserAppAdmin(user.id),
+  ]);
+
   // Fetch org data for customized branding
-  const trial = await getTrialStatusForCurrentUser();
-  const orgId = trial.orgId;
   let orgName = 'مسار المحامي';
   let orgLogo = '';
   let orgLogoFallback = '';
@@ -85,7 +90,6 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   const navItems: { href: string; label: string; icon: any }[] = [...navItemsBase];
 
   // Add Admin Panel link if user is an admin
-  const isAdmin = await isAppAdmin();
   if (isAdmin) {
     navItems.unshift({ href: '/admin', label: 'إدارة النظام الرئيسي', icon: ShieldAlert });
   }

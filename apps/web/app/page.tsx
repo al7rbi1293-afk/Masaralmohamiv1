@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   title: 'الرئيسية',
   description:
     'مسار المحامي: نظام سحابي عربي لإدارة مكتب المحاماة على مسار واحد، مع واجهة بسيطة وصلاحيات وسجل تدقيق.',
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     title: 'مسار المحامي',
     description:

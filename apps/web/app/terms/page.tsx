@@ -4,6 +4,9 @@ import { Section } from '@/components/ui/section';
 export const metadata: Metadata = {
   title: 'الشروط والأحكام',
   description: 'شروط وأحكام استخدام منصة مسار المحامي، بما يشمل الحسابات، الاستخدام المقبول، والمسؤولية.',
+  alternates: {
+    canonical: '/terms',
+  },
   openGraph: {
     title: 'الشروط والأحكام | مسار المحامي',
     description: 'الشروط القانونية المنظمة لاستخدام منصة مسار المحامي.',
@@ -13,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <Section title="الشروط والأحكام" subtitle="تاريخ آخر تحديث: 15 فبراير 2025">
+    <Section titleAs="h1" title="الشروط والأحكام" subtitle="تاريخ آخر تحديث: 15 فبراير 2025">
       <div className="space-y-6 rounded-xl2 border border-brand-border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <article>
           <h2 className="text-lg font-semibold text-brand-navy dark:text-slate-100">قبول الشروط</h2>

@@ -1,8 +1,15 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { CircuitOpenError, TimeoutError, withCircuitBreaker, withTimeout } from '@/lib/runtime-safety';
+
+export const metadata: Metadata = {
+  title: 'مشاركة مستند',
+  description: 'رابط مشاركة مؤقت لتنزيل مستند.',
+  robots: { index: false, follow: false },
+};
 
 type SharePageProps = {
   params: { token: string };

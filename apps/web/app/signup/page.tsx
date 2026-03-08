@@ -11,6 +11,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 export const metadata: Metadata = {
   title: 'إنشاء حساب',
   description: 'إنشاء حساب جديد في منصة مسار المحامي.',
+  robots: { index: false, follow: false },
   openGraph: {
     title: 'إنشاء حساب | مسار المحامي',
     description: 'إنشاء حساب وتجربة منصة مسار المحامي.',

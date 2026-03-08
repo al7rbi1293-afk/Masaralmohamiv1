@@ -7,6 +7,7 @@ type SectionProps = {
   subtitle?: string;
   children: ReactNode;
   className?: string;
+  titleAs?: 'h1' | 'h2';
 };
 
 export function Section({
@@ -15,15 +16,18 @@ export function Section({
   subtitle,
   children,
   className = '',
+  titleAs = 'h2',
 }: SectionProps) {
+  const HeadingTag = titleAs;
+
   return (
     <section id={id} className={`py-14 sm:py-20 ${className}`}>
       <Container>
         {title ? (
           <header className="mb-8 max-w-3xl">
-            <h2 className="text-2xl font-bold text-brand-navy sm:text-3xl dark:text-slate-100">
+            <HeadingTag className="text-2xl font-bold text-brand-navy sm:text-3xl dark:text-slate-100">
               {title}
-            </h2>
+            </HeadingTag>
             {subtitle ? (
               <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
                 {subtitle}

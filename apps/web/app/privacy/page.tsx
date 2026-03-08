@@ -4,6 +4,9 @@ import { Section } from '@/components/ui/section';
 export const metadata: Metadata = {
   title: 'سياسة الخصوصية',
   description: 'سياسة الخصوصية في مسار المحامي: البيانات التي نجمعها، أغراض المعالجة، والحقوق المتاحة لك.',
+  alternates: {
+    canonical: '/privacy',
+  },
   openGraph: {
     title: 'سياسة الخصوصية | مسار المحامي',
     description: 'تفاصيل سياسة الخصوصية لمستخدمي مسار المحامي.',
@@ -14,6 +17,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <Section
+      titleAs="h1"
       title="سياسة الخصوصية"
       subtitle="تاريخ آخر تحديث: 15 فبراير 2025"
     >

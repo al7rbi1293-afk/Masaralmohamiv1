@@ -19,6 +19,7 @@ const SUPPORT_EMAIL = 'masar.almohami@outlook.sa';
 export const metadata: Metadata = {
   title: 'قبول الدعوة',
   description: 'قبول دعوة الانضمام إلى فريق مسار المحامي.',
+  robots: { index: false, follow: false },
   openGraph: {
     title: 'قبول الدعوة | مسار المحامي',
     description: 'قبول دعوة الانضمام إلى فريق مسار المحامي.',

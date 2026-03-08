@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: 'الأمان والخصوصية',
   description:
     'تعرف على ممارسات الأمان في مسار المحامي: عزل البيانات، الصلاحيات، حماية الملفات، وسجل التدقيق.',
+  alternates: {
+    canonical: '/security',
+  },
   openGraph: {
     title: 'الأمان والخصوصية في مسار المحامي',
     description: 'تفاصيل الأمان والخصوصية لعملاء مسار المحامي.',
@@ -42,6 +45,7 @@ const sections = [
 export default function SecurityPage() {
   return (
     <Section
+      titleAs="h1"
       title="الأمان والخصوصية في مسار المحامي"
       subtitle="نحن نبني المنصة بمنهجية حماية افتراضية لكل طبقة من طبقات النظام."
     >

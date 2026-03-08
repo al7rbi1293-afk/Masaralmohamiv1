@@ -1,6 +1,13 @@
 
+import type { Metadata } from 'next';
 import { buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'تفعيل البريد الإلكتروني',
+  description: 'إكمال تفعيل حسابك في مسار المحامي عبر البريد الإلكتروني.',
+  robots: { index: false, follow: false },
+};
 
 export default function VerifyEmailPage() {
     return (

@@ -6,6 +6,9 @@ import { Section } from '@/components/ui/section';
 export const metadata: Metadata = {
   title: 'تواصل معنا',
   description: 'تواصل مع فريق مسار المحامي للدعم الفني، الخصوصية، أو البلاغات الأمنية.',
+  alternates: {
+    canonical: '/contact',
+  },
   openGraph: {
     title: 'تواصل معنا | مسار المحامي',
     description: 'قنوات التواصل الرسمية لمنصة مسار المحامي.',
@@ -45,6 +48,7 @@ export default function ContactPage({ searchParams }: ContactPageProps) {
 
   return (
     <Section
+      titleAs="h1"
       title="تواصل معنا"
       subtitle="يسعدنا الرد على أسئلتك حول المنصة، الأمان، أو الانضمام للنسخة الأولى."
     >

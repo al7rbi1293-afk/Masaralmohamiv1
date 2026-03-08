@@ -24,6 +24,7 @@ const inter = Inter({
 
 const siteUrl = getPublicSiteUrl();
 const isVercelDeployment = Boolean(process.env.VERCEL);
+const defaultOgImage = '/masar-logo.png';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -39,9 +40,21 @@ export const metadata: Metadata = {
     siteName: siteConfig.nameEn,
     locale: 'ar_SA',
     type: 'website',
+    images: [defaultOgImage],
   },
-  alternates: {
-    canonical: '/',
+  twitter: {
+    card: 'summary_large_image',
+    title: `${siteConfig.nameAr} | ${siteConfig.tagline}`,
+    description: siteConfig.description,
+    images: [defaultOgImage],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    shortcut: ['/icon.svg'],
   },
 };
 
@@ -50,6 +63,37 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${siteUrl}#organization`,
+        name: `${siteConfig.nameAr} | Masar Al Mohami`,
+        alternateName: [siteConfig.nameAr, 'Masar Al Mohami'],
+        url: siteUrl,
+        logo: `${siteUrl}/masar-logo.png`,
+        description: siteConfig.description,
+        areaServed: {
+          '@type': 'Country',
+          name: 'Saudi Arabia',
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}#website`,
+        name: siteConfig.nameAr,
+        alternateName: 'Masar Al Mohami',
+        url: siteUrl,
+        description: siteConfig.description,
+        inLanguage: 'ar-SA',
+        publisher: {
+          '@id': `${siteUrl}#organization`,
+        },
+      },
+    ],
+  };
+
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body className={`${ibmPlexArabic.variable} ${inter.variable} min-h-screen antialiased`}>
@@ -62,6 +106,10 @@ export default function RootLayout({
           <Footer />
         </ThemeProvider>
         <MarketingAnalytics />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         {isVercelDeployment ? <VercelAnalytics /> : null}
         {isVercelDeployment ? <SpeedInsights /> : null}
       </body>

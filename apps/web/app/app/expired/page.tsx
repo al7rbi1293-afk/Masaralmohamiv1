@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { FullVersionRequestForm } from '@/components/sections/full-version-request-form';
@@ -5,6 +6,12 @@ import { Container } from '@/components/ui/container';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 const supportEmail = 'masar.almohami@outlook.sa';
+
+export const metadata: Metadata = {
+  title: 'انتهاء التجربة',
+  description: 'صفحة انتهاء التجربة وطلب تفعيل النسخة الكاملة.',
+  robots: { index: false, follow: false },
+};
 
 export default async function TrialExpiredPage() {
   const user = await getCurrentAuthUser();

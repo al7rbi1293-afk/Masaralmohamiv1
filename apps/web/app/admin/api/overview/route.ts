@@ -4,6 +4,13 @@ import { requireAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
+type OverviewOrgRow = {
+    id: string;
+    name: string | null;
+    status: string | null;
+    memberships: Array<{ id: string }> | null;
+};
+
 export async function GET() {
     try {
         await requireAdmin();
@@ -91,6 +98,24 @@ export async function GET() {
             new_signups
         }));
 
+        // 5. Team size per office (admin-only visibility)
+        const { data: orgRows, error: orgRowsError } = await supabase
+            .from('organizations')
+            .select('id, name, status, memberships ( id )')
+            .order('name', { ascending: true });
+
+        if (orgRowsError) {
+            console.error('Error fetching office team sizes:', orgRowsError);
+            throw new Error('فشل جلب أحجام فرق المكاتب.');
+        }
+
+        const orgTeamSizes = ((orgRows as OverviewOrgRow[] | null) ?? []).map((org) => ({
+            id: org.id,
+            name: org.name || '—',
+            status: org.status || 'active',
+            members_count: Array.isArray(org.memberships) ? org.memberships.length : 0,
+        }));
+
         return NextResponse.json({
             stats: {
                 activeOrgs: activeOrgsCount || 0,
@@ -100,7 +125,8 @@ export async function GET() {
                 activeSubscriptions: activeSubscriptionsCount || 0,
                 trialOrgs: Math.max(0, trialsCount),
             },
-            timeline
+            timeline,
+            org_team_sizes: orgTeamSizes,
         });
 
     } catch (error: any) {

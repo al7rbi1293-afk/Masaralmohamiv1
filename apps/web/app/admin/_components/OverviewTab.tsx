@@ -28,6 +28,12 @@ type OverviewStats = {
         date: string;
         new_signups: number;
     }[];
+    org_team_sizes: {
+        id: string;
+        name: string;
+        status: string;
+        members_count: number;
+    }[];
 };
 
 export default function OverviewTab({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
@@ -69,7 +75,7 @@ export default function OverviewTab({ onNavigate }: { onNavigate: (tab: TabId) =
         );
     }
 
-    const { stats, timeline } = data;
+    const { stats, timeline, org_team_sizes: orgTeamSizes } = data;
     const totalOrgs = stats.activeOrgs + stats.suspendedOrgs;
     const totalUsers = stats.activeUsers + stats.suspendedUsers;
 
@@ -145,6 +151,57 @@ export default function OverviewTab({ onNavigate }: { onNavigate: (tab: TabId) =
                         <span className="text-sm text-slate-500">مكتب (للتفعيل)</span>
                     </div>
                 </div>
+            </div>
+
+            {/* Office Team Sizes */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">عدد فريق العمل لكل مكتب</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">هذه القائمة تظهر لمدير الموقع فقط.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => onNavigate('orgs')}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                        فتح تبويب المكاتب
+                    </button>
+                </div>
+
+                {orgTeamSizes.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">لا توجد مكاتب لعرضها.</p>
+                ) : (
+                    <div className="max-h-[320px] overflow-auto">
+                        <table className="min-w-full text-sm">
+                            <thead className="border-b border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                                <tr>
+                                    <th className="py-2 text-start font-medium">المكتب</th>
+                                    <th className="py-2 text-start font-medium">عدد الفريق</th>
+                                    <th className="py-2 text-start font-medium">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {orgTeamSizes.map((org) => (
+                                    <tr key={org.id}>
+                                        <td className="py-2.5 font-medium text-slate-900 dark:text-slate-100">{org.name}</td>
+                                        <td className="py-2.5">{org.members_count}</td>
+                                        <td className="py-2.5">
+                                            <span
+                                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${org.status === 'suspended'
+                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                    }`}
+                                            >
+                                                {org.status === 'suspended' ? 'معلّق' : 'نشط'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* Chart Section */}

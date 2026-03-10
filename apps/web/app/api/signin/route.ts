@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
     if (!adminRecord && destination.startsWith('/app') && !destination.startsWith('/app/api')) {
       try {
         const provision = await ensureTrialProvisionForUser({ userId: user.id, firmName: null });
-        if (provision.isExpired && !destination.startsWith('/app/expired')) {
-          destination = '/app/expired';
+        if (provision.isExpired && !destination.startsWith('/app/settings/subscription')) {
+          destination = '/app/settings/subscription?expired=1&source=trial';
         }
       } catch {
         // Keep login working even if provisioning fails.

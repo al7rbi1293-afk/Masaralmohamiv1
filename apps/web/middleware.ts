@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CsrfError } from '@edge-csrf/nextjs';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { jwtVerify } from 'jose';
-import { computeEntitlements, type SubscriptionSnapshot, type TrialSnapshot } from './lib/entitlements';
+import {
+  computeEntitlements,
+  type EntitlementsResult,
+  type SubscriptionSnapshot,
+  type TrialSnapshot,
+} from './lib/entitlements';
 import { csrfProtect } from './lib/csrf';
 
 // ────────────────────────────────────────────
@@ -10,6 +15,7 @@ import { csrfProtect } from './lib/csrf';
 // ────────────────────────────────────────────
 
 const SESSION_COOKIE_NAME = 'masar-session';
+const SUBSCRIPTION_ENDED_MESSAGE = 'ان اشتراككم انتهى يرجى التجديد اذا رغبتم في استكمال استخدامكم للمنصة';
 
 // ────────────────────────────────────────────
 // Types
@@ -219,15 +225,19 @@ async function getSubscriptionSnapshot(db: SupabaseClient, orgId: string): Promi
   };
 }
 
-async function shouldLockApp(
+async function getAppLockState(
   db: SupabaseClient,
   pathname: string,
   userId: string,
-): Promise<boolean> {
-  if (!pathname.startsWith('/app') || isBypassedPath(pathname)) return false;
+): Promise<{ locked: boolean; reason: EntitlementsResult['reason'] }> {
+  if (!pathname.startsWith('/app') || isBypassedPath(pathname)) {
+    return { locked: false, reason: 'none' };
+  }
 
   const orgId = await getOrgIdForUser(db, userId);
-  if (!orgId) return false;
+  if (!orgId) {
+    return { locked: false, reason: 'none' };
+  }
 
   const [trial, subscription] = await Promise.all([
     getTrialSnapshot(db, orgId),
@@ -235,7 +245,10 @@ async function shouldLockApp(
   ]);
 
   const entitlements = computeEntitlements({ trial, subscription });
-  return entitlements.access === 'locked';
+  return {
+    locked: entitlements.access === 'locked',
+    reason: entitlements.reason,
+  };
 }
 
 // ────────────────────────────────────────────
@@ -348,19 +361,24 @@ export async function middleware(request: NextRequest) {
   }
 
   // --- Trial/subscription lock check ---
-  const locked = isAppAdmin ? false : await shouldLockApp(db, pathname, userId);
+  const lockState = isAppAdmin
+    ? { locked: false, reason: 'none' as const }
+    : await getAppLockState(db, pathname, userId);
   const isApi = pathname.startsWith('/app/api/');
   let response: NextResponse;
 
-  if (locked && isApi) {
+  if (lockState.locked && isApi) {
     response = NextResponse.json(
-      { error: 'انتهت التجربة. يمكنك ترقية الخطة من صفحة الاشتراك.' },
+      { error: SUBSCRIPTION_ENDED_MESSAGE },
       { status: 403, headers: csrfResponse.headers },
     );
     setSecurityHeaders(response);
     return response;
-  } else if (locked) {
-    const redirectResponse = NextResponse.redirect(new URL('/app/expired', request.url));
+  } else if (lockState.locked) {
+    const targetPath = lockState.reason === 'trial_expired'
+      ? '/app/settings/subscription?expired=1&source=trial'
+      : '/app/expired?expired=1&source=subscription';
+    const redirectResponse = NextResponse.redirect(new URL(targetPath, request.url));
     redirectResponse.headers.append('Set-Cookie', csrfResponse.headers.get('Set-Cookie') || '');
     return setSecurityHeaders(redirectResponse);
   } else {

@@ -207,7 +207,9 @@ export async function POST(request: NextRequest) {
       firmName,
     });
 
-    const destination = isExpired ? '/app/expired' : '/app';
+    const destination = isExpired
+      ? '/app/settings/subscription?expired=1&source=trial'
+      : '/app';
 
     if (isExpired) {
       logWarn('trial_expired_redirect', { requestId, ip: requestIp, userId });

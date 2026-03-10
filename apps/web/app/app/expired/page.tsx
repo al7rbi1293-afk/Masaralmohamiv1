@@ -6,10 +6,11 @@ import { Container } from '@/components/ui/container';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 const supportEmail = 'masar.almohami@outlook.sa';
+const SUBSCRIPTION_ENDED_MESSAGE = 'ان اشتراككم انتهى يرجى التجديد اذا رغبتم في استكمال استخدامكم للمنصة';
 
 export const metadata: Metadata = {
-  title: 'انتهاء التجربة',
-  description: 'صفحة انتهاء التجربة وطلب تفعيل النسخة الكاملة.',
+  title: 'انتهاء الاشتراك',
+  description: 'صفحة انتهاء الاشتراك وطلب التجديد.',
   robots: { index: false, follow: false },
 };
 
@@ -19,9 +20,9 @@ export default async function TrialExpiredPage() {
   return (
     <Container className="py-14 sm:py-20">
       <section className="mx-auto max-w-2xl rounded-xl2 border border-brand-border bg-white p-7 text-center shadow-panel dark:border-slate-700 dark:bg-slate-900">
-        <h1 className="text-3xl font-bold text-brand-navy dark:text-slate-100">انتهت التجربة</h1>
+        <h1 className="text-3xl font-bold text-brand-navy dark:text-slate-100">انتهى الاشتراك</h1>
         <p className="mt-4 text-sm leading-8 text-slate-700 dark:text-slate-300">
-          شكرًا لاستخدام مسار المحامي. للتفعيل والانتقال للنسخة الكاملة، تواصل معنا.
+          {SUBSCRIPTION_ENDED_MESSAGE}
         </p>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

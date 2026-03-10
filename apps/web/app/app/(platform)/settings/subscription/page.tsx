@@ -7,6 +7,14 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { ensureSubscriptionRowExists } from '@/lib/subscriptions';
 import { getPricingPlanCardByCode, SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
 
+const SUBSCRIPTION_ENDED_MESSAGE = 'ان اشتراككم انتهى يرجى التجديد اذا رغبتم في استكمال استخدامكم للمنصة';
+
+type SubscriptionSettingsPageProps = {
+  searchParams?: {
+    expired?: string;
+  };
+};
+
 function statusLabel(status: string) {
   switch (status) {
     case 'trial':
@@ -35,7 +43,7 @@ function formatDate(value: string | null) {
   return date.toLocaleDateString('ar-SA');
 }
 
-export default async function SubscriptionSettingsPage() {
+export default async function SubscriptionSettingsPage({ searchParams }: SubscriptionSettingsPageProps) {
   const user = await getCurrentAuthUser();
   if (!user) {
     return (
@@ -71,6 +79,8 @@ export default async function SubscriptionSettingsPage() {
     errorMessage = message || 'تعذر تحميل بيانات الاشتراك.';
   }
 
+  const showEndedMessage = searchParams?.expired === '1';
+
   return (
     <Card className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -89,6 +99,12 @@ export default async function SubscriptionSettingsPage() {
           </Link>
         </div>
       </div>
+
+      {showEndedMessage ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          {SUBSCRIPTION_ENDED_MESSAGE}
+        </p>
+      ) : null}
 
       {errorMessage ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">

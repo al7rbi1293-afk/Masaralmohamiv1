@@ -10,7 +10,7 @@ export type TrialSnapshot = {
 
 export type EntitlementsResult = {
   access: 'full' | 'locked';
-  reason: 'subscription_active' | 'trial_active' | 'trial_expired' | 'none';
+  reason: 'subscription_active' | 'trial_active' | 'subscription_expired' | 'trial_expired' | 'none';
   subscriptionActive: boolean;
   trialActive: boolean;
 };
@@ -31,11 +31,15 @@ export function computeEntitlements(input: {
 
   const subscriptionStatus = input.subscription?.status ?? null;
   const subscriptionPeriodEnd = parseDate(input.subscription?.currentPeriodEnd ?? null);
+  const subscriptionHasFuturePeriod =
+    Boolean(subscriptionPeriodEnd) && subscriptionPeriodEnd!.getTime() > now.getTime();
+  const subscriptionHasEndedByDate =
+    Boolean(subscriptionPeriodEnd) && subscriptionPeriodEnd!.getTime() <= now.getTime();
+  const subscriptionActiveStatus =
+    subscriptionStatus === 'active' || subscriptionStatus === 'past_due' || subscriptionStatus === 'canceled';
 
   const subscriptionActive =
-    (subscriptionStatus === 'active' || subscriptionStatus === 'past_due') &&
-    Boolean(subscriptionPeriodEnd) &&
-    subscriptionPeriodEnd!.getTime() > now.getTime();
+    subscriptionActiveStatus && subscriptionHasFuturePeriod;
 
   if (subscriptionActive) {
     return {
@@ -45,6 +49,14 @@ export function computeEntitlements(input: {
       trialActive: false,
     };
   }
+
+  const subscriptionExpired =
+    Boolean(input.subscription) &&
+    (
+      subscriptionStatus === 'expired' ||
+      (subscriptionStatus === 'canceled' && !subscriptionPeriodEnd) ||
+      (subscriptionActiveStatus && subscriptionHasEndedByDate)
+    );
 
   const trialEndsAt = parseDate(input.trial?.endsAt ?? null);
   const trialStoredStatus = input.trial?.status ?? null;
@@ -58,6 +70,15 @@ export function computeEntitlements(input: {
       reason: 'trial_active',
       subscriptionActive: false,
       trialActive: true,
+    };
+  }
+
+  if (subscriptionExpired) {
+    return {
+      access: 'locked',
+      reason: 'subscription_expired',
+      subscriptionActive: false,
+      trialActive: false,
     };
   }
 
@@ -77,4 +98,3 @@ export function computeEntitlements(input: {
     trialActive: false,
   };
 }
-

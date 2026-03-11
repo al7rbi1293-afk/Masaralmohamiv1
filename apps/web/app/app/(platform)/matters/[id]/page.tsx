@@ -14,7 +14,7 @@ import { listMatterEvents, type MatterEventType } from '@/lib/matterEvents';
 import { listOrgMembers } from '@/lib/matter-members';
 import { getMatterById, type MatterStatus } from '@/lib/matters';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
-import { listTasks } from '@/lib/tasks';
+import { listTasks, type TaskPriority, type TaskStatus } from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { archiveDocumentAction, deleteDocumentAction, restoreDocumentAction } from '../../documents/actions';
 import {
@@ -67,6 +67,26 @@ const eventTypeVariant: Record<MatterEventType, 'default' | 'success' | 'warning
   email: 'default',
   meeting: 'success',
   other: 'default',
+};
+
+const taskStatusLabel: Record<TaskStatus, string> = {
+  todo: 'مفتوحة',
+  doing: 'قيد التنفيذ',
+  done: 'مكتملة',
+  canceled: 'ملغاة',
+};
+
+const taskStatusVariant: Record<TaskStatus, 'default' | 'success' | 'warning' | 'danger'> = {
+  todo: 'default',
+  doing: 'warning',
+  done: 'success',
+  canceled: 'danger',
+};
+
+const taskPriorityLabel: Record<TaskPriority, string> = {
+  low: 'منخفضة',
+  medium: 'متوسطة',
+  high: 'عالية',
 };
 
 export default async function MatterDetailsPage({ params, searchParams }: MatterDetailsPageProps) {
@@ -206,14 +226,32 @@ async function MatterSummarySection({
   matter: NonNullable<Awaited<ReturnType<typeof getMatterById>>>;
 }) {
   const currentUser = await getCurrentAuthUser();
-  let allOrgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
-  if (matter.is_private) {
-    try {
-      allOrgMembers = await listOrgMembers(matter.org_id);
-    } catch {
-      allOrgMembers = [];
-    }
-  }
+  const [recentEventsResult, allOrgMembers, recentDocumentsResult, recentTasksResult] = await Promise.all([
+    listMatterEvents(matterId, {
+      type: 'all',
+      page: 1,
+      limit: 5,
+    }).catch(() => null),
+    matter.is_private
+      ? listOrgMembers(matter.org_id).catch(() => [] as Awaited<ReturnType<typeof listOrgMembers>>)
+      : Promise.resolve([] as Awaited<ReturnType<typeof listOrgMembers>>),
+    listDocuments({
+      matterId,
+      archived: 'all',
+      page: 1,
+      limit: 5,
+    }).catch(() => null),
+    listTasks({
+      matterId,
+      status: 'all',
+      priority: 'all',
+      due: 'all',
+      assignee: 'any',
+      archived: 'all',
+      page: 1,
+      limit: 5,
+    }).catch(() => null),
+  ]);
 
   let canManageMembers = false;
   let orgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
@@ -330,6 +368,171 @@ async function MatterSummarySection({
           </section>
         ) : null
       }
+
+      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+        <h2 className="font-semibold text-brand-navy dark:text-slate-100">ملخص تفاعلي شامل</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">الحالة</p>
+            <div className="mt-2">
+              <Badge variant={statusVariant[matter.status]}>{statusLabel[matter.status]}</Badge>
+            </div>
+          </div>
+          <div className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">الخصوصية</p>
+            <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {matter.is_private ? 'خاصة' : 'عامة'}
+            </p>
+          </div>
+          <div className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">إجمالي المهام</p>
+            <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {recentTasksResult?.total ?? '—'}
+            </p>
+          </div>
+          <div className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">إجمالي المستندات</p>
+            <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {recentDocumentsResult?.total ?? '—'}
+            </p>
+          </div>
+          <div className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">إجمالي الأحداث</p>
+            <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {recentEventsResult?.total ?? '—'}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-brand-navy dark:text-slate-100">مهام القضية</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/app/matters/${matterId}?tab=tasks`} className={buttonVariants('outline', 'sm')}>
+              كل المهام
+            </Link>
+            <Link href={`/app/tasks?new=1&matterId=${matterId}`} className={buttonVariants('primary', 'sm')}>
+              إضافة مهمة
+            </Link>
+          </div>
+        </div>
+
+        {recentTasksResult?.data.length ? (
+          <ul className="mt-4 space-y-2">
+            {recentTasksResult.data.map((task) => (
+              <li
+                key={task.id}
+                className="rounded-lg border border-brand-border p-3 dark:border-slate-700"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={taskStatusVariant[task.status]}>{taskStatusLabel[task.status]}</Badge>
+                  <Badge variant="default">أولوية: {taskPriorityLabel[task.priority]}</Badge>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {task.due_at ? `الاستحقاق: ${new Date(task.due_at).toLocaleString('ar-SA')}` : 'بدون تاريخ استحقاق'}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-200">{task.title}</p>
+                {task.description ? (
+                  <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{task.description}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 rounded-lg border border-dashed border-brand-border px-3 py-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+            {recentTasksResult ? 'لا توجد مهام مرتبطة بهذه القضية.' : 'تعذر تحميل مهام القضية حاليًا.'}
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-brand-navy dark:text-slate-100">مستندات القضية</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/app/matters/${matterId}?tab=documents`} className={buttonVariants('outline', 'sm')}>
+              كل المستندات
+            </Link>
+            <Link
+              href={`/app/documents/new?matterId=${encodeURIComponent(matterId)}&clientId=${encodeURIComponent(matter.client_id ?? '')}`}
+              className={buttonVariants('primary', 'sm')}
+            >
+              إضافة مستند
+            </Link>
+          </div>
+        </div>
+
+        {recentDocumentsResult?.data.length ? (
+          <ul className="mt-4 space-y-2">
+            {recentDocumentsResult.data.map((doc) => (
+              <li key={doc.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/app/documents/${doc.id}`} className="truncate font-medium text-brand-navy hover:underline dark:text-slate-100">
+                        {doc.title}
+                      </Link>
+                      {doc.is_archived ? <Badge variant="warning">مؤرشف</Badge> : null}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {doc.latestVersion
+                        ? `آخر نسخة: ${doc.latestVersion.file_name} · ${new Date(doc.latestVersion.created_at).toLocaleDateString('ar-SA')}`
+                        : 'بدون نسخ بعد'}
+                    </p>
+                  </div>
+                  <Link href={`/app/documents/${doc.id}`} className={buttonVariants('outline', 'sm')}>
+                    فتح
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 rounded-lg border border-dashed border-brand-border px-3 py-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+            {recentDocumentsResult ? 'لا توجد مستندات مرتبطة بهذه القضية.' : 'تعذر تحميل مستندات القضية حاليًا.'}
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-brand-navy dark:text-slate-100">أحدث أحداث الخط الزمني</h2>
+          <Link href={`/app/matters/${matterId}?tab=timeline`} className={buttonVariants('outline', 'sm')}>
+            كل الأحداث
+          </Link>
+        </div>
+
+        {recentEventsResult?.data.length ? (
+          <div className="mt-4 space-y-3">
+            {recentEventsResult.data.map((event) => (
+              <article key={event.id} className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={eventTypeVariant[event.type]}>{eventTypeLabel[event.type]}</Badge>
+                  {event.event_date ? (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      تاريخ الحدث: {new Date(event.event_date).toLocaleString('ar-SA')}
+                    </span>
+                  ) : null}
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    أضيف في: {new Date(event.created_at).toLocaleString('ar-SA')}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    بواسطة: {event.created_by === currentUser?.id ? 'أنت' : event.created_by}
+                  </span>
+                </div>
+
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-200">
+                  {event.note ?? 'بدون ملاحظات.'}
+                </p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-lg border border-dashed border-brand-border px-3 py-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+            {recentEventsResult ? 'لا توجد أحداث في الخط الزمني حتى الآن.' : 'تعذر تحميل أحداث الخط الزمني حاليًا.'}
+          </p>
+        )}
+      </section>
 
       <div className="flex flex-wrap gap-3">
         {matter.status === 'archived' ? (

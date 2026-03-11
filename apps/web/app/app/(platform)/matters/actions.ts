@@ -59,7 +59,7 @@ export async function updateMatterAction(id: string, formData: FormData) {
   const parsed = matterSchema.safeParse(toPayload(formData));
   if (!parsed.success) {
     redirect(
-      `/app/matters/${id}?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? 'تعذر الحفظ. حاول مرة أخرى.')}`,
+      `/app/matters/${id}/edit?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? 'تعذر الحفظ. حاول مرة أخرى.')}`,
     );
   }
 
@@ -81,7 +81,7 @@ export async function updateMatterAction(id: string, formData: FormData) {
     if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
     logError('matter_update_failed', { matterId: id, message });
-    redirect(`/app/matters/${id}?error=${encodeURIComponent(message)}`);
+    redirect(`/app/matters/${id}/edit?error=${encodeURIComponent(message)}`);
   }
 }
 

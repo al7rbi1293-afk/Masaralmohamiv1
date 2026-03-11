@@ -232,6 +232,9 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                         <Link href={`/app/matters/${matter.id}`} className={buttonVariants('ghost', 'sm')}>
                           عرض
                         </Link>
+                        <Link href={`/app/matters/${matter.id}/edit`} className={buttonVariants('outline', 'sm')}>
+                          تعديل
+                        </Link>
                         {matter.status === 'archived' ? (
                           <ConfirmActionForm
                             action={restoreMatterAction.bind(null, matter.id, '/app/matters')}

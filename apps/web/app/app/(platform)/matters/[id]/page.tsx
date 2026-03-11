@@ -9,7 +9,6 @@ import { DocumentShareButton } from '@/components/documents/document-share-butto
 import { DocumentDownloadButton } from '@/components/documents/document-download-button';
 import { MatterMembersClient } from '@/components/matters/matter-members-client';
 import { MatterTasksClient } from '@/components/tasks/matter-tasks-client';
-import { listClients } from '@/lib/clients';
 import { listDocuments } from '@/lib/documents';
 import { listMatterEvents, type MatterEventType } from '@/lib/matterEvents';
 import { listOrgMembers } from '@/lib/matter-members';
@@ -23,7 +22,6 @@ import {
   createMatterEventAction,
   deleteMatterAction,
   restoreMatterAction,
-  updateMatterAction,
 } from '../actions';
 
 type MatterDetailsPageProps = {
@@ -121,9 +119,14 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
             {matter.is_private ? <Badge variant="warning">خاصة</Badge> : <Badge variant="default">عامة</Badge>}
           </div>
         </div>
-        <Link href="/app/matters" className={buttonVariants('outline', 'sm')}>
-          رجوع
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/app/matters/${matter.id}/edit`} className={buttonVariants('primary', 'sm')}>
+            تعديل القضية
+          </Link>
+          <Link href="/app/matters" className={buttonVariants('outline', 'sm')}>
+            رجوع
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-brand-border pb-3 dark:border-slate-700">
@@ -202,22 +205,15 @@ async function MatterSummarySection({
   matterId: string;
   matter: NonNullable<Awaited<ReturnType<typeof getMatterById>>>;
 }) {
-  const clientsResult = await listClients({
-    status: 'all',
-    page: 1,
-    limit: 50,
-  });
-
-  const selectedClientExists = clientsResult.data.some((client) => client.id === matter.client_id);
   const currentUser = await getCurrentAuthUser();
   let allOrgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
-  try {
-    allOrgMembers = await listOrgMembers(matter.org_id);
-  } catch {
-    allOrgMembers = [];
+  if (matter.is_private) {
+    try {
+      allOrgMembers = await listOrgMembers(matter.org_id);
+    } catch {
+      allOrgMembers = [];
+    }
   }
-  const assignableLawyers = allOrgMembers.filter((member) => member.role === 'owner' || member.role === 'lawyer');
-  const selectedAssigneeExists = assignableLawyers.some((member) => member.user_id === matter.assigned_user_id);
 
   let canManageMembers = false;
   let orgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
@@ -334,135 +330,6 @@ async function MatterSummarySection({
           </section>
         ) : null
       }
-
-      <section className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
-        <h2 className="font-semibold text-brand-navy dark:text-slate-100">تعديل القضية</h2>
-        <form action={updateMatterAction.bind(null, matter.id)} className="mt-4 grid gap-4">
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">العنوان</span>
-            <input
-              required
-              minLength={2}
-              name="title"
-              defaultValue={matter.title}
-              className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">الموكل</span>
-              <select
-                name="client_id"
-                defaultValue={matter.client_id ?? ''}
-                className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              >
-                <option value="">بدون موكل</option>
-                {!selectedClientExists && matter.client_id ? (
-                  <option value={matter.client_id}>{matter.client?.name ?? 'الموكل الحالي'}</option>
-                ) : null}
-                {clientsResult.data.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">الحالة</span>
-              <select
-                name="status"
-                defaultValue={matter.status}
-                className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              >
-                <option value="new">جديدة</option>
-                <option value="in_progress">قيد العمل</option>
-                <option value="on_hold">معلّقة</option>
-                <option value="closed">مغلقة</option>
-                <option value="archived">مؤرشفة</option>
-              </select>
-            </label>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">مالك القضية (المحامي المسؤول)</span>
-              <select
-                name="assigned_user_id"
-                defaultValue={matter.assigned_user_id ?? ''}
-                className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              >
-                <option value="">غير محدد</option>
-                {!selectedAssigneeExists && matter.assigned_user_id ? (
-                  <option value={matter.assigned_user_id}>المسؤول الحالي</option>
-                ) : null}
-                {assignableLawyers.map((member) => (
-                  <option key={member.user_id} value={member.user_id}>
-                    {(member.full_name || member.email || 'محامٍ')} {member.role === 'owner' ? '(شريك)' : '(محامٍ)'}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">نوع القضية</span>
-              <select
-                name="case_type"
-                defaultValue={matter.case_type ?? ''}
-                className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              >
-                <option value="">غير محدد</option>
-                <option value="commercial">تجارية</option>
-                <option value="labor">عمالية</option>
-                <option value="personal_status">أحوال شخصية</option>
-                <option value="general">عامة</option>
-                <option value="criminal">جزائية</option>
-                <option value="administrative">إدارية</option>
-                <option value="enforcement">تنفيذ</option>
-              </select>
-            </label>
-          </div>
-
-          <label className="flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              name="is_private"
-              defaultChecked={matter.is_private}
-              className="h-4 w-4 rounded border-brand-border text-brand-emerald focus:ring-brand-emerald"
-            />
-            <span className="font-medium text-slate-700 dark:text-slate-200">قضية خاصة</span>
-          </label>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            عند تفعيل الخصوصية: اختر المحامي المسؤول، ولن تظهر القضية لباقي المحامين غير المصرح لهم.
-          </p>
-
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">ملخص (اختياري)</span>
-            <textarea
-              name="summary"
-              rows={4}
-              defaultValue={matter.summary ?? ''}
-              className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-            />
-          </label>
-
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">المطالبات (اختياري)</span>
-            <textarea
-              name="claims"
-              rows={4}
-              defaultValue={matter.claims ?? ''}
-              placeholder="أدخل تفاصيل المطالبات..."
-              className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-            />
-          </label>
-
-          <div>
-            <FormSubmitButton pendingText="جارٍ الحفظ..." variant="primary" size="md">
-              تعديل القضية
-            </FormSubmitButton>
-          </div>
-        </form>
-      </section>
 
       <div className="flex flex-wrap gap-3">
         {matter.status === 'archived' ? (

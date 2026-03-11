@@ -212,6 +212,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const nextMonth = formatMonthKey(new Date(Date.UTC(year, monthIndex + 1, 1)));
 
   const queryBase = buildQuery({ type: source, mine });
+  const monthCells = buildMonthCells(monthStart);
+  const monthCounts = countItemsByKind(monthItems);
+  const mobileDayEntries = Array.from(itemsByDay.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const todayKey = formatLocalDateKey(today);
+  const currentMonthKey = formatMonthKey(today);
 
   return (
     <div className="space-y-5">
@@ -220,18 +225,34 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           <div>
             <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">التقويم</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              عرض شهري سريع + قائمة قادمة خلال 14 يوم.
+              عرض مبسط للشهر الحالي والعناصر القادمة.
             </p>
           </div>
-          <Link
-            href={{ pathname: '/app/api/calendar/ics', query: { from: fromDay, to: toDay } }}
-            className={buttonVariants('outline', 'sm')}
-          >
-            تصدير ICS
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={{ pathname: '/app/calendar', query: { ...queryBase, month: currentMonthKey } }}
+              className={buttonVariants('ghost', 'sm')}
+            >
+              الشهر الحالي
+            </Link>
+            <Link
+              href={{ pathname: '/app/api/calendar/ics', query: { from: fromDay, to: toDay } }}
+              className={buttonVariants('outline', 'sm')}
+            >
+              تصدير ICS
+            </Link>
+          </div>
         </div>
 
-        <form className="mt-5 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_220px_220px_auto]">
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge variant="default">إجمالي الشهر: {monthItems.length}</Badge>
+          <Badge variant="danger">جلسات: {monthCounts.hearing}</Badge>
+          <Badge variant="warning">اجتماعات: {monthCounts.meeting}</Badge>
+          <Badge variant="success">مهام: {monthCounts.task}</Badge>
+          <Badge variant="warning">فواتير: {monthCounts.invoice}</Badge>
+        </div>
+
+        <form className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
           <label className="block">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">الشهر</span>
             <input
@@ -268,12 +289,14 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             قضاياي/مهامي فقط
           </label>
 
-          <button type="submit" className={`${buttonVariants('outline', 'sm')} mt-6 lg:mt-8`}>
-            تحديث
-          </button>
+          <div className="flex items-end gap-2 sm:col-span-2 xl:col-span-1">
+            <button type="submit" className={buttonVariants('outline', 'sm')}>
+              تطبيق
+            </button>
+          </div>
         </form>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-brand-border pt-4 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <Link href={{ pathname: '/app/calendar', query: { ...queryBase, month: prevMonth } }} className={buttonVariants('outline', 'sm')}>
               الشهر السابق
@@ -285,55 +308,126 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{monthLabel}</p>
         </div>
 
-        <div className="mt-5 grid grid-cols-7 gap-2 text-xs text-slate-500 dark:text-slate-400">
-          {dayLabels.map((label) => (
-            <div key={label} className="text-center font-medium">
-              {label}
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-brand-border bg-brand-background/60 p-3 text-xs dark:border-slate-800 dark:bg-slate-950/30">
+          {(['hearing', 'meeting', 'task', 'invoice'] as const).map((kind) => (
+            <div key={kind} className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+              <span className={`h-2.5 w-2.5 rounded-full ${kindDotClass(kind)}`} />
+              {kindLabel(kind)}
             </div>
           ))}
         </div>
 
-        <div className="mt-2 grid grid-cols-7 gap-2">
-          {buildMonthCells(monthStart).map((cell, idx) => {
-            if (!cell) {
-              return <div key={`empty-${idx}`} className="h-28 rounded-lg border border-dashed border-brand-border/60 dark:border-slate-800" />;
-            }
+        <div className="mt-5 md:hidden">
+          {mobileDayEntries.length ? (
+            <ul className="space-y-2">
+              {mobileDayEntries.map(([dateKey, dayItems]) => (
+                <li
+                  key={dateKey}
+                  className={`rounded-lg border px-3 py-2 ${
+                    dateKey === todayKey
+                      ? 'border-brand-emerald bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/20'
+                      : 'border-brand-border bg-white dark:border-slate-700 dark:bg-slate-950'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {formatDateKeyLabel(dateKey)}
+                    </p>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{dayItems.length}</span>
+                  </div>
 
-            const dayItems = itemsByDay.get(cell.key) ?? [];
+                  <div className="mt-2 space-y-1.5">
+                    {dayItems.slice(0, 4).map((item) => (
+                      <Link
+                        key={`${item.kind}-${item.href}-${item.date}`}
+                        href={item.href}
+                        className="flex items-start gap-1.5 rounded-md px-1 py-1 text-xs text-slate-700 hover:bg-brand-background dark:text-slate-200 dark:hover:bg-slate-900"
+                        title={item.title}
+                      >
+                        <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${kindDotClass(item.kind)}`} />
+                        <span className="truncate">{stripKindPrefix(item.title)}</span>
+                      </Link>
+                    ))}
+                    {dayItems.length > 4 ? (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">+{dayItems.length - 4} أخرى</p>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-lg border border-dashed border-brand-border px-3 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+              لا توجد عناصر في هذا الشهر.
+            </p>
+          )}
+        </div>
 
-            return (
-              <div
-                key={cell.key}
-                className="h-28 overflow-hidden rounded-lg border border-brand-border bg-brand-background/60 p-2 dark:border-slate-800 dark:bg-slate-950/30"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{cell.day}</span>
-                  {dayItems.length ? (
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">{dayItems.length}</span>
-                  ) : null}
-                </div>
-
-                <div className="mt-2 space-y-1">
-                  {dayItems.slice(0, 3).map((item) => (
-                    <Link
-                      key={`${item.kind}-${item.href}-${item.date}`}
-                      href={item.href}
-                      className="block truncate rounded-md px-1 py-0.5 text-[11px] text-slate-700 hover:bg-white dark:text-slate-200 dark:hover:bg-slate-900"
-                      title={item.title}
-                    >
-                      <Badge className="me-1" variant={badgeVariant(item.kind)}>
-                        {kindLabel(item.kind)}
-                      </Badge>
-                      {item.title.replace(/^([^:]+: )/, '')}
-                    </Link>
-                  ))}
-                  {dayItems.length > 3 ? (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">+{dayItems.length - 3} أخرى</p>
-                  ) : null}
-                </div>
+        <div className="mt-5 hidden md:block">
+          <div className="grid grid-cols-7 gap-2 text-xs text-slate-500 dark:text-slate-400">
+            {dayLabels.map((label) => (
+              <div key={label} className="text-center font-medium">
+                {label}
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          <div className="mt-2 overflow-x-auto">
+            <div className="grid min-w-[820px] grid-cols-7 gap-2">
+              {monthCells.map((cell, idx) => {
+                if (!cell) {
+                  return (
+                    <div key={`empty-${idx}`} className="h-32 rounded-lg border border-dashed border-brand-border/60 dark:border-slate-800" />
+                  );
+                }
+
+                const dayItems = itemsByDay.get(cell.key) ?? [];
+                const isToday = cell.key === todayKey;
+
+                return (
+                  <div
+                    key={cell.key}
+                    className={`h-32 overflow-hidden rounded-lg border p-2 ${
+                      isToday
+                        ? 'border-brand-emerald bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/20'
+                        : 'border-brand-border bg-brand-background/60 dark:border-slate-800 dark:bg-slate-950/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-semibold ${
+                          isToday
+                            ? 'bg-brand-emerald text-white'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        {cell.day}
+                      </span>
+                      {dayItems.length ? (
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">{dayItems.length}</span>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-2 space-y-1">
+                      {dayItems.slice(0, 2).map((item) => (
+                        <Link
+                          key={`${item.kind}-${item.href}-${item.date}`}
+                          href={item.href}
+                          className="flex items-start gap-1.5 rounded-md px-1 py-0.5 text-[11px] text-slate-700 hover:bg-white dark:text-slate-200 dark:hover:bg-slate-900"
+                          title={item.title}
+                        >
+                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${kindDotClass(item.kind)}`} />
+                          <span className="truncate">{stripKindPrefix(item.title)}</span>
+                        </Link>
+                      ))}
+                      {dayItems.length > 2 ? (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">+{dayItems.length - 2} أخرى</p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -342,7 +436,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           <div>
             <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">القادم خلال 14 يوم</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              عناصر استحقاق وجلسات قابلة للوصول حسب صلاحيات المكتب.
+              العناصر الأقرب زمنيًا مع وصول مباشر للتفاصيل.
             </p>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -351,25 +445,18 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         </div>
 
         {upcomingItems.length ? (
-          <ul className="mt-5 space-y-3">
+          <ul className="mt-5 space-y-2">
             {upcomingItems.map((item) => (
               <li
                 key={`${item.kind}-${item.href}-${item.date}`}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-brand-border bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950"
+                className="rounded-lg border border-brand-border bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950"
               >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={badgeVariant(item.kind)}>{kindLabel(item.kind)}</Badge>
-                    <Link href={item.href} className="truncate font-semibold text-brand-navy hover:underline dark:text-slate-100">
-                      {item.title}
-                    </Link>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                    {formatDateTime(item.date)}
-                  </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={badgeVariant(item.kind)}>{kindLabel(item.kind)}</Badge>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{formatDateTime(item.date)}</p>
                 </div>
-                <Link href={item.href} className={buttonVariants('outline', 'sm')}>
-                  فتح
+                <Link href={item.href} className="mt-2 block truncate font-semibold text-brand-navy hover:underline dark:text-slate-100">
+                  {item.title}
                 </Link>
               </li>
             ))}
@@ -576,6 +663,21 @@ function groupByDay(items: CalendarItem[]) {
   return map;
 }
 
+function countItemsByKind(items: CalendarItem[]) {
+  return items.reduce(
+    (acc, item) => {
+      acc[item.kind] += 1;
+      return acc;
+    },
+    {
+      hearing: 0,
+      meeting: 0,
+      task: 0,
+      invoice: 0,
+    } as Record<CalendarItem['kind'], number>,
+  );
+}
+
 function badgeVariant(kind: CalendarItem['kind']) {
   if (kind === 'hearing') return 'danger' as const;
   if (kind === 'meeting') return 'warning' as const;
@@ -583,11 +685,35 @@ function badgeVariant(kind: CalendarItem['kind']) {
   return 'success' as const;
 }
 
+function kindDotClass(kind: CalendarItem['kind']) {
+  if (kind === 'hearing') return 'bg-red-500';
+  if (kind === 'meeting') return 'bg-amber-500';
+  if (kind === 'invoice') return 'bg-orange-500';
+  return 'bg-emerald-500';
+}
+
 function kindLabel(kind: CalendarItem['kind']) {
   if (kind === 'hearing') return 'جلسة';
   if (kind === 'meeting') return 'اجتماع';
   if (kind === 'invoice') return 'فاتورة';
   return 'مهمة';
+}
+
+function stripKindPrefix(value: string) {
+  return value.replace(/^([^:]+:\s*)/, '');
+}
+
+function formatDateKeyLabel(value: string) {
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('ar-SA', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function formatLocalDateKey(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatDayLabel(value: Date) {

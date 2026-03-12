@@ -292,7 +292,8 @@ export default function HomePage() {
 
                 {item.action === 'contact' && (
                   <span
-                    className="mt-4 inline-block text-sm font-medium text-brand-emerald hover:underline"
+                    dir="ltr"
+                    className="mt-4 block w-full max-w-full break-all text-center text-sm font-medium text-brand-emerald hover:underline"
                   >
                     masar.almohami@outlook.sa
                   </span>

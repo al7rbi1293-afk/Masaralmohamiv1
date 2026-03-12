@@ -43,7 +43,10 @@ export function PricingClient() {
             <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{plan.description}</p>
 
             {isContactSales ? (
-              <span className="mt-4 inline-block text-sm font-medium text-brand-emerald hover:underline">
+              <span
+                dir="ltr"
+                className="mt-4 block w-full max-w-full break-all text-center text-sm font-medium text-brand-emerald hover:underline"
+              >
                 {supportEmail}
               </span>
             ) : null}

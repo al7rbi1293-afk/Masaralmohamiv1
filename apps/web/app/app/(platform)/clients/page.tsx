@@ -66,7 +66,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const nextQuery = buildQuery({ q, status, page: Math.min(totalPages, result.page + 1) });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">العملاء</h1>
@@ -126,7 +126,80 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6 space-y-3 md:hidden">
+            {result.data.map((client) => (
+              <article key={client.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">{client.name}</h2>
+                  <Badge variant={client.status === 'active' ? 'success' : 'warning'}>
+                    {client.status === 'active' ? 'نشط' : 'مؤرشف'}
+                  </Badge>
+                </div>
+
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">النوع</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{typeLabel[client.type]}</dd>
+                  </div>
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">الجوال</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{client.phone ?? '—'}</dd>
+                  </div>
+                  <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">البريد</dt>
+                    <dd className="mt-1 break-all font-medium text-slate-700 dark:text-slate-200">{client.email ?? '—'}</dd>
+                  </div>
+                  <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">آخر تحديث</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                      {new Date(client.updated_at).toLocaleDateString('ar-SA')}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/app/clients/${client.id}`} className={buttonVariants('ghost', 'sm')}>
+                    عرض
+                  </Link>
+                  {client.status === 'active' ? (
+                    <ConfirmActionForm
+                      action={archiveClientAction.bind(null, client.id, '/app/clients')}
+                      triggerLabel="أرشفة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="أرشفة العميل"
+                      confirmMessage="هل تريد أرشفة هذا العميل؟ يمكنك استعادته لاحقًا."
+                      confirmLabel="أرشفة"
+                      destructive
+                    />
+                  ) : (
+                    <ConfirmActionForm
+                      action={restoreClientAction.bind(null, client.id, '/app/clients')}
+                      triggerLabel="استعادة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="استعادة العميل"
+                      confirmMessage="هل تريد استعادة هذا العميل إلى الحالة النشطة؟"
+                      confirmLabel="استعادة"
+                      destructive={false}
+                    />
+                  )}
+                  <ConfirmActionForm
+                    action={deleteClientAction.bind(null, client.id, '/app/clients')}
+                    triggerLabel="إزالة"
+                    triggerVariant="outline"
+                    triggerSize="sm"
+                    confirmTitle="إزالة العميل نهائياً"
+                    confirmMessage="هل أنت متأكد أنك تريد إزالة هذا العميل نهائيًا من المكتب؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع البيانات المرتبطة."
+                    confirmLabel="إزالة نهائية"
+                    destructive={true}
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>

@@ -70,7 +70,7 @@ export default async function TemplatesPage({ searchParams }: TemplatesPageProps
   const nextQuery = buildQuery({ q, category, status, page: Math.min(totalPages, result.page + 1) });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">القوالب</h1>
@@ -146,7 +146,66 @@ export default async function TemplatesPage({ searchParams }: TemplatesPageProps
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6 space-y-3 md:hidden">
+            {result.data.map((template) => (
+              <article key={template.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">{template.name}</h2>
+                  <Badge variant={template.status === 'active' ? 'success' : 'warning'}>
+                    {template.status === 'active' ? 'نشط' : 'مؤرشف'}
+                  </Badge>
+                </div>
+
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">التصنيف</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{template.category}</dd>
+                  </div>
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">النوع</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{typeLabel[template.template_type]}</dd>
+                  </div>
+                  <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">آخر تحديث</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                      {new Date(template.updated_at).toLocaleDateString('ar-SA')}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/app/templates/${template.id}`} className={buttonVariants('ghost', 'sm')}>
+                    عرض
+                  </Link>
+                  {template.status === 'active' ? (
+                    <ConfirmActionForm
+                      action={archiveTemplateAction.bind(null, template.id, '/app/templates')}
+                      triggerLabel="أرشفة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="أرشفة القالب"
+                      confirmMessage="هل تريد أرشفة هذا القالب؟ يمكنك استعادته لاحقًا."
+                      confirmLabel="أرشفة"
+                      destructive
+                    />
+                  ) : (
+                    <ConfirmActionForm
+                      action={restoreTemplateAction.bind(null, template.id, '/app/templates')}
+                      triggerLabel="استعادة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="استعادة القالب"
+                      confirmMessage="هل تريد استعادة هذا القالب إلى الحالة النشطة؟"
+                      confirmLabel="استعادة"
+                      destructive={false}
+                    />
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>

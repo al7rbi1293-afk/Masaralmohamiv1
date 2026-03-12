@@ -147,7 +147,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <div>
         <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">المهام</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">

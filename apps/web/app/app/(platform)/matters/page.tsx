@@ -111,7 +111,7 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
   });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">القضايا</h1>
@@ -195,7 +195,87 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6 space-y-3 md:hidden">
+            {mattersResult.data.map((matter) => (
+              <article key={matter.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-base font-semibold leading-7 text-brand-navy dark:text-slate-100">
+                    {matter.title}
+                  </h2>
+                  <Badge variant={statusVariant[matter.status]}>{statusLabel[matter.status]}</Badge>
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant={matter.is_private ? 'warning' : 'default'}>
+                    {matter.is_private ? 'خاصة' : 'عامة'}
+                  </Badge>
+                </div>
+
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">الموكل</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{matter.client?.name ?? '—'}</dd>
+                  </div>
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">المسؤول</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                      {renderAssignee(matter.assigned_user_id, currentUser?.id)}
+                    </dd>
+                  </div>
+                  <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">آخر تحديث</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                      {new Date(matter.updated_at).toLocaleDateString('ar-SA')}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/app/matters/${matter.id}`} className={buttonVariants('ghost', 'sm')}>
+                    عرض
+                  </Link>
+                  <Link href={`/app/matters/${matter.id}/edit`} className={buttonVariants('outline', 'sm')}>
+                    تعديل
+                  </Link>
+                  {matter.status === 'archived' ? (
+                    <ConfirmActionForm
+                      action={restoreMatterAction.bind(null, matter.id, '/app/matters')}
+                      triggerLabel="استعادة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="استعادة القضية"
+                      confirmMessage="هل تريد استعادة هذه القضية؟"
+                      confirmLabel="استعادة"
+                      destructive={false}
+                    />
+                  ) : (
+                    <ConfirmActionForm
+                      action={archiveMatterAction.bind(null, matter.id, '/app/matters')}
+                      triggerLabel="أرشفة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="أرشفة القضية"
+                      confirmMessage="هل تريد أرشفة هذه القضية؟ يمكنك استعادتها لاحقًا."
+                      confirmLabel="أرشفة"
+                      destructive
+                    />
+                  )}
+                  <ConfirmActionForm
+                    action={deleteMatterAction.bind(null, matter.id, '/app/matters')}
+                    triggerLabel="حذف"
+                    triggerVariant="outline"
+                    triggerSize="sm"
+                    confirmTitle="حذف القضية نهائيًا"
+                    confirmMessage="سيتم حذف القضية وكل المهام والمستندات والفواتير وعروض الأسعار المرتبطة بها نهائيًا."
+                    confirmLabel="حذف نهائي"
+                    destructive
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>

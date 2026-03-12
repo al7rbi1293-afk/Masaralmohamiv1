@@ -213,108 +213,206 @@ export function TasksTableClient({ tasks, matters, currentUserId, autoOpenCreate
           <EmptyState title="المهام" message="لا توجد مهام." backHref="/app/tasks?new=1" backLabel="أضف مهمة" />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
-          <table className="min-w-full text-sm">
-            <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
-              <tr>
-                <th className="px-3 py-3 text-start font-medium">المهمة</th>
-                <th className="px-3 py-3 text-start font-medium">القضية</th>
-                <th className="px-3 py-3 text-start font-medium">الاستحقاق</th>
-                <th className="px-3 py-3 text-start font-medium">الأولوية</th>
-                <th className="px-3 py-3 text-start font-medium">الحالة</th>
-                <th className="px-3 py-3 text-start font-medium">المسند إليه</th>
-                <th className="px-3 py-3 text-start font-medium">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-border dark:divide-slate-800">
-              {tasks.map((task) => {
-                const due = task.due_at ? new Date(task.due_at) : null;
-                const isOverdue = Boolean(due && due.getTime() < now && task.status !== 'done' && task.status !== 'canceled');
+        <>
+          <div className="space-y-3 md:hidden">
+            {tasks.map((task) => {
+              const due = task.due_at ? new Date(task.due_at) : null;
+              const isOverdue = Boolean(due && due.getTime() < now && task.status !== 'done' && task.status !== 'canceled');
 
-                return (
-                  <tr key={task.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
-                    <td className="px-3 py-3 font-medium text-brand-navy dark:text-slate-100">{task.title}</td>
-                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                      {task.matter ? (
-                        <Link href={`/app/matters/${task.matter.id}`} className={buttonVariants('ghost', 'sm')}>
-                          {task.matter.title}
-                        </Link>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                      {task.due_at ? (
-                        <span className={isOverdue ? 'text-red-700 dark:text-red-300' : ''}>
-                          {new Date(task.due_at).toLocaleString('ar-SA')}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <Badge variant={priorityVariant[task.priority]}>{priorityLabel[task.priority]}</Badge>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant={statusVariant[task.status]}>{statusLabel[task.status]}</Badge>
-                        {task.is_archived ? <Badge variant="warning">مؤرشفة</Badge> : null}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                      {task.assignee_id ? (task.assignee_id === currentUserId ? 'أنا' : 'عضو الفريق') : '—'}
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className={buttonVariants('outline', 'sm')}
-                          disabled={busyTaskId === task.id}
-                          onClick={() => openEdit(task)}
-                        >
-                          عرض/تعديل
-                        </button>
-                        <button
-                          type="button"
-                          className={buttonVariants('outline', 'sm')}
-                          disabled={busyTaskId === task.id || task.is_archived || task.status === 'done' || task.status === 'canceled'}
-                          onClick={() => changeStatus(task.id, 'done')}
-                        >
-                          تم
-                        </button>
-                        <button
-                          type="button"
-                          className={buttonVariants('outline', 'sm')}
-                          disabled={busyTaskId === task.id || task.is_archived || task.status === 'canceled'}
-                          onClick={() => changeStatus(task.id, 'canceled')}
-                        >
-                          إلغاء
-                        </button>
-                        <button
-                          type="button"
-                          className={buttonVariants('outline', 'sm')}
-                          disabled={busyTaskId === task.id}
-                          onClick={() => setConfirmAction({ taskId: task.id, mode: task.is_archived ? 'restore' : 'archive' })}
-                        >
-                          {task.is_archived ? 'استعادة' : 'أرشفة'}
-                        </button>
-                        <button
-                          type="button"
-                          className={buttonVariants('outline', 'sm')}
-                          disabled={busyTaskId === task.id}
-                          onClick={() => setConfirmAction({ taskId: task.id, mode: 'delete' })}
-                        >
-                          حذف
-                        </button>
-                        <TaskEmailReminderButton taskId={task.id} disabled={task.is_archived || busyTaskId === task.id} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              return (
+                <article key={task.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-base font-semibold text-brand-navy dark:text-slate-100">{task.title}</h3>
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      <Badge variant={statusVariant[task.status]}>{statusLabel[task.status]}</Badge>
+                      {task.is_archived ? <Badge variant="warning">مؤرشفة</Badge> : null}
+                    </div>
+                  </div>
+
+                  <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">القضية</dt>
+                      <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                        {task.matter ? (
+                          <Link href={`/app/matters/${task.matter.id}`} className="underline-offset-2 hover:underline">
+                            {task.matter.title}
+                          </Link>
+                        ) : (
+                          '—'
+                        )}
+                      </dd>
+                    </div>
+                    <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">الأولوية</dt>
+                      <dd className="mt-1">
+                        <Badge variant={priorityVariant[task.priority]}>{priorityLabel[task.priority]}</Badge>
+                      </dd>
+                    </div>
+                    <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">المسند إليه</dt>
+                      <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                        {task.assignee_id ? (task.assignee_id === currentUserId ? 'أنا' : 'عضو الفريق') : '—'}
+                      </dd>
+                    </div>
+                    <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">الاستحقاق</dt>
+                      <dd className={`mt-1 font-medium ${isOverdue ? 'text-red-700 dark:text-red-300' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {task.due_at ? new Date(task.due_at).toLocaleString('ar-SA') : '—'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={buttonVariants('outline', 'sm')}
+                      disabled={busyTaskId === task.id}
+                      onClick={() => openEdit(task)}
+                    >
+                      عرض/تعديل
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonVariants('outline', 'sm')}
+                      disabled={busyTaskId === task.id || task.is_archived || task.status === 'done' || task.status === 'canceled'}
+                      onClick={() => changeStatus(task.id, 'done')}
+                    >
+                      تم
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonVariants('outline', 'sm')}
+                      disabled={busyTaskId === task.id || task.is_archived || task.status === 'canceled'}
+                      onClick={() => changeStatus(task.id, 'canceled')}
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonVariants('outline', 'sm')}
+                      disabled={busyTaskId === task.id}
+                      onClick={() => setConfirmAction({ taskId: task.id, mode: task.is_archived ? 'restore' : 'archive' })}
+                    >
+                      {task.is_archived ? 'استعادة' : 'أرشفة'}
+                    </button>
+                    <button
+                      type="button"
+                      className={buttonVariants('outline', 'sm')}
+                      disabled={busyTaskId === task.id}
+                      onClick={() => setConfirmAction({ taskId: task.id, mode: 'delete' })}
+                    >
+                      حذف
+                    </button>
+                    <TaskEmailReminderButton taskId={task.id} disabled={task.is_archived || busyTaskId === task.id} />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-lg border border-brand-border md:block dark:border-slate-700">
+            <table className="min-w-full text-sm">
+              <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                <tr>
+                  <th className="px-3 py-3 text-start font-medium">المهمة</th>
+                  <th className="px-3 py-3 text-start font-medium">القضية</th>
+                  <th className="px-3 py-3 text-start font-medium">الاستحقاق</th>
+                  <th className="px-3 py-3 text-start font-medium">الأولوية</th>
+                  <th className="px-3 py-3 text-start font-medium">الحالة</th>
+                  <th className="px-3 py-3 text-start font-medium">المسند إليه</th>
+                  <th className="px-3 py-3 text-start font-medium">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand-border dark:divide-slate-800">
+                {tasks.map((task) => {
+                  const due = task.due_at ? new Date(task.due_at) : null;
+                  const isOverdue = Boolean(due && due.getTime() < now && task.status !== 'done' && task.status !== 'canceled');
+
+                  return (
+                    <tr key={task.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
+                      <td className="px-3 py-3 font-medium text-brand-navy dark:text-slate-100">{task.title}</td>
+                      <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                        {task.matter ? (
+                          <Link href={`/app/matters/${task.matter.id}`} className={buttonVariants('ghost', 'sm')}>
+                            {task.matter.title}
+                          </Link>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                        {task.due_at ? (
+                          <span className={isOverdue ? 'text-red-700 dark:text-red-300' : ''}>
+                            {new Date(task.due_at).toLocaleString('ar-SA')}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <Badge variant={priorityVariant[task.priority]}>{priorityLabel[task.priority]}</Badge>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant={statusVariant[task.status]}>{statusLabel[task.status]}</Badge>
+                          {task.is_archived ? <Badge variant="warning">مؤرشفة</Badge> : null}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                        {task.assignee_id ? (task.assignee_id === currentUserId ? 'أنا' : 'عضو الفريق') : '—'}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className={buttonVariants('outline', 'sm')}
+                            disabled={busyTaskId === task.id}
+                            onClick={() => openEdit(task)}
+                          >
+                            عرض/تعديل
+                          </button>
+                          <button
+                            type="button"
+                            className={buttonVariants('outline', 'sm')}
+                            disabled={busyTaskId === task.id || task.is_archived || task.status === 'done' || task.status === 'canceled'}
+                            onClick={() => changeStatus(task.id, 'done')}
+                          >
+                            تم
+                          </button>
+                          <button
+                            type="button"
+                            className={buttonVariants('outline', 'sm')}
+                            disabled={busyTaskId === task.id || task.is_archived || task.status === 'canceled'}
+                            onClick={() => changeStatus(task.id, 'canceled')}
+                          >
+                            إلغاء
+                          </button>
+                          <button
+                            type="button"
+                            className={buttonVariants('outline', 'sm')}
+                            disabled={busyTaskId === task.id}
+                            onClick={() => setConfirmAction({ taskId: task.id, mode: task.is_archived ? 'restore' : 'archive' })}
+                          >
+                            {task.is_archived ? 'استعادة' : 'أرشفة'}
+                          </button>
+                          <button
+                            type="button"
+                            className={buttonVariants('outline', 'sm')}
+                            disabled={busyTaskId === task.id}
+                            onClick={() => setConfirmAction({ taskId: task.id, mode: 'delete' })}
+                          >
+                            حذف
+                          </button>
+                          <TaskEmailReminderButton taskId={task.id} disabled={task.is_archived || busyTaskId === task.id} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <TaskUpsertModal

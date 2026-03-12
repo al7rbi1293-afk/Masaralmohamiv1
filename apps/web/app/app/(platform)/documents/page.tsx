@@ -73,7 +73,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   const nextQuery = buildQuery({ q, matter: matterId, archived, page: Math.min(totalPages, documentsResult.page + 1) });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">المستندات</h1>
@@ -154,7 +154,84 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6 space-y-3 md:hidden">
+            {documentsResult.data.map((doc) => (
+              <article key={doc.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">{doc.title}</h2>
+                  {doc.is_archived ? <Badge variant="warning">مؤرشف</Badge> : null}
+                </div>
+
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">مرتبط بقضية</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{doc.matter?.title ?? '—'}</dd>
+                  </div>
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">آخر نسخة</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                      {doc.latestVersion ? `v${doc.latestVersion.version_no}` : '—'}
+                    </dd>
+                  </div>
+                  <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">اسم الملف</dt>
+                    <dd className="mt-1 break-all font-medium text-slate-700 dark:text-slate-200">
+                      {doc.latestVersion?.file_name ?? '—'}
+                    </dd>
+                  </div>
+                  <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">تاريخ الرفع</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                      {doc.latestVersion ? new Date(doc.latestVersion.created_at).toLocaleDateString('ar-SA') : '—'}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/app/documents/${doc.id}`} className={buttonVariants('ghost', 'sm')}>
+                    عرض
+                  </Link>
+                  <DocumentDownloadButton storagePath={doc.latestVersion?.storage_path} variant="ghost" size="sm" />
+                  <DocumentShareButton documentId={doc.id} />
+                  {doc.is_archived ? (
+                    <ConfirmActionForm
+                      action={restoreDocumentAction.bind(null, doc.id, '/app/documents')}
+                      triggerLabel="استعادة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="استعادة المستند"
+                      confirmMessage="هل تريد استعادة هذا المستند؟"
+                      confirmLabel="استعادة"
+                      destructive={false}
+                    />
+                  ) : (
+                    <ConfirmActionForm
+                      action={archiveDocumentAction.bind(null, doc.id, '/app/documents')}
+                      triggerLabel="أرشفة"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      confirmTitle="أرشفة المستند"
+                      confirmMessage="هل تريد أرشفة هذا المستند؟ يمكنك استعادته لاحقًا."
+                      confirmLabel="أرشفة"
+                      destructive
+                    />
+                  )}
+                  <ConfirmActionForm
+                    action={deleteDocumentAction.bind(null, doc.id, '/app/documents')}
+                    triggerLabel="حذف"
+                    triggerVariant="outline"
+                    triggerSize="sm"
+                    confirmTitle="حذف المستند نهائيًا"
+                    confirmMessage="سيتم حذف المستند وكل نسخه وروابط مشاركته نهائيًا."
+                    confirmLabel="حذف نهائي"
+                    destructive
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>

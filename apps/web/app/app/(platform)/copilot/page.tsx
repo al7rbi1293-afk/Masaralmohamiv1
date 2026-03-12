@@ -57,7 +57,7 @@ export default async function CopilotLandingPage({ searchParams }: CopilotLandin
   });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">الذكاء الاصطناعي</h1>
@@ -94,7 +94,28 @@ export default async function CopilotLandingPage({ searchParams }: CopilotLandin
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6 space-y-3 md:hidden">
+            {matters.data.map((matter) => (
+              <article key={matter.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-base font-semibold text-brand-navy dark:text-slate-100">{matter.title}</h3>
+                  <Badge variant={matter.is_private ? 'warning' : 'default'}>
+                    {matter.is_private ? 'خاصة' : 'عامة'}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  آخر تحديث: {new Date(matter.updated_at).toLocaleDateString('ar-SA')}
+                </p>
+                <div className="mt-3">
+                  <Link href={`/app/matters/${matter.id}/copilot`} className={buttonVariants('primary', 'sm')}>
+                    فتح المساعد
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>

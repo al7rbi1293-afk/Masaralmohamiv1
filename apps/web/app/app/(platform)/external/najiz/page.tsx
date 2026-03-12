@@ -68,7 +68,7 @@ export default async function NajizExternalCasesPage() {
   }
 
   return (
-    <Card className="p-6 space-y-5">
+    <Card className="space-y-5 p-4 sm:p-6">
       <Breadcrumbs
         items={[
           { label: 'لوحة التحكم', href: '/app' },
@@ -89,7 +89,42 @@ export default async function NajizExternalCasesPage() {
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
+      <div className="space-y-3 md:hidden">
+        {rows.map((row) => (
+          <article key={row.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+            <h3 className="text-base font-semibold text-brand-navy dark:text-slate-100">{row.title}</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">#{row.external_id}</p>
+
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                <dt className="text-xs text-slate-500 dark:text-slate-400">المحكمة</dt>
+                <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{row.court || '—'}</dd>
+              </div>
+              <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                <dt className="text-xs text-slate-500 dark:text-slate-400">الحالة</dt>
+                <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{row.status || '—'}</dd>
+              </div>
+              <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                <dt className="text-xs text-slate-500 dark:text-slate-400">آخر مزامنة</dt>
+                <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                  {new Date(row.last_synced_at).toLocaleString('ar-SA')}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="mt-3">
+              <Link
+                href={`/app/matters/new?title=${encodeURIComponent(row.title)}`}
+                className={buttonVariants('primary', 'sm')}
+              >
+                إنشاء قضية في مسار
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg border border-brand-border md:block dark:border-slate-700">
         <table className="min-w-full text-sm">
           <thead className="bg-brand-background text-slate-700 dark:bg-slate-800 dark:text-slate-100">
             <tr>

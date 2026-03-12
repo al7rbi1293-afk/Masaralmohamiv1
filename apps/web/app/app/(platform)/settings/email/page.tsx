@@ -50,7 +50,7 @@ export default async function EmailSettingsPage() {
   const rows = (data as EmailLogRow[] | null) ?? [];
 
   return (
-    <Card className="space-y-5 p-6">
+    <Card className="space-y-5 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">إعدادات البريد</h1>
@@ -94,38 +94,60 @@ export default async function EmailSettingsPage() {
             تعذر تحميل السجل. {error.message}
           </p>
         ) : rows.length ? (
-          <div className="mt-4 overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
-            <table className="min-w-full text-sm">
-              <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                <tr>
-                  <th className="px-3 py-3 text-start font-medium">القالب</th>
-                  <th className="px-3 py-3 text-start font-medium">إلى</th>
-                  <th className="px-3 py-3 text-start font-medium">الموضوع</th>
-                  <th className="px-3 py-3 text-start font-medium">الحالة</th>
-                  <th className="px-3 py-3 text-start font-medium">الوقت</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-border dark:divide-slate-800">
-                {rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
-                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+          <>
+            <div className="mt-4 space-y-3 md:hidden">
+              {rows.map((row) => (
+                <article key={row.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-brand-navy dark:text-slate-100">
                       {templateLabel[row.template] ?? row.template}
-                    </td>
-                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">{row.to_email}</td>
-                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">{row.subject}</td>
-                    <td className="px-3 py-3">
-                      <Badge variant={row.status === 'sent' ? 'success' : 'danger'}>
-                        {row.status === 'sent' ? 'تم' : 'فشل'}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                      {new Date(row.created_at).toLocaleString('ar-SA')}
-                    </td>
+                    </p>
+                    <Badge variant={row.status === 'sent' ? 'success' : 'danger'}>
+                      {row.status === 'sent' ? 'تم' : 'فشل'}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 break-all text-sm text-slate-700 dark:text-slate-200">{row.to_email}</p>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.subject}</p>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    {new Date(row.created_at).toLocaleString('ar-SA')}
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-4 hidden overflow-x-auto rounded-lg border border-brand-border md:block dark:border-slate-700">
+              <table className="min-w-full text-sm">
+                <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                  <tr>
+                    <th className="px-3 py-3 text-start font-medium">القالب</th>
+                    <th className="px-3 py-3 text-start font-medium">إلى</th>
+                    <th className="px-3 py-3 text-start font-medium">الموضوع</th>
+                    <th className="px-3 py-3 text-start font-medium">الحالة</th>
+                    <th className="px-3 py-3 text-start font-medium">الوقت</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-brand-border dark:divide-slate-800">
+                  {rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
+                      <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                        {templateLabel[row.template] ?? row.template}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 dark:text-slate-200">{row.to_email}</td>
+                      <td className="px-3 py-3 text-slate-700 dark:text-slate-200">{row.subject}</td>
+                      <td className="px-3 py-3">
+                        <Badge variant={row.status === 'sent' ? 'success' : 'danger'}>
+                          {row.status === 'sent' ? 'تم' : 'فشل'}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                        {new Date(row.created_at).toLocaleString('ar-SA')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="mt-5">
             <EmptyState title="لا يوجد سجل" message="لم يتم إرسال أي رسائل بعد." backHref="/app" backLabel="العودة للوحة التحكم" />
@@ -135,4 +157,3 @@ export default async function EmailSettingsPage() {
     </Card>
   );
 }
-

@@ -218,3 +218,14 @@ export function getSmtpEnv(): SmtpEnv {
 
   return { host, port, user, pass, from };
 }
+
+export function getSignupAlertEmails() {
+  const fallback = 'Masar.almohami@outlook.sa';
+  const raw = process.env.SIGNUP_ALERT_EMAILS?.trim();
+  const parsed = (raw || fallback)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [...new Set(parsed)];
+}

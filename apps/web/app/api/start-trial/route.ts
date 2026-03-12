@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     // Send Welcome Email
     try {
-      const { sendEmail } = await import('@/lib/email');
+      const { sendEmail, sendNewSignupAlertEmail } = await import('@/lib/email');
       const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
 
       const siteUrl = getRequestSiteUrl(request);
@@ -181,6 +181,14 @@ export async function POST(request: NextRequest) {
         subject: WELCOME_EMAIL_SUBJECT,
         text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
         html: WELCOME_EMAIL_HTML(fullName, verificationLink),
+      });
+
+      await sendNewSignupAlertEmail({
+        fullName,
+        email,
+        phone,
+        firmName,
+        source: 'trial',
       });
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);

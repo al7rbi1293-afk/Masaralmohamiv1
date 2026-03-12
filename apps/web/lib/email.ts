@@ -1,8 +1,13 @@
 import 'server-only';
 
 import nodemailer from 'nodemailer';
-import { getSmtpEnv, type SmtpEnv, isSmtpConfigured } from '@/lib/env';
-import { WELCOME_EMAIL_HTML, INVOICE_EMAIL_HTML } from './email-templates';
+import { getSmtpEnv, type SmtpEnv, isSmtpConfigured, getSignupAlertEmails } from '@/lib/env';
+import {
+  WELCOME_EMAIL_HTML,
+  INVOICE_EMAIL_HTML,
+  NEW_SIGNUP_ALERT_SUBJECT,
+  NEW_SIGNUP_ALERT_HTML,
+} from './email-templates';
 
 export type SendEmailParams = {
   to: string;
@@ -112,6 +117,62 @@ export async function sendInvoiceEmail(
   } catch (error) {
     console.error('Failed to send invoice email:', error);
   }
+}
+
+export async function sendNewSignupAlertEmail(params: {
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  firmName?: string | null;
+  source: 'trial' | 'invite';
+}) {
+  if (!isSmtpConfigured()) {
+    console.log('Skipping signup alert email (SMTP not configured)');
+    return;
+  }
+
+  const recipients = getSignupAlertEmails();
+  if (!recipients.length) {
+    return;
+  }
+
+  const sourceLabel = params.source === 'trial' ? 'نموذج التجربة' : 'صفحة الدعوة (/signup)';
+  const createdAt = new Date().toISOString();
+
+  try {
+    await sendEmail({
+      to: recipients.join(','),
+      subject: NEW_SIGNUP_ALERT_SUBJECT,
+      text: [
+        'تم تسجيل مستخدم جديد في مسار المحامي.',
+        `الاسم: ${params.fullName}`,
+        `البريد: ${params.email}`,
+        `الجوال: ${params.phone || 'غير مذكور'}`,
+        `اسم المكتب: ${params.firmName || 'غير مذكور'}`,
+        `المصدر: ${sourceLabel}`,
+        `وقت التسجيل: ${createdAt}`,
+      ].join('\n'),
+      html: NEW_SIGNUP_ALERT_HTML({
+        fullName: escapeHtml(params.fullName),
+        email: escapeHtml(params.email),
+        phone: params.phone ? escapeHtml(params.phone) : null,
+        firmName: params.firmName ? escapeHtml(params.firmName) : null,
+        source: escapeHtml(sourceLabel),
+        createdAt: escapeHtml(createdAt),
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to send signup alert email:', error);
+  }
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function normalizeFromAddress(rawFrom: string) {

@@ -147,3 +147,33 @@ export const PASSWORD_RESET_EMAIL_HTML = (params: {
 </body>
 </html>
 `;
+
+export const NEW_SIGNUP_ALERT_SUBJECT = 'تسجيل جديد في مسار المحامي';
+
+export const NEW_SIGNUP_ALERT_HTML = (params: {
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  firmName?: string | null;
+  source: string;
+  createdAt: string;
+}) => `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>تنبيه تسجيل جديد</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #0f172a; max-width: 620px; margin: 0 auto; padding: 20px; text-align: right; direction: rtl;">
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+        <h2 style="margin-top: 0;">تم تسجيل مستخدم جديد</h2>
+        <p style="margin: 4px 0;"><strong>الاسم:</strong> ${params.fullName}</p>
+        <p style="margin: 4px 0;"><strong>البريد:</strong> ${params.email}</p>
+        <p style="margin: 4px 0;"><strong>الجوال:</strong> ${params.phone || 'غير مذكور'}</p>
+        <p style="margin: 4px 0;"><strong>اسم المكتب:</strong> ${params.firmName || 'غير مذكور'}</p>
+        <p style="margin: 4px 0;"><strong>المصدر:</strong> ${params.source}</p>
+        <p style="margin: 4px 0;"><strong>وقت التسجيل:</strong> ${params.createdAt}</p>
+    </div>
+</body>
+</html>
+`;

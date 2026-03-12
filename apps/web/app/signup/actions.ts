@@ -80,7 +80,7 @@ export async function signUpAction(formData: FormData) {
 
   // Send welcome + activation email
   try {
-    const { sendEmail } = await import('@/lib/email');
+    const { sendEmail, sendNewSignupAlertEmail } = await import('@/lib/email');
     const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
 
     await sendEmail({
@@ -88,6 +88,14 @@ export async function signUpAction(formData: FormData) {
       subject: WELCOME_EMAIL_SUBJECT,
       text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
       html: WELCOME_EMAIL_HTML(fullName, verificationLink),
+    });
+
+    await sendNewSignupAlertEmail({
+      fullName,
+      email,
+      phone,
+      firmName,
+      source: 'invite',
     });
   } catch (error) {
     console.error('Failed to send welcome email:', error);

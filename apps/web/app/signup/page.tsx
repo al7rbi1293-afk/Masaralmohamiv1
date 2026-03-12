@@ -34,6 +34,9 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const token = searchParams?.token ? safeDecode(searchParams.token) : '';
   const invitedEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
   const status = searchParams?.status ? safeDecode(searchParams.status) : '';
+  const pendingActivation = status === 'pending_activation';
+  const activationResent = status === 'activation_resent';
+  const isVerificationState = !token && (pendingActivation || activationResent);
 
   // Get CSRF Token
   const requestHeaders = headers();
@@ -41,7 +44,8 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
   // New office signup happens via the marketing trial form (/#trial).
   // The /signup page is reserved for invite acceptance flow (token-based).
-  if (!token) {
+  // Exception: allow pending activation state so the user can see "check your email" guidance.
+  if (!token && !isVerificationState) {
     redirect('/#trial');
   }
 
@@ -54,8 +58,6 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   }
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
-  const pendingActivation = status === 'pending_activation';
-  const activationResent = status === 'activation_resent';
   const inviteBanner = token
     ? `أنت على وشك قبول دعوة لفريق. استخدم البريد المدعو${invitedEmail ? `: ${invitedEmail}` : '.'}`
     : null;
@@ -70,7 +72,9 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
         <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
           <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">إنشاء حساب</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            أنشئ حسابك للدخول إلى منصة التجربة. تفعيل المنظمة والاشتراك سيتم في مرحلة لاحقة.
+            {isVerificationState
+              ? 'تحقق من بريدك الإلكتروني لإكمال تفعيل الحساب ثم متابعة تسجيل الدخول.'
+              : 'أنشئ حسابك للدخول إلى منصة التجربة. تفعيل المنظمة والاشتراك سيتم في مرحلة لاحقة.'}
           </p>
 
           {inviteBanner ? (
@@ -87,7 +91,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
           {pendingActivation && invitedEmail ? (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-              <p>الحساب مسجل مسبقًا لكنه غير مُفعّل. اضغط لإعادة إرسال رسالة التفعيل.</p>
+              <p>
+                {token
+                  ? 'الحساب مسجل مسبقًا لكنه غير مُفعّل. اضغط لإعادة إرسال رسالة التفعيل.'
+                  : 'تم إنشاء الحساب بنجاح. تحقق من بريدك الإلكتروني لتفعيل الحساب. إذا لم تصلك الرسالة اضغط إعادة الإرسال.'}
+              </p>
               <form action={resendActivationAction} className="mt-3">
                 <input type="hidden" name="csrf_token" value={csrfToken} />
                 <input type="hidden" name="email" value={invitedEmail} />
@@ -105,67 +113,69 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             </p>
           ) : null}
 
-          <form action={signUpAction} className="mt-6 space-y-4">
-            <input type="hidden" name="csrf_token" value={csrfToken} />
-            {token ? <input type="hidden" name="token" value={token} /> : null}
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">الاسم الكامل</span>
-              <input
-                required
-                name="full_name"
-                type="text"
-                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
-
-            {token && invitedEmail ? (
-              <InviteEmailField invitedEmail={invitedEmail} />
-            ) : (
+          {!isVerificationState ? (
+            <form action={signUpAction} className="mt-6 space-y-4">
+              <input type="hidden" name="csrf_token" value={csrfToken} />
+              {token ? <input type="hidden" name="token" value={token} /> : null}
               <label className="block space-y-1 text-sm">
-                <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200">الاسم الكامل</span>
                 <input
                   required
-                  name="email"
-                  type="email"
-                  defaultValue={invitedEmail}
+                  name="full_name"
+                  type="text"
                   className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                 />
               </label>
-            )}
 
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">كلمة المرور</span>
-              <input
-                required
-                minLength={7}
-                name="password"
-                type="password"
-                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
+              {token && invitedEmail ? (
+                <InviteEmailField invitedEmail={invitedEmail} />
+              ) : (
+                <label className="block space-y-1 text-sm">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
+                  <input
+                    required
+                    name="email"
+                    type="email"
+                    defaultValue={invitedEmail}
+                    className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </label>
+              )}
 
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">رقم الجوال (اختياري)</span>
-              <input
-                name="phone"
-                type="text"
-                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">كلمة المرور</span>
+                <input
+                  required
+                  minLength={7}
+                  name="password"
+                  type="password"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
 
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">اسم المكتب (اختياري)</span>
-              <input
-                name="firm_name"
-                type="text"
-                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">رقم الجوال (اختياري)</span>
+                <input
+                  name="phone"
+                  type="text"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
 
-            <button type="submit" className={buttonVariants('primary', 'md')}>
-              إنشاء الحساب
-            </button>
-          </form>
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">اسم المكتب (اختياري)</span>
+                <input
+                  name="firm_name"
+                  type="text"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
+
+              <button type="submit" className={buttonVariants('primary', 'md')}>
+                إنشاء الحساب
+              </button>
+            </form>
+          ) : null}
 
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
             <Link href={signInHref} className="block text-brand-emerald hover:underline">

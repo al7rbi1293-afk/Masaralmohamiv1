@@ -139,7 +139,7 @@ async function run() {
   const userIdMap = new Map<string, string>();
   const usersByEmail = new Map(currentUsers.map((u) => [u.email.toLowerCase(), u.id]));
   const orgIdMap = new Map<string, string>();
-  const orgByName = new Map(currentOrganizations.map((o) => [o.name.trim().toLowerCase(), o.id]));
+  const orgById = new Set(currentOrganizations.map((o) => o.id));
   const membershipSet = new Set(currentMemberships.map((m) => `${m.org_id}:${m.user_id}`));
   const trialOrgSet = new Set(currentTrials.map((t) => t.org_id));
 
@@ -159,13 +159,14 @@ async function run() {
   }
 
   const orgsToInsert: OrganizationRow[] = [];
-  let reusedOrgs = 0;
+  let reusedOrgsById = 0;
   for (const oldOrg of oldOrganizations) {
-    const key = oldOrg.name.trim().toLowerCase();
-    const existingId = orgByName.get(key);
-    if (existingId) {
-      orgIdMap.set(oldOrg.id, existingId);
-      reusedOrgs += 1;
+    // IMPORTANT: never merge organizations by name.
+    // Different customers can legitimately choose the same office name.
+    // We only reuse organization by exact id match.
+    if (orgById.has(oldOrg.id)) {
+      orgIdMap.set(oldOrg.id, oldOrg.id);
+      reusedOrgsById += 1;
       continue;
     }
 
@@ -226,7 +227,7 @@ async function run() {
           users_to_insert: usersToInsert.length,
           users_reused_by_email: reusedUsers,
           organizations_to_insert: orgsToInsert.length,
-          organizations_reused_by_name: reusedOrgs,
+          organizations_reused_by_id: reusedOrgsById,
           memberships_to_insert: membershipsToInsert.length,
           trials_to_upsert: trialsToUpsert.length,
         },

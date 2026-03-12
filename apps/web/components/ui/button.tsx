@@ -5,7 +5,7 @@ type Size = 'sm' | 'md' | 'lg';
 
 export function buttonVariants(variant: Variant = 'primary', size: Size = 'md') {
   const base =
-    'inline-flex items-center justify-center rounded-lg font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-emerald focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+    'inline-flex min-h-11 touch-manipulation items-center justify-center rounded-lg font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-emerald focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-9';
 
   const variants: Record<Variant, string> = {
     primary: 'bg-brand-emerald text-white hover:bg-green-600',

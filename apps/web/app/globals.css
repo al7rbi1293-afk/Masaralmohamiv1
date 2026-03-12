@@ -10,6 +10,12 @@
   color-scheme: dark;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body {
   width: 100%;
@@ -36,6 +42,14 @@ body {
   color: #f8fafc;
 }
 
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Base modern transition for all interactive elements */
 a,
 button,
@@ -47,6 +61,13 @@ button,
 button:active,
 [role="button"]:active {
   @apply scale-[0.98];
+}
+
+main,
+section,
+article,
+aside {
+  min-width: 0;
 }
 
 .skip-link {
@@ -62,6 +83,49 @@ table {
 /* Ensure all grid children can shrink */
 .grid>* {
   min-width: 0;
+}
+
+.safe-area-inline {
+  padding-inline-start: max(1rem, env(safe-area-inset-left));
+  padding-inline-end: max(1rem, env(safe-area-inset-right));
+}
+
+.mobile-modal-panel {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.horizontal-scroll-nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.horizontal-scroll-nav::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .safe-area-inline {
+    padding-inline-start: max(1.5rem, env(safe-area-inset-left));
+    padding-inline-end: max(1.5rem, env(safe-area-inset-right));
+  }
+}
+
+@media (min-width: 1024px) {
+  .safe-area-inline {
+    padding-inline-start: max(2rem, env(safe-area-inset-left));
+    padding-inline-end: max(2rem, env(safe-area-inset-right));
+  }
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 ::selection {

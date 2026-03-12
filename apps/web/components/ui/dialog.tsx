@@ -48,12 +48,12 @@ export function DialogContent({ children }: { children: React.ReactNode }) {
     if (!context.open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
             <div
                 className="fixed inset-0"
                 onClick={() => context.setOpen(false)}
             />
-            <div className="z-50 w-full max-w-lg rounded-xl border border-border bg-white p-6 shadow-lg sm:rounded-lg dark:bg-slate-900 dark:border-slate-800">
+            <div className="mobile-modal-panel z-50 w-full max-w-lg rounded-xl border border-border bg-white p-4 shadow-lg sm:rounded-lg sm:p-6 dark:border-slate-800 dark:bg-slate-900">
                 <div className="relative">
                     <button
                         onClick={() => context.setOpen(false)}

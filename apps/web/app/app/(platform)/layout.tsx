@@ -98,8 +98,8 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-brand-background dark:bg-slate-950">
       {/* Modern Sticky Glass Header */}
       <header className="sticky top-0 z-40 w-full border-b border-brand-border/60 bg-white/70 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-        <Container className="flex min-h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+        <Container className="flex min-h-16 items-center justify-between gap-3 py-2 sm:min-h-20 sm:py-3">
+          <div className="flex min-w-0 items-center gap-3">
             {orgLogo ? (
               <div className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <OfficeLogoImage
@@ -116,37 +116,39 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
                 <Briefcase className="h-5 w-5" />
               </div>
             ) : null}
-            <div>
+            <div className="min-w-0">
               {orgName === defaultBrandName ? (
                 <Image
                   src="/masar-logo.png"
                   alt={orgName}
                   width={600}
                   height={400}
-                  className="h-14 w-auto"
+                  className="h-11 w-auto sm:h-14"
                   sizes="(max-width: 640px) 170px, 230px"
                   priority
                 />
               ) : (
-                <h1 className="text-base font-bold tracking-tight text-brand-navy dark:text-slate-100">{orgName}</h1>
+                <h1 className="truncate text-sm font-bold tracking-tight text-brand-navy dark:text-slate-100 sm:text-base">
+                  {orgName}
+                </h1>
               )}
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <p className="truncate text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 منصة العمليات
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden text-sm font-medium text-slate-600 dark:text-slate-300 sm:block">
               {user.email}
             </div>
             <form action={signOutAction}>
               <button
                 type="submit"
-                className="flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50 dark:focus-visible:ring-slate-300"
+                className="flex h-10 min-w-10 items-center justify-center rounded-md border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50 dark:focus-visible:ring-slate-300 sm:px-3"
                 title="تسجيل الخروج"
               >
-                <LogOut className="h-4 w-4 sm:mr-2" />
+                <LogOut className="h-4 w-4 shrink-0 sm:ms-2" />
                 <span className="hidden sm:inline-block">خروج</span>
               </button>
             </form>
@@ -154,21 +156,24 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
         </Container>
       </header>
 
-      <Container className="px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+      <Container className="py-4 sm:py-6 lg:py-8">
+        <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-8">
 
-          {/* Modernized Floating Sidebar */}
+          {/* Mobile Horizontal Nav + Desktop Sidebar */}
           <aside className="h-fit rounded-xl2 border border-brand-border bg-white shadow-panel dark:border-slate-800 dark:bg-slate-900">
-            <nav aria-label="التنقل داخل المنصة" className="flex flex-col gap-1 p-3">
+            <nav
+              aria-label="التنقل داخل المنصة"
+              className="horizontal-scroll-nav flex gap-2 overflow-x-auto p-2 lg:flex-col lg:gap-1 lg:overflow-visible lg:p-3"
+            >
               {navItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 hover:text-brand-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                    className="group inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:border-brand-border hover:bg-slate-50 hover:text-brand-navy dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100 lg:flex lg:w-full lg:items-center"
                   >
-                    <Icon className="h-4 w-4 text-slate-400 transition-colors group-hover:text-brand-emerald dark:text-slate-500 dark:group-hover:text-emerald-400" />
+                    <Icon className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-brand-emerald dark:text-slate-500 dark:group-hover:text-emerald-400" />
                     {item.label}
                   </Link>
                 );

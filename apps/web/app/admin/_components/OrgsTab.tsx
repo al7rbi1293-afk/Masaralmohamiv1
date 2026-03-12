@@ -26,7 +26,37 @@ type Org = {
         ends_at: string | null;
         status: string;
     } | null;
+    linked_accounts: {
+        membership_id: string;
+        role: string | null;
+        user_id: string;
+        email: string | null;
+        full_name: string | null;
+        status: string | null;
+        email_verified: boolean | null;
+    }[];
+    primary_account: {
+        membership_id: string;
+        role: string | null;
+        user_id: string;
+        email: string | null;
+        full_name: string | null;
+        status: string | null;
+        email_verified: boolean | null;
+    } | null;
 };
+
+const roleLabelMap: Record<string, string> = {
+    owner: 'مالك',
+    admin: 'مدير',
+    member: 'عضو',
+    lawyer: 'محامي',
+};
+
+function getRoleLabel(role: string | null | undefined) {
+    if (!role) return 'غير محدد';
+    return roleLabelMap[role] ?? role;
+}
 
 export default function AdminOrgsPage() {
     const [orgs, setOrgs] = useState<Org[]>([]);
@@ -192,6 +222,7 @@ export default function AdminOrgsPage() {
                                 </th>
                                 <th className="py-3 text-start font-medium">اسم المكتب</th>
                                 <th className="py-3 text-start font-medium">الأعضاء</th>
+                                <th className="py-3 text-start font-medium">الحساب المرتبط</th>
                                 <th className="py-3 text-start font-medium">الخطة</th>
                                 <th className="py-3 text-start font-medium">حالة الاشتراك</th>
                                 <th className="py-3 text-start font-medium">حالة المكتب</th>
@@ -216,6 +247,20 @@ export default function AdminOrgsPage() {
                                     </td>
                                     <td className="py-3 font-medium">{org.name}</td>
                                     <td className="py-3">{org.members_count}</td>
+                                    <td className="py-3">
+                                        {org.primary_account ? (
+                                            <div className="space-y-0.5">
+                                                <p className="font-medium text-slate-900 dark:text-slate-100">
+                                                    {org.primary_account.full_name || 'بدون اسم'}
+                                                </p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400" dir="ltr">
+                                                    {org.primary_account.email || '—'}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-slate-400 dark:text-slate-500">غير مربوط</span>
+                                        )}
+                                    </td>
                                     <td className="py-3 font-medium text-brand-navy dark:text-brand-light">
                                         {org.subscription?.plan === 'SOLO' ? 'محامي مستقل (1)' :
                                             org.subscription?.plan === 'TEAM' ? 'مكتب صغير (5)' :
@@ -424,6 +469,52 @@ export default function AdminOrgsPage() {
                                             </span>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Linked Accounts */}
+                                <div>
+                                    <h4 className="flex items-center gap-2 text-base font-semibold text-brand-navy dark:text-slate-100 mb-3">
+                                        <Users className="h-4 w-4 text-brand-emerald" />
+                                        الحسابات المرتبطة
+                                    </h4>
+                                    {selectedOrg.linked_accounts.length === 0 ? (
+                                        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                                            لا يوجد أي حساب مرتبط بهذا المكتب.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {selectedOrg.linked_accounts.map((account) => (
+                                                <div
+                                                    key={account.membership_id}
+                                                    className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/40"
+                                                >
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div>
+                                                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                                                                {account.full_name || 'بدون اسم'}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500 dark:text-slate-400" dir="ltr">
+                                                                {account.email || '—'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="rounded-full bg-brand-emerald/10 px-2 py-0.5 text-xs font-medium text-brand-emerald dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                                {getRoleLabel(account.role)}
+                                                            </span>
+                                                            <span
+                                                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${account.status === 'suspended'
+                                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                                                    }`}
+                                                            >
+                                                                {account.status === 'suspended' ? 'معلّق' : 'نشط'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Subscription Info */}

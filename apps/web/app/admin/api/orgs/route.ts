@@ -27,7 +27,12 @@ export async function GET(request: NextRequest) {
         .from('organizations')
         .select(`
       id, name, status, created_at,
-      memberships ( id ),
+      memberships (
+        id,
+        role,
+        user_id,
+        app_users ( id, email, full_name, status, email_verified )
+      ),
       org_subscriptions ( plan, status, payment_status, current_period_end ),
       trial_subscriptions ( ends_at, status )
     `, { count: 'exact' });
@@ -48,14 +53,36 @@ export async function GET(request: NextRequest) {
     const mapped = (orgs ?? []).map((org: any) => {
         const sub = Array.isArray(org.org_subscriptions) ? org.org_subscriptions[0] : org.org_subscriptions;
         const trial = Array.isArray(org.trial_subscriptions) ? org.trial_subscriptions[0] : org.trial_subscriptions;
+        const memberships = Array.isArray(org.memberships) ? org.memberships : [];
+        const linkedAccounts = memberships
+            .map((membership: any) => {
+                const user = Array.isArray(membership.app_users) ? membership.app_users[0] : membership.app_users;
+                if (!user) return null;
+
+                return {
+                    membership_id: membership.id,
+                    role: membership.role ?? null,
+                    user_id: membership.user_id ?? user.id,
+                    email: user.email ?? null,
+                    full_name: user.full_name ?? null,
+                    status: user.status ?? null,
+                    email_verified: typeof user.email_verified === 'boolean' ? user.email_verified : null,
+                };
+            })
+            .filter(Boolean);
+
+        const primaryAccount = linkedAccounts.find((account: any) => account.role === 'owner') ?? linkedAccounts[0] ?? null;
+
         return {
             id: org.id,
             name: org.name,
             status: org.status,
             created_at: org.created_at,
-            members_count: Array.isArray(org.memberships) ? org.memberships.length : 0,
+            members_count: memberships.length,
             subscription: sub ?? null,
             trial: trial ?? null,
+            linked_accounts: linkedAccounts,
+            primary_account: primaryAccount,
         };
     });
 

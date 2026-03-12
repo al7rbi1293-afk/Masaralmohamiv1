@@ -64,7 +64,7 @@ export async function listPendingPaymentRequests() {
 
     const { data, error } = await supabase
         .from('payment_requests')
-        .select('*, organization:organizations(name), user:users(email)')
+        .select('*, organization:organizations(name), user:app_users!payment_requests_user_id_fkey(email, full_name)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
@@ -78,7 +78,7 @@ export async function approvePaymentRequest(requestId: string, adminUserId: stri
     // 1. Get request with user details
     const { data: request, error: fetchError } = await supabase
         .from('payment_requests')
-        .select('*, user:users(email, raw_user_meta_data)')
+        .select('*, user:app_users!payment_requests_user_id_fkey(email, full_name)')
         .eq('id', requestId)
         .single();
 
@@ -105,7 +105,6 @@ export async function approvePaymentRequest(requestId: string, adminUserId: stri
             current_period_start: startDate,
             current_period_end: endDate.toISOString(),
             provider: 'manual',
-            updated_at: now.toISOString(),
         }, { onConflict: 'org_id' });
 
     if (subError) throw subError;

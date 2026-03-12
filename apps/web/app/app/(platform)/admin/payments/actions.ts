@@ -30,7 +30,7 @@ export async function approveRequestAction(requestId: string) {
                 request.plan_code === 'MEDIUM_OFFICE' ? 'مكتب متوسط' : request.plan_code;
 
         // Get user name
-        const userName = request.user?.raw_user_meta_data?.full_name || request.user?.email || 'مشترك';
+        const userName = request.user?.full_name || request.user?.email || 'مشترك';
         const userEmail = request.user?.email;
 
         if (userEmail) {

@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { hashPassword } from '@/lib/auth-custom';
 import { verifyCsrfToken } from '@/lib/csrf';
+import { upsertPartnerLeadAttribution } from '@/lib/partners/referral';
 
 export async function signUpAction(formData: FormData) {
   const isCsrfValid = await verifyCsrfToken(formData);
@@ -75,6 +76,18 @@ export async function signUpAction(formData: FormData) {
     full_name: fullName,
     phone: phone || null,
   }, { onConflict: 'user_id' });
+
+  try {
+    await upsertPartnerLeadAttribution({
+      userId: newUser.id,
+      email,
+      phone: phone || null,
+      status: 'signed_up',
+      signupSource: token ? 'invite_signup' : 'signup_page',
+    });
+  } catch (error) {
+    console.warn('Referral attribution (signup) failed:', error);
+  }
 
   const verificationLink = `${siteUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`;
 

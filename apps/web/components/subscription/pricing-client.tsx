@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { BankTransferForm } from './bank-transfer-form';
 import { SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
+import { TapCheckoutButton } from './tap-checkout-button';
 
 export function PricingClient() {
   const supportEmail = 'masar.almohami@outlook.sa';
@@ -76,9 +77,24 @@ export function PricingClient() {
               <DialogHeader>
                 <DialogTitle>الاشتراك في خطة {plan.title}</DialogTitle>
                 <DialogDescription>
-                  أكمل عملية الدفع عبر التحويل البنكي لتفعيل اشتراكك.
+                  يمكنك الدفع مباشرة عبر Tap أو استخدام التحويل البنكي كخيار بديل.
                 </DialogDescription>
               </DialogHeader>
+              <div className="space-y-5">
+                <div className="rounded-lg border border-brand-border bg-brand-background/40 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                  <h4 className="text-sm font-semibold text-brand-navy dark:text-slate-100">الخيار الأسرع: Tap</h4>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                    التفعيل النهائي يتم بعد تأكيد Webhook من بوابة Tap.
+                  </p>
+                  <div className="mt-3">
+                    <TapCheckoutButton planCode={plan.code} period="monthly" />
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-brand-border/70 dark:border-slate-700" />
+                  <span className="relative mx-auto block w-fit bg-white px-3 text-xs text-slate-500 dark:bg-slate-900 dark:text-slate-400">أو</span>
+                </div>
+              </div>
               <BankTransferForm
                 planCode={plan.code}
                 planName={plan.title}

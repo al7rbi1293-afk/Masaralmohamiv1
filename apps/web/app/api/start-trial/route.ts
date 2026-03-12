@@ -11,6 +11,7 @@ import { logError, logInfo, logWarn } from '@/lib/logger';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ensureTrialProvisionForUser } from '@/lib/onboarding';
+import { upsertPartnerLeadAttribution } from '@/lib/partners/referral';
 
 const startTrialSchema = z.object({
   full_name: z
@@ -168,6 +169,18 @@ export async function POST(request: NextRequest) {
         phone,
       }, { onConflict: 'user_id' });
 
+    try {
+      await upsertPartnerLeadAttribution({
+        userId,
+        email,
+        phone,
+        status: 'signed_up',
+        signupSource: 'start_trial_signup',
+      });
+    } catch (attributionError) {
+      console.warn('Referral attribution (start trial signup) failed:', attributionError);
+    }
+
     // Send Welcome Email
     try {
       const { sendEmail, sendNewSignupAlertEmail } = await import('@/lib/email');
@@ -214,6 +227,18 @@ export async function POST(request: NextRequest) {
       userId,
       firmName,
     });
+
+    try {
+      await upsertPartnerLeadAttribution({
+        userId,
+        email,
+        phone,
+        status: 'trial_started',
+        signupSource: 'start_trial_existing_user',
+      });
+    } catch (attributionError) {
+      console.warn('Referral attribution (start trial existing user) failed:', attributionError);
+    }
 
     const destination = isExpired
       ? '/app/settings/subscription?expired=1&source=trial'

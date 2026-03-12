@@ -23,7 +23,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         redirect('/auth/login');
     }
 
-    if (!isAppAdmin()) {
+    if (!(await isAppAdmin())) {
         redirect('/app');
     }
 

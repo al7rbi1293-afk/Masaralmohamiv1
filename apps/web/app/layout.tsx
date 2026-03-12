@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/footer';
 import { Navbar } from '@/components/layout/navbar';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 import { MarketingAnalytics } from '@/components/analytics/analytics';
+import { ReferralCapture } from '@/components/analytics/referral-capture';
 import { getPublicSiteUrl } from '@/lib/env';
 import { siteConfig } from '@/lib/site';
 import './globals.css';
@@ -106,6 +107,7 @@ export default function RootLayout({
           <Footer />
         </ThemeProvider>
         <MarketingAnalytics />
+        <ReferralCapture />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

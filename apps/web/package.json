@@ -9,7 +9,8 @@
     "lint": "next lint",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
-    "test:copilot:injection": "tsx lib/copilot/tests/injection.test.ts"
+    "test:copilot:injection": "tsx lib/copilot/tests/injection.test.ts",
+    "test:partners": "tsx --test lib/partners/tests/*.test.ts"
   },
   "dependencies": {
     "@edge-csrf/nextjs": "^2.5.2",
@@ -35,6 +36,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "recharts": "^3.7.0",
+    "server-only": "^0.0.1",
     "stripe": "^17.0.0",
     "zod": "^3.24.1"
   },

@@ -229,3 +229,73 @@ export function getSignupAlertEmails() {
 
   return [...new Set(parsed)];
 }
+
+export function getPartnerAlertEmails() {
+  const fallback = getSignupAlertEmails();
+  const raw = process.env.PARTNER_ALERT_EMAILS?.trim();
+  const parsed = (raw || fallback.join(','))
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [...new Set(parsed)];
+}
+
+export function getTapSecretKey() {
+  const secret = process.env.TAP_SECRET_KEY?.trim();
+  if (!secret) {
+    throw missingEnvError('TAP_SECRET_KEY');
+  }
+  return secret;
+}
+
+export function getTapPublicKey() {
+  const key = process.env.NEXT_PUBLIC_TAP_PUBLIC_KEY?.trim();
+  if (!key) {
+    throw missingEnvError('NEXT_PUBLIC_TAP_PUBLIC_KEY');
+  }
+  return key;
+}
+
+export function getTapWebhookSecret() {
+  const secret = process.env.TAP_WEBHOOK_SECRET?.trim() || process.env.TAP_SECRET_KEY?.trim();
+  if (!secret) {
+    throw missingEnvError('TAP_WEBHOOK_SECRET');
+  }
+  return secret;
+}
+
+export function getTapApiBaseUrl() {
+  return process.env.TAP_API_BASE_URL?.trim() || 'https://api.tap.company/v2';
+}
+
+export function getTapSourceId() {
+  return process.env.TAP_SOURCE_ID?.trim() || 'src_all';
+}
+
+export function getReferralAttributionWindowDays() {
+  const parsed = Number(process.env.REFERRAL_ATTRIBUTION_WINDOW_DAYS || '30');
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 30;
+  }
+  return Math.floor(parsed);
+}
+
+export function getReferralIpHashSalt() {
+  const customSalt = process.env.REFERRAL_IP_HASH_SALT?.trim();
+  if (customSalt) {
+    return customSalt;
+  }
+
+  const jwtSecret =
+    process.env.JWT_SECRET?.trim() ||
+    process.env.JWT_ACCESS_SECRET?.trim() ||
+    process.env.JWT_REFRESH_SECRET?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!jwtSecret) {
+    throw missingEnvError('REFERRAL_IP_HASH_SALT');
+  }
+
+  return jwtSecret;
+}

@@ -8,6 +8,7 @@ export const siteConfig = {
 
 export const navLinks = [
   { href: '/', label: 'الرئيسية' },
+  { href: '/success-partners', label: 'شركاء النجاح' },
   { href: '/security', label: 'الأمان' },
   { href: '/privacy', label: 'الخصوصية' },
   { href: '/terms', label: 'الشروط' },
@@ -16,6 +17,7 @@ export const navLinks = [
 ];
 
 export const footerLinks = [
+  { href: '/success-partners', label: 'شركاء النجاح' },
   { href: '/privacy', label: 'سياسة الخصوصية' },
   { href: '/terms', label: 'الشروط والأحكام' },
   { href: '/security', label: 'الأمان والخصوصية' },

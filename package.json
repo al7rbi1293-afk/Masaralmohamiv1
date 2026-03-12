@@ -13,7 +13,8 @@
     "lint": "npm run lint --workspaces --if-present",
     "test:e2e": "npm run test:e2e --workspace @masar/web",
     "test:rls": "tsx scripts/rls-smoke-test.ts",
-    "test:copilot:rls": "tsx scripts/copilot-rls-smoke-test.ts"
+    "test:copilot:rls": "tsx scripts/copilot-rls-smoke-test.ts",
+    "migrate:legacy-users": "tsx scripts/migrate-legacy-masar-users.ts"
   },
   "devDependencies": {
     "tsx": "^4.7.0"

@@ -49,7 +49,7 @@ export default function AdminUsersPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleAction(userId: string, action: 'suspend' | 'activate' | 'delete_pending') {
+  async function handleAction(userId: string, action: 'suspend' | 'activate' | 'delete_pending' | 'delete') {
     setLoadError(null);
     setActionId(userId);
     const res = await fetch('/admin/api/users', {
@@ -76,6 +76,21 @@ export default function AdminUsersPage() {
 
     try {
       await handleAction(user.user_id, 'delete_pending');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'تعذر حذف الحساب.';
+      setLoadError(message);
+    }
+  }
+
+  async function handleDeleteConfirmedUser(user: User) {
+    const label = user.email ?? user.full_name ?? user.user_id;
+    const proceed = window.confirm(`سيتم حذف الحساب المفعّل ${label} نهائيًا. هل تريد المتابعة؟`);
+    if (!proceed) {
+      return;
+    }
+
+    try {
+      await handleAction(user.user_id, 'delete');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'تعذر حذف الحساب.';
       setLoadError(message);
@@ -232,33 +247,42 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="py-3">{new Date(u.created_at).toLocaleDateString('ar-SA')}</td>
                       <td className="py-3">
-                        {u.status === 'active' ? (
-                        <button
-                          disabled={actionId === u.user_id}
-                          onClick={() =>
-                            handleAction(u.user_id, 'suspend').catch((error) => {
-                              const message = error instanceof Error ? error.message : 'تعذر تعليق المستخدم.';
-                              setLoadError(message);
-                            })
-                          }
-                          className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          تعليق
-                        </button>
-                        ) : (
-                        <button
-                          disabled={actionId === u.user_id}
-                          onClick={() =>
-                            handleAction(u.user_id, 'activate').catch((error) => {
-                              const message = error instanceof Error ? error.message : 'تعذر تفعيل المستخدم.';
-                              setLoadError(message);
-                            })
-                          }
-                          className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
-                        >
-                          تفعيل
-                        </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {u.status === 'active' ? (
+                            <button
+                              disabled={actionId === u.user_id}
+                              onClick={() =>
+                                handleAction(u.user_id, 'suspend').catch((error) => {
+                                  const message = error instanceof Error ? error.message : 'تعذر تعليق المستخدم.';
+                                  setLoadError(message);
+                                })
+                              }
+                              className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                              تعليق
+                            </button>
+                          ) : (
+                            <button
+                              disabled={actionId === u.user_id}
+                              onClick={() =>
+                                handleAction(u.user_id, 'activate').catch((error) => {
+                                  const message = error instanceof Error ? error.message : 'تعذر تفعيل المستخدم.';
+                                  setLoadError(message);
+                                })
+                              }
+                              className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              تفعيل
+                            </button>
+                          )}
+                          <button
+                            disabled={actionId === u.user_id}
+                            onClick={() => handleDeleteConfirmedUser(u)}
+                            className="rounded bg-slate-800 px-3 py-1 text-xs text-white hover:bg-black disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+                          >
+                            حذف
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

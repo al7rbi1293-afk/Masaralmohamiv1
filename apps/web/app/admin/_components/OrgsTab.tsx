@@ -90,9 +90,14 @@ export default function AdminOrgsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, page]);
 
-    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid' | 'set_plan', extraData?: any) {
+    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid' | 'set_plan' | 'delete', extraData?: any) {
         if (action === 'grant_lifetime') {
             const proceed = window.confirm('هل أنت متأكد من منح هذا المكتب اشتراك مدى الحياة؟');
+            if (!proceed) return;
+        }
+
+        if (action === 'delete') {
+            const proceed = window.confirm('سيتم حذف المكتب نهائيًا مع بياناته. هل تريد المتابعة؟');
             if (!proceed) return;
         }
 
@@ -104,7 +109,7 @@ export default function AdminOrgsPage() {
                 alert('تاريخ غير صحيح. الرجاء إدخال تاريخ بصيغة صحيحة (مثال: 2025-12-31)');
                 return;
             }
-            extraData = { ends_at: dateObj.toISOString() };
+            extraData = { date: dateObj.toISOString() };
         }
 
         if (action === 'activate_paid') {
@@ -119,20 +124,27 @@ export default function AdminOrgsPage() {
         }
 
         setActionId(orgId);
-        await fetch('/admin/api/orgs', {
+        const actionRes = await fetch('/admin/api/orgs', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ org_id: orgId, action, ...extraData }),
+            body: JSON.stringify({ org_id: orgId, action, extra_data: extraData }),
         });
+        const actionPayload = await actionRes.json().catch(() => ({}));
+        if (!actionRes.ok) {
+            setActionId(null);
+            throw new Error((actionPayload as { error?: string }).error || 'تعذر تنفيذ العملية.');
+        }
         const res = await fetch('/admin/api/orgs');
         const data = await res.json();
         setOrgs(data.orgs ?? []);
         setActionId(null);
     }
 
-    async function handleBulkAction(action: 'suspend' | 'activate') {
+    async function handleBulkAction(action: 'suspend' | 'activate' | 'delete') {
         if (selectedOrgIds.size === 0) return;
-        const confirmMessage = `هل أنت متأكد من تنفيذ هذا الإجراء على ${selectedOrgIds.size} مكتب؟`;
+        const confirmMessage = action === 'delete'
+            ? `سيتم حذف ${selectedOrgIds.size} مكتب نهائيًا. هل تريد المتابعة؟`
+            : `هل أنت متأكد من تنفيذ هذا الإجراء على ${selectedOrgIds.size} مكتب؟`;
 
         if (!window.confirm(confirmMessage)) return;
 
@@ -292,7 +304,10 @@ export default function AdminOrgsPage() {
                                                 disabled={actionId === org.id}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleAction(org.id, 'suspend');
+                                                    handleAction(org.id, 'suspend').catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر تعليق المكتب.';
+                                                        alert(message);
+                                                    });
                                                 }}
                                                 className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
                                             >
@@ -303,7 +318,10 @@ export default function AdminOrgsPage() {
                                                 disabled={actionId === org.id}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleAction(org.id, 'activate');
+                                                    handleAction(org.id, 'activate').catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر تفعيل المكتب.';
+                                                        alert(message);
+                                                    });
                                                 }}
                                                 className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
                                             >
@@ -314,7 +332,10 @@ export default function AdminOrgsPage() {
                                             disabled={actionId === org.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleAction(org.id, 'activate_paid');
+                                                handleAction(org.id, 'activate_paid').catch((error) => {
+                                                    const message = error instanceof Error ? error.message : 'تعذر تفعيل الاشتراك.';
+                                                    alert(message);
+                                                });
                                             }}
                                             className="rounded bg-brand-emerald px-3 py-1 text-xs text-white hover:bg-brand-emerald/90 disabled:opacity-50"
                                         >
@@ -324,7 +345,10 @@ export default function AdminOrgsPage() {
                                             disabled={actionId === org.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleAction(org.id, 'set_expiry');
+                                                handleAction(org.id, 'set_expiry').catch((error) => {
+                                                    const message = error instanceof Error ? error.message : 'تعذر تحديث تاريخ الانتهاء.';
+                                                    alert(message);
+                                                });
                                             }}
                                             className="rounded bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-50"
                                         >
@@ -334,7 +358,10 @@ export default function AdminOrgsPage() {
                                             disabled={actionId === org.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleAction(org.id, 'extend_trial');
+                                                handleAction(org.id, 'extend_trial').catch((error) => {
+                                                    const message = error instanceof Error ? error.message : 'تعذر تمديد الفترة التجريبية.';
+                                                    alert(message);
+                                                });
                                             }}
                                             className="rounded bg-brand-navy px-3 py-1 text-xs text-white hover:bg-brand-navy/90 disabled:opacity-50"
                                         >
@@ -344,11 +371,27 @@ export default function AdminOrgsPage() {
                                             disabled={actionId === org.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleAction(org.id, 'grant_lifetime');
+                                                handleAction(org.id, 'grant_lifetime').catch((error) => {
+                                                    const message = error instanceof Error ? error.message : 'تعذر منح اشتراك مدى الحياة.';
+                                                    alert(message);
+                                                });
                                             }}
                                             className="rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700 disabled:opacity-50"
                                         >
                                             طوال الحياة
+                                        </button>
+                                        <button
+                                            disabled={actionId === org.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAction(org.id, 'delete').catch((error) => {
+                                                    const message = error instanceof Error ? error.message : 'تعذر حذف المكتب.';
+                                                    alert(message);
+                                                });
+                                            }}
+                                            className="rounded bg-slate-900 px-3 py-1 text-xs text-white hover:bg-black disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+                                        >
+                                            حذف نهائي
                                         </button>
                                     </td>
                                 </tr>
@@ -410,6 +453,13 @@ export default function AdminOrgsPage() {
                             className="text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 disabled:opacity-50"
                         >
                             تعليق
+                        </button>
+                        <button
+                            disabled={actionId === 'bulk'}
+                            onClick={() => handleBulkAction('delete')}
+                            className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
+                        >
+                            حذف نهائي
                         </button>
                         <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mr-2 ml-2"></div>
                         <button
@@ -560,6 +610,9 @@ export default function AdminOrgsPage() {
                                                 onClick={() => {
                                                     handleAction(selectedOrg.id, 'suspend').then(() => {
                                                         setSelectedOrg({ ...selectedOrg, status: 'suspended' });
+                                                    }).catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر تعليق المكتب.';
+                                                        alert(message);
                                                     });
                                                 }}
                                                 className="w-full rounded-lg bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 text-sm font-medium hover:bg-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors"
@@ -572,6 +625,9 @@ export default function AdminOrgsPage() {
                                                 onClick={() => {
                                                     handleAction(selectedOrg.id, 'activate').then(() => {
                                                         setSelectedOrg({ ...selectedOrg, status: 'active' });
+                                                    }).catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر تفعيل المكتب.';
+                                                        alert(message);
                                                     });
                                                 }}
                                                 className="w-full rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 text-sm font-medium hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors"
@@ -593,6 +649,9 @@ export default function AdminOrgsPage() {
                                                                 if (selectedOrg.subscription) {
                                                                     setSelectedOrg({ ...selectedOrg, subscription: { ...selectedOrg.subscription, plan: e.target.value } });
                                                                 }
+                                                            }).catch((error) => {
+                                                                const message = error instanceof Error ? error.message : 'تعذر تغيير الباقة.';
+                                                                alert(message);
                                                             });
                                                         }
                                                         e.target.value = ''; // Reset select
@@ -608,17 +667,41 @@ export default function AdminOrgsPage() {
 
                                             <button
                                                 disabled={actionId === selectedOrg.id}
-                                                onClick={() => handleAction(selectedOrg.id, 'extend_trial')}
+                                                onClick={() =>
+                                                    handleAction(selectedOrg.id, 'extend_trial').catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر تمديد الفترة التجريبية.';
+                                                        alert(message);
+                                                    })
+                                                }
                                                 className="rounded-lg bg-slate-100 text-slate-700 border border-slate-200 px-4 py-2.5 text-sm font-medium hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors"
                                             >
                                                 تمديد تجريبي 14 يوم
                                             </button>
                                             <button
                                                 disabled={actionId === selectedOrg.id}
-                                                onClick={() => handleAction(selectedOrg.id, 'grant_lifetime')}
+                                                onClick={() =>
+                                                    handleAction(selectedOrg.id, 'grant_lifetime').catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر منح اشتراك مدى الحياة.';
+                                                        alert(message);
+                                                    })
+                                                }
                                                 className="rounded-lg bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2.5 text-sm font-medium hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-900/30 dark:hover:bg-amber-900/40 dark:text-amber-400 transition-colors col-span-2"
                                             >
                                                 اشتراك مدى الحياة
+                                            </button>
+                                            <button
+                                                disabled={actionId === selectedOrg.id}
+                                                onClick={() => {
+                                                    handleAction(selectedOrg.id, 'delete').then(() => {
+                                                        setSelectedOrg(null);
+                                                    }).catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر حذف المكتب.';
+                                                        alert(message);
+                                                    });
+                                                }}
+                                                className="rounded-lg bg-slate-900 text-white border border-slate-900 px-4 py-2.5 text-sm font-medium hover:bg-black dark:bg-slate-700 dark:border-slate-700 dark:hover:bg-slate-600 transition-colors col-span-2"
+                                            >
+                                                حذف المكتب نهائيًا
                                             </button>
                                         </div>
                                     </div>

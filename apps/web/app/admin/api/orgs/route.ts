@@ -106,7 +106,7 @@ export async function PATCH(request: NextRequest) {
     const { org_id, org_ids, action, extra_data } = body as {
         org_id?: string;
         org_ids?: string[];
-        action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid' | 'set_plan';
+        action: 'suspend' | 'activate' | 'grant_lifetime' | 'extend_trial' | 'set_expiry' | 'activate_paid' | 'set_plan' | 'delete';
         extra_data?: any;
     };
 
@@ -141,6 +141,19 @@ export async function PATCH(request: NextRequest) {
         await adminClient.from('audit_logs').insert(auditLogs);
 
         return NextResponse.json({ success: true, status: newStatus, count: targetIds.length });
+    }
+
+    if (action === 'delete') {
+        const { error: deleteError } = await adminClient
+            .from('organizations')
+            .delete()
+            .in('id', targetIds);
+
+        if (deleteError) {
+            return NextResponse.json({ error: deleteError.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, status: 'deleted', count: targetIds.length });
     }
 
     // Single-only actions fallback for now (can expand later if needed)

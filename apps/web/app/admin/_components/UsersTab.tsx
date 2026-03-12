@@ -78,7 +78,7 @@ export default function AdminUsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, page]);
 
-  async function handleAction(userId: string, action: 'suspend' | 'activate' | 'delete_pending') {
+  async function handleAction(userId: string, action: 'suspend' | 'activate' | 'delete_pending' | 'delete') {
     setLoadError(null);
     setActionId(userId);
     const res = await fetch('/admin/api/users', {
@@ -95,11 +95,13 @@ export default function AdminUsersPage() {
     setActionId(null);
   }
 
-  async function handleBulkAction(action: 'suspend' | 'activate' | 'delete_pending') {
+  async function handleBulkAction(action: 'suspend' | 'activate' | 'delete_pending' | 'delete') {
     if (selectedUserIds.size === 0) return;
     const confirmMessage = action === 'delete_pending'
       ? `هل أنت متأكد من حذف ${selectedUserIds.size} حساب غير مفعّل؟`
-      : `هل أنت متأكد من تنفيذ هذا الإجراء على ${selectedUserIds.size} مستخدم؟`;
+      : action === 'delete'
+        ? `سيتم حذف ${selectedUserIds.size} حساب نهائيًا. هل تريد المتابعة؟`
+        : `هل أنت متأكد من تنفيذ هذا الإجراء على ${selectedUserIds.size} مستخدم؟`;
 
     if (!window.confirm(confirmMessage)) return;
 
@@ -159,6 +161,22 @@ export default function AdminUsersPage() {
 
     try {
       await handleAction(user.user_id, 'delete_pending');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'تعذر حذف الحساب.';
+      setLoadError(message);
+    }
+  }
+
+  async function handleDeleteConfirmedUser(user: User) {
+    const label = user.email ?? user.full_name ?? user.user_id;
+    const proceed = window.confirm(`سيتم حذف الحساب المفعّل ${label} نهائيًا. هل تريد المتابعة؟`);
+    if (!proceed) return;
+
+    try {
+      await handleAction(user.user_id, 'delete');
+      if (selectedUser && 'user_id' in selectedUser && selectedUser.user_id === user.user_id) {
+        setSelectedUser(null);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'تعذر حذف الحساب.';
       setLoadError(message);
@@ -371,35 +389,47 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="py-3">{new Date(u.created_at).toLocaleDateString('ar-SA')}</td>
                       <td className="py-3">
-                        {u.status === 'active' ? (
+                        <div className="flex items-center gap-2">
+                          {u.status === 'active' ? (
+                            <button
+                              disabled={actionId === u.user_id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAction(u.user_id, 'suspend').catch((error) => {
+                                  const message = error instanceof Error ? error.message : 'تعذر تعليق المستخدم.';
+                                  setLoadError(message);
+                                });
+                              }}
+                              className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                              تعليق
+                            </button>
+                          ) : (
+                            <button
+                              disabled={actionId === u.user_id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAction(u.user_id, 'activate').catch((error) => {
+                                  const message = error instanceof Error ? error.message : 'تعذر تفعيل المستخدم.';
+                                  setLoadError(message);
+                                });
+                              }}
+                              className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              تفعيل
+                            </button>
+                          )}
                           <button
                             disabled={actionId === u.user_id}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAction(u.user_id, 'suspend').catch((error) => {
-                                const message = error instanceof Error ? error.message : 'تعذر تعليق المستخدم.';
-                                setLoadError(message);
-                              });
+                              handleDeleteConfirmedUser(u);
                             }}
-                            className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                            className="rounded bg-slate-800 px-3 py-1 text-xs text-white hover:bg-black disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
                           >
-                            تعليق
+                            حذف
                           </button>
-                        ) : (
-                          <button
-                            disabled={actionId === u.user_id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAction(u.user_id, 'activate').catch((error) => {
-                                const message = error instanceof Error ? error.message : 'تعذر تفعيل المستخدم.';
-                                setLoadError(message);
-                              });
-                            }}
-                            className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            تفعيل
-                          </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -465,7 +495,7 @@ export default function AdminUsersPage() {
             </button>
             <button
               disabled={actionId === 'bulk'}
-              onClick={() => handleBulkAction('delete_pending')}
+              onClick={() => handleBulkAction('delete')}
               className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
             >
               حذف نهائي
@@ -578,31 +608,40 @@ export default function AdminUsersPage() {
                   </h4>
                   <div className="flex flex-col gap-2">
                     {isConfirmedUser(selectedUser) ? (
-                      selectedUser.status === 'active' ? (
+                      <>
+                        {selectedUser.status === 'active' ? (
+                          <button
+                            disabled={actionId === selectedUser.user_id}
+                            onClick={() => {
+                              handleAction(selectedUser.user_id, 'suspend').then(() => {
+                                setSelectedUser({ ...selectedUser, status: 'suspended' });
+                              });
+                            }}
+                            className="w-full rounded-lg bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 text-sm font-medium hover:bg-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors"
+                          >
+                            تعليق الحساب
+                          </button>
+                        ) : (
+                          <button
+                            disabled={actionId === selectedUser.user_id}
+                            onClick={() => {
+                              handleAction(selectedUser.user_id, 'activate').then(() => {
+                                setSelectedUser({ ...selectedUser, status: 'active' });
+                              });
+                            }}
+                            className="w-full rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 text-sm font-medium hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors"
+                          >
+                            تفعيل الحساب
+                          </button>
+                        )}
                         <button
                           disabled={actionId === selectedUser.user_id}
-                          onClick={() => {
-                            handleAction(selectedUser.user_id, 'suspend').then(() => {
-                              setSelectedUser({ ...selectedUser, status: 'suspended' });
-                            });
-                          }}
-                          className="w-full rounded-lg bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 text-sm font-medium hover:bg-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40 dark:text-red-400 transition-colors"
+                          onClick={() => handleDeleteConfirmedUser(selectedUser)}
+                          className="w-full rounded-lg bg-slate-900 text-white border border-slate-900 px-4 py-2.5 text-sm font-medium hover:bg-black dark:bg-slate-700 dark:border-slate-700 dark:hover:bg-slate-600 transition-colors"
                         >
-                          تعليق الحساب
+                          حذف الحساب نهائيًا
                         </button>
-                      ) : (
-                        <button
-                          disabled={actionId === selectedUser.user_id}
-                          onClick={() => {
-                            handleAction(selectedUser.user_id, 'activate').then(() => {
-                              setSelectedUser({ ...selectedUser, status: 'active' });
-                            });
-                          }}
-                          className="w-full rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 text-sm font-medium hover:bg-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-400 transition-colors"
-                        >
-                          تفعيل الحساب
-                        </button>
-                      )
+                      </>
                     ) : (
                       <button
                         disabled={actionId === selectedUser.user_id}

@@ -28,13 +28,25 @@ export default function AdminOrgsPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    async function handleAction(orgId: string, action: 'suspend' | 'activate') {
+    async function handleAction(orgId: string, action: 'suspend' | 'activate' | 'delete') {
+        if (action === 'delete') {
+            const proceed = window.confirm('سيتم حذف المكتب نهائيًا مع بياناته. هل تريد المتابعة؟');
+            if (!proceed) return;
+        }
+
         setActionId(orgId);
-        await fetch('/admin/api/orgs', {
+        const actionRes = await fetch('/admin/api/orgs', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ org_id: orgId, action }),
         });
+
+        if (!actionRes.ok) {
+            const payload = await actionRes.json().catch(() => ({}));
+            setActionId(null);
+            throw new Error((payload as { error?: string }).error || 'تعذر تنفيذ العملية.');
+        }
+
         const res = await fetch('/admin/api/orgs');
         const data = await res.json();
         setOrgs(data.orgs ?? []);
@@ -88,23 +100,47 @@ export default function AdminOrgsPage() {
                                             : '—'}
                                     </td>
                                     <td className="py-3">
-                                        {org.status === 'active' ? (
+                                        <div className="flex items-center gap-2">
+                                            {org.status === 'active' ? (
+                                                <button
+                                                    disabled={actionId === org.id}
+                                                    onClick={() =>
+                                                        handleAction(org.id, 'suspend').catch((error) => {
+                                                            const message = error instanceof Error ? error.message : 'تعذر تعليق المكتب.';
+                                                            alert(message);
+                                                        })
+                                                    }
+                                                    className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                                                >
+                                                    تعليق
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    disabled={actionId === org.id}
+                                                    onClick={() =>
+                                                        handleAction(org.id, 'activate').catch((error) => {
+                                                            const message = error instanceof Error ? error.message : 'تعذر تفعيل المكتب.';
+                                                            alert(message);
+                                                        })
+                                                    }
+                                                    className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                                                >
+                                                    تفعيل
+                                                </button>
+                                            )}
                                             <button
                                                 disabled={actionId === org.id}
-                                                onClick={() => handleAction(org.id, 'suspend')}
-                                                className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                                                onClick={() =>
+                                                    handleAction(org.id, 'delete').catch((error) => {
+                                                        const message = error instanceof Error ? error.message : 'تعذر حذف المكتب.';
+                                                        alert(message);
+                                                    })
+                                                }
+                                                className="rounded bg-slate-900 px-3 py-1 text-xs text-white hover:bg-black disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
                                             >
-                                                تعليق
+                                                حذف
                                             </button>
-                                        ) : (
-                                            <button
-                                                disabled={actionId === org.id}
-                                                onClick={() => handleAction(org.id, 'activate')}
-                                                className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
-                                            >
-                                                تفعيل
-                                            </button>
-                                        )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

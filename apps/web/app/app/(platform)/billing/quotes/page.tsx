@@ -82,7 +82,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const nextQuery = buildQuery({ status, client: clientId, page: Math.min(totalPages, result.page + 1) });
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <Breadcrumbs
         className="mb-4"
         items={[
@@ -164,7 +164,41 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
+          <div className="mt-6 space-y-3 md:hidden">
+            {result.data.map((quote) => (
+              <article key={quote.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-base font-semibold text-brand-navy dark:text-slate-100">{quote.number}</h3>
+                  <Badge variant={statusVariant[quote.status]}>{statusLabel[quote.status]}</Badge>
+                </div>
+
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">العميل</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{quote.client?.name ?? '—'}</dd>
+                  </div>
+                  <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">الإجمالي</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">{formatMoney(quote.total)} SAR</dd>
+                  </div>
+                  <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">التاريخ</dt>
+                    <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                      {new Date(quote.created_at).toLocaleDateString('ar-SA')}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/app/billing/quotes/${quote.id}`} className={buttonVariants('ghost', 'sm')}>
+                    عرض
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 hidden overflow-x-auto rounded-lg border border-brand-border md:block dark:border-slate-700">
             <table className="min-w-full text-sm">
               <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 <tr>

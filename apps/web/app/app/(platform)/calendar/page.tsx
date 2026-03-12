@@ -69,7 +69,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     [user, orgId] = await Promise.all([getCurrentAuthUser(), requireOrgIdForUser()]);
   } catch (error) {
     return (
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <EmptyState
           title="التقويم"
           message="لا يوجد مكتب مفعّل لهذا الحساب. ابدأ التجربة من الصفحة الرئيسية أو تواصل معنا."
@@ -228,16 +228,16 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
               عرض مبسط للشهر الحالي والعناصر القادمة.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             <Link
               href={{ pathname: '/app/calendar', query: { ...queryBase, month: currentMonthKey } }}
-              className={buttonVariants('ghost', 'sm')}
+              className={`${buttonVariants('ghost', 'sm')} w-full sm:w-auto`}
             >
               الشهر الحالي
             </Link>
             <Link
               href={{ pathname: '/app/api/calendar/ics', query: { from: fromDay, to: toDay } }}
-              className={buttonVariants('outline', 'sm')}
+              className={`${buttonVariants('outline', 'sm')} w-full sm:w-auto`}
             >
               تصدير ICS
             </Link>
@@ -297,11 +297,17 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         </form>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-brand-border pt-4 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Link href={{ pathname: '/app/calendar', query: { ...queryBase, month: prevMonth } }} className={buttonVariants('outline', 'sm')}>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <Link
+              href={{ pathname: '/app/calendar', query: { ...queryBase, month: prevMonth } }}
+              className={`${buttonVariants('outline', 'sm')} flex-1 sm:flex-none`}
+            >
               الشهر السابق
             </Link>
-            <Link href={{ pathname: '/app/calendar', query: { ...queryBase, month: nextMonth } }} className={buttonVariants('outline', 'sm')}>
+            <Link
+              href={{ pathname: '/app/calendar', query: { ...queryBase, month: nextMonth } }}
+              className={`${buttonVariants('outline', 'sm')} flex-1 sm:flex-none`}
+            >
               الشهر التالي
             </Link>
           </div>
@@ -431,7 +437,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">القادم خلال 14 يوم</h2>
@@ -445,11 +451,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         </div>
 
         {upcomingItems.length ? (
-          <ul className="mt-5 space-y-2">
+          <ul className="mt-5 space-y-2.5">
             {upcomingItems.map((item) => (
               <li
                 key={`${item.kind}-${item.href}-${item.date}`}
-                className="rounded-lg border border-brand-border bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950"
+                className="rounded-lg border border-brand-border bg-white px-3 py-3 sm:px-4 dark:border-slate-700 dark:bg-slate-950"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={badgeVariant(item.kind)}>{kindLabel(item.kind)}</Badge>

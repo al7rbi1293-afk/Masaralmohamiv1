@@ -119,7 +119,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
   const nextQuery = buildQuery({ from: fromRaw, to: toRaw, action, page: Math.min(totalPages, page + 1) });
 
   return (
-    <Card className="p-6 space-y-5">
+    <Card className="space-y-5 p-4 sm:p-6">
       <div>
         <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">سجل التدقيق</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
@@ -187,40 +187,62 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
           لا توجد سجلات ضمن هذا النطاق.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
-          <table className="min-w-full text-sm">
-            <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
-              <tr>
-                <th className="px-3 py-3 text-start font-medium">الوقت</th>
-                <th className="px-3 py-3 text-start font-medium">المستخدم</th>
-                <th className="px-3 py-3 text-start font-medium">الإجراء</th>
-                <th className="px-3 py-3 text-start font-medium">الكيان</th>
-                <th className="px-3 py-3 text-start font-medium">تفاصيل</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-border dark:divide-slate-800">
-              {data.map((row: any) => (
-                <tr key={row.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
-                  <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                    {new Date(row.created_at).toLocaleString('ar-SA')}
-                  </td>
-                  <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                    {row.user_id ? (row.user_id === userId ? 'أنت' : 'عضو الفريق') : 'النظام'}
-                  </td>
-                  <td className="px-3 py-3">
-                    <Badge variant="default">{actionLabel(row.action)}</Badge>
-                  </td>
-                  <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
-                    {entityLabel(row.entity_type)}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-slate-600 dark:text-slate-300">
-                    {renderMeta(row.meta)}
-                  </td>
+        <>
+          <div className="space-y-3 md:hidden">
+            {data.map((row: any) => (
+              <article key={row.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="default">{actionLabel(row.action)}</Badge>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{entityLabel(row.entity_type)}</span>
+                </div>
+                <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  {new Date(row.created_at).toLocaleString('ar-SA')}
+                </p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  {row.user_id ? (row.user_id === userId ? 'أنت' : 'عضو الفريق') : 'النظام'}
+                </p>
+                <p className="mt-2 rounded-md bg-brand-background/70 px-2 py-2 text-xs text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+                  {renderMeta(row.meta)}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-lg border border-brand-border md:block dark:border-slate-700">
+            <table className="min-w-full text-sm">
+              <thead className="border-b border-brand-border text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                <tr>
+                  <th className="px-3 py-3 text-start font-medium">الوقت</th>
+                  <th className="px-3 py-3 text-start font-medium">المستخدم</th>
+                  <th className="px-3 py-3 text-start font-medium">الإجراء</th>
+                  <th className="px-3 py-3 text-start font-medium">الكيان</th>
+                  <th className="px-3 py-3 text-start font-medium">تفاصيل</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-brand-border dark:divide-slate-800">
+                {data.map((row: any) => (
+                  <tr key={row.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
+                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                      {new Date(row.created_at).toLocaleString('ar-SA')}
+                    </td>
+                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                      {row.user_id ? (row.user_id === userId ? 'أنت' : 'عضو الفريق') : 'النظام'}
+                    </td>
+                    <td className="px-3 py-3">
+                      <Badge variant="default">{actionLabel(row.action)}</Badge>
+                    </td>
+                    <td className="px-3 py-3 text-slate-700 dark:text-slate-200">
+                      {entityLabel(row.entity_type)}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-slate-600 dark:text-slate-300">
+                      {renderMeta(row.meta)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300">

@@ -28,7 +28,11 @@ const startTrialSchema = z.object({
     .string()
     .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.')
     .max(72, 'كلمة المرور طويلة جدًا.'),
-  phone: z.string().trim().max(40, 'رقم الجوال طويل جدًا.').optional(),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'يرجى إدخال رقم الجوال.')
+    .max(40, 'رقم الجوال طويل جدًا.'),
   firm_name: z.string().trim().max(120, 'اسم المكتب طويل جدًا.').optional(),
   website: z.string().trim().max(0, 'تم رفض الطلب.'),
 });
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
   const fullName = parsed.data.full_name;
   const email = parsed.data.email.toLowerCase();
   const password = parsed.data.password;
-  const phone = emptyToNull(parsed.data.phone);
+  const phone = parsed.data.phone.trim();
   const firmName = emptyToNull(parsed.data.firm_name);
 
   const db = createSupabaseServerClient();

@@ -29,7 +29,13 @@ export async function signUpAction(formData: FormData) {
   // At least one symbol
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{7,}$/;
 
-  if (!fullName || !email || !passwordRegex.test(password)) {
+  if (!fullName || !email || !phone) {
+    redirect(
+      `/signup?error=${encodeURIComponent('رقم الجوال مطلوب لإكمال التسجيل.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
+    );
+  }
+
+  if (!passwordRegex.test(password)) {
     redirect(
       `/signup?error=${encodeURIComponent('كلمة المرور يجب أن تكون 7 خانات على الأقل وتحتوي على حرف كبير، صغير، رقم، ورمز.')}${token ? `&token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` : ''}`,
     );

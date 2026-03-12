@@ -81,8 +81,9 @@ export function StartTrialForm() {
         </label>
 
         <label className="space-y-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">رقم الجوال (اختياري)</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">رقم الجوال</span>
           <input
+            required
             name="phone"
             type="text"
             className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"

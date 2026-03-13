@@ -9,6 +9,10 @@ import {
   type TrialSnapshot,
 } from './lib/entitlements';
 import { csrfProtect } from './lib/csrf';
+import {
+  isPartnerOnlyUser,
+  shouldRedirectPartnerOnlyToPortal,
+} from './lib/partners/portal-routing';
 
 // ────────────────────────────────────────────
 // Constants
@@ -190,6 +194,20 @@ async function getOrgIdForUser(db: SupabaseClient, userId: string): Promise<stri
   return row?.org_id ? String(row.org_id) : null;
 }
 
+async function hasLinkedPartner(db: SupabaseClient, userId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('partners')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    return false;
+  }
+
+  return Boolean(data);
+}
+
 async function getTrialSnapshot(db: SupabaseClient, orgId: string): Promise<TrialSnapshot> {
   const { data, error } = await db
     .from('trial_subscriptions')
@@ -357,6 +375,23 @@ export async function middleware(request: NextRequest) {
         redirectResponse.headers.append('Set-Cookie', csrfResponse.headers.get('Set-Cookie') || '');
         return setSecurityHeaders(redirectResponse);
       }
+    }
+  }
+
+  if (pathname.startsWith('/app') && !pathname.startsWith('/app/api/') && !isAppAdmin) {
+    const [orgId, linkedPartner] = await Promise.all([
+      getOrgIdForUser(db, userId),
+      hasLinkedPartner(db, userId),
+    ]);
+
+    if (isPartnerOnlyUser({
+      hasLinkedPartner: linkedPartner,
+      hasOrganization: Boolean(orgId),
+      isAdmin: false,
+    }) && shouldRedirectPartnerOnlyToPortal(pathname)) {
+      const redirectResponse = NextResponse.redirect(new URL('/app/partners', request.url));
+      redirectResponse.headers.append('Set-Cookie', csrfResponse.headers.get('Set-Cookie') || '');
+      return setSecurityHeaders(redirectResponse);
     }
   }
 

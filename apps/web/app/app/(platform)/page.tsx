@@ -1,7 +1,13 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { isUserAppAdmin } from '@/lib/admin';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { getCurrentOrgIdForUser } from '@/lib/org';
+import { getLinkedPartnerForUserId } from '@/lib/partners/access';
+import { isPartnerOnlyUser } from '@/lib/partners/portal-routing';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
 import {
   Building2,
@@ -30,6 +36,23 @@ function trialLabel(status: 'active' | 'expired' | 'none') {
 }
 
 export default async function DashboardPage() {
+  const currentUser = await getCurrentAuthUser();
+  if (currentUser) {
+    const [orgId, linkedPartner, isAdmin] = await Promise.all([
+      getCurrentOrgIdForUser(),
+      getLinkedPartnerForUserId(currentUser.id),
+      isUserAppAdmin(currentUser.id),
+    ]);
+
+    if (isPartnerOnlyUser({
+      hasLinkedPartner: Boolean(linkedPartner),
+      hasOrganization: Boolean(orgId),
+      isAdmin,
+    })) {
+      redirect('/app/partners');
+    }
+  }
+
   const trial = await getTrialStatusForCurrentUser();
   const label = trialLabel(trial.status);
 

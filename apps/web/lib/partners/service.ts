@@ -4,7 +4,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { buildPartnerReferralLink } from '@/lib/partners/link';
 import { generatePartnerCode, partnerSlugFromCode } from '@/lib/partners/code';
 import { emptyToNull, nowIso, normalizePartnerCode } from '@/lib/partners/utils';
-import { sendPartnerApplicationNotification } from '@/lib/partners/mail-provider';
+import {
+  sendPartnerApplicationNotification,
+  sendPartnerApprovalNotification,
+} from '@/lib/partners/mail-provider';
+import { ensurePartnerPortalAccess } from '@/lib/partners/access';
 import type {
   PartnerApplicationStatus,
   PartnerCommissionStatus,
@@ -195,6 +199,13 @@ export async function reviewPartnerApplication(params: {
       partner = insertedPartner;
     }
 
+    const portalAccess = await ensurePartnerPortalAccess({
+      partnerId: String(partner.id),
+      email: String(partner.email || application.email || ''),
+      fullName: String(partner.full_name || application.full_name || ''),
+      phone: String(partner.whatsapp_number || application.whatsapp_number || '').trim() || null,
+    });
+
     const { error: updateError } = await db
       .from('partner_applications')
       .update({
@@ -219,6 +230,21 @@ export async function reviewPartnerApplication(params: {
         partner_code: partner.partner_code,
       },
     });
+
+    try {
+      await sendPartnerApprovalNotification({
+        fullName: String(partner.full_name || application.full_name || ''),
+        email: String(partner.email || application.email || ''),
+        partnerCode: String(partner.partner_code || ''),
+        referralLink: String(partner.referral_link || ''),
+        accessMode: portalAccess.accessMode,
+        activationUrl: portalAccess.activationUrl,
+        signInUrl: portalAccess.signInUrl,
+        partnerPortalUrl: portalAccess.partnerPortalUrl,
+      });
+    } catch (error) {
+      console.error('Failed to send partner approval email:', error);
+    }
 
     return { applicationId: params.applicationId, status: 'approved', partner };
   }

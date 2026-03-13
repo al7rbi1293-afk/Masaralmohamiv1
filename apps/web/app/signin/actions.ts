@@ -9,6 +9,13 @@ import {
   verifyPassword,
   generateSessionToken,
 } from '@/lib/auth-custom';
+import { ensureTrialProvisionForUser } from '@/lib/onboarding';
+import { getCurrentOrgIdForUserId } from '@/lib/org';
+import { getLinkedPartnerForUserId } from '@/lib/partners/access';
+import {
+  isPartnerOnlyUser,
+  resolvePostSignInDestination,
+} from '@/lib/partners/portal-routing';
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
@@ -23,7 +30,7 @@ export async function signInAction(formData: FormData) {
   // Look up user in app_users
   const { data: user, error: userError } = await db
     .from('app_users')
-    .select('id, email, password_hash, status')
+    .select('id, email, password_hash, status, email_verified')
     .eq('email', email)
     .maybeSingle();
 
@@ -33,6 +40,10 @@ export async function signInAction(formData: FormData) {
 
   if (user.status === 'suspended') {
     redirect(`/signin?error=${encodeURIComponent('تم تعليق الحساب. تواصل مع الإدارة.')}`);
+  }
+
+  if (!user.email_verified) {
+    redirect(`/signin?error=${encodeURIComponent('الحساب موجود ولكنه غير مفعل. يرجى مراجعة بريدك الإلكتروني لتفعيل الحساب.')}`);
   }
 
   const passwordMatch = await verifyPassword(password, user.password_hash);
@@ -49,5 +60,39 @@ export async function signInAction(formData: FormData) {
   cookieStore.delete('masar-sb-access-token');
   cookieStore.delete('masar-sb-refresh-token');
 
-  redirect('/app');
+  const { data: adminRecord } = await db
+    .from('app_admins')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const [orgId, linkedPartner] = await Promise.all([
+    getCurrentOrgIdForUserId(user.id, null),
+    getLinkedPartnerForUserId(user.id),
+  ]);
+
+  const partnerOnly = isPartnerOnlyUser({
+    hasLinkedPartner: Boolean(linkedPartner),
+    hasOrganization: Boolean(orgId),
+    isAdmin: Boolean(adminRecord),
+  });
+
+  let destination = resolvePostSignInDestination({
+    requestedPath: null,
+    isAdmin: Boolean(adminRecord),
+    isPartnerOnly: partnerOnly,
+  });
+
+  if (!adminRecord && !partnerOnly && destination.startsWith('/app') && !destination.startsWith('/app/api')) {
+    try {
+      const provision = await ensureTrialProvisionForUser({ userId: user.id, firmName: null });
+      if (provision.isExpired && !destination.startsWith('/app/settings/subscription')) {
+        destination = '/app/settings/subscription?expired=1&source=trial';
+      }
+    } catch {
+      // Keep login working even if provisioning fails.
+    }
+  }
+
+  redirect(destination);
 }

@@ -25,6 +25,8 @@ import {
 import Image from 'next/image';
 import { OfficeLogoImage } from '@/components/branding/office-logo-image';
 import { getCurrentOrgIdForUserId } from '@/lib/org';
+import { getLinkedPartnerForUserId } from '@/lib/partners/access';
+import { isPartnerOnlyUser } from '@/lib/partners/portal-routing';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getSupabaseOfficeLogoUrl, getSupabasePublicAssetUrl } from '@/lib/supabase/public-assets';
 
@@ -59,10 +61,16 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   }
 
   const activeOrgId = cookies().get('active_org_id')?.value ?? null;
-  const [orgId, isAdmin] = await Promise.all([
+  const [orgId, isAdmin, linkedPartner] = await Promise.all([
     getCurrentOrgIdForUserId(user.id, activeOrgId),
     isUserAppAdmin(user.id),
+    getLinkedPartnerForUserId(user.id),
   ]);
+  const partnerOnly = isPartnerOnlyUser({
+    hasLinkedPartner: Boolean(linkedPartner),
+    hasOrganization: Boolean(orgId),
+    isAdmin,
+  });
 
   // Fetch org data for customized branding
   let orgName = 'مسار المحامي';
@@ -86,13 +94,16 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
     }
   }
 
-  // Create a mutable type-widened copy of nav items
-  const navItems: { href: string; label: string; icon: any }[] = [...navItemsBase];
+  const navItems: { href: string; label: string; icon: any }[] = partnerOnly
+    ? [{ href: '/app/partners', label: 'بوابة الشريك', icon: LayoutDashboard }]
+    : [...navItemsBase];
 
   // Add Admin Panel link if user is an admin
   if (isAdmin) {
     navItems.unshift({ href: '/admin', label: 'إدارة النظام الرئيسي', icon: ShieldAlert });
   }
+
+  const platformLabel = partnerOnly ? 'شركاء النجاح' : 'منصة العمليات';
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-brand-background dark:bg-slate-950">
@@ -133,7 +144,7 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
                 </h1>
               )}
               <p className="truncate text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                منصة العمليات
+                {platformLabel}
               </p>
             </div>
           </div>

@@ -4,7 +4,13 @@ import { buttonVariants } from '@/components/ui/button';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-export default async function PartnerPortalPage() {
+type PartnerPortalPageProps = {
+  searchParams?: {
+    activated?: string;
+  };
+};
+
+export default async function PartnerPortalPage({ searchParams }: PartnerPortalPageProps) {
   const user = await getCurrentAuthUser();
   if (!user) {
     return (
@@ -26,10 +32,10 @@ export default async function PartnerPortalPage() {
       <Card className="space-y-4 p-6">
         <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">بوابة الشريك</h1>
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          لم يتم ربط حسابك بعد كـ شريك نجاح. حالياً يتم الاعتماد والإدارة من لوحة الأدمن.
+          لم يتم العثور على حساب شريك نجاح مرتبط بهذا البريد حتى الآن.
         </p>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          TODO: تفعيل الربط الذاتي للحسابات الشريكة بعد اعتماد الطلب.
+          إذا تمت الموافقة على طلبك مؤخرًا، استخدم رابط التفعيل الذي وصلك عبر البريد الإلكتروني أو تواصل معنا لإعادة إرساله.
         </p>
         <Link href="/success-partners" className={buttonVariants('outline', 'sm')}>
           تقديم طلب شريك نجاح
@@ -60,6 +66,12 @@ export default async function PartnerPortalPage() {
         <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">بوابة الشريك</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">ملخص الأداء الحالي لشريك النجاح.</p>
       </div>
+
+      {searchParams?.activated === '1' ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+          تم إعداد حساب الشريك بنجاح، ويمكنك الآن استخدام بوابتك ورابط الإحالة مباشرة.
+        </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="الزيارات" value={clicksCount} />

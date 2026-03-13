@@ -1,7 +1,12 @@
 import 'server-only';
 
-import { getPartnerAlertEmails, isSmtpConfigured } from '@/lib/env';
+import { getPartnerAlertEmails, getPublicSiteUrl, isSmtpConfigured } from '@/lib/env';
 import { sendEmail } from '@/lib/email';
+import {
+  PARTNER_WELCOME_EMAIL_HTML,
+  PARTNER_WELCOME_EMAIL_SUBJECT,
+} from '@/lib/email-templates';
+import type { PartnerAccessMode } from '@/lib/partners/access';
 
 type PartnerApplicationNotification = {
   applicationId: string;
@@ -11,6 +16,17 @@ type PartnerApplicationNotification = {
   city: string;
   submittedAt: string;
   adminUrl?: string;
+};
+
+type PartnerApprovalNotification = {
+  fullName: string;
+  email: string;
+  partnerCode: string;
+  referralLink: string;
+  accessMode: PartnerAccessMode;
+  activationUrl: string | null;
+  signInUrl: string;
+  partnerPortalUrl: string;
 };
 
 export async function sendPartnerApplicationNotification(payload: PartnerApplicationNotification) {
@@ -53,6 +69,65 @@ export async function sendPartnerApplicationNotification(payload: PartnerApplica
   await sendEmail({
     to: recipients.join(','),
     subject,
+    text,
+    html,
+  });
+
+  return { sent: true as const };
+}
+
+export async function sendPartnerApprovalNotification(payload: PartnerApprovalNotification) {
+  if (!payload.email.trim()) {
+    return { sent: false, reason: 'missing_email' as const };
+  }
+
+  if (!isSmtpConfigured()) {
+    console.warn('SMTP not configured. Partner approval email was skipped.');
+    return { sent: false, reason: 'smtp_not_configured' as const };
+  }
+
+  const siteUrl = getPublicSiteUrl();
+  const logoUrl = `${siteUrl}/masar-logo.png`;
+  const supportEmail = 'masar.almohami@outlook.sa';
+  const actionLabel = payload.accessMode === 'setup_required'
+    ? 'إعداد حساب الشريك'
+    : 'تسجيل الدخول إلى بوابة الشريك';
+  const actionUrl = payload.accessMode === 'setup_required'
+    ? payload.activationUrl || payload.signInUrl
+    : payload.signInUrl;
+  const actionHint = payload.accessMode === 'setup_required'
+    ? 'استخدم هذا الرابط لإعداد كلمة المرور وتفعيل وصولك إلى بوابة الشريك. صلاحية الرابط 72 ساعة.'
+    : 'لديك حساب جاهز بالفعل. سجّل الدخول وسيتم توجيهك مباشرة إلى بوابة الشريك.';
+
+  const text = [
+    `مرحباً ${payload.fullName}،`,
+    'تم قبولك وتفعيلك بنجاح في برنامج شركاء النجاح لدى مسار المحامي.',
+    '',
+    `كود الشريك: ${payload.partnerCode}`,
+    `رابط الإحالة: ${payload.referralLink}`,
+    `${actionLabel}: ${actionUrl}`,
+    `بوابة الشريك: ${payload.partnerPortalUrl}`,
+    '',
+    'شكراً مقدمًا على شراكتك وثقتك بنا.',
+    `للدعم: ${supportEmail}`,
+  ].join('\n');
+
+  const html = PARTNER_WELCOME_EMAIL_HTML({
+    fullName: escapeHtml(payload.fullName),
+    partnerCode: escapeHtml(payload.partnerCode),
+    referralLink: escapeHtml(payload.referralLink),
+    actionLabel: escapeHtml(actionLabel),
+    actionUrl: escapeHtml(actionUrl),
+    actionHint: escapeHtml(actionHint),
+    partnerPortalUrl: escapeHtml(payload.partnerPortalUrl),
+    supportEmail: escapeHtml(supportEmail),
+    siteUrl: escapeHtml(siteUrl),
+    logoUrl: escapeHtml(logoUrl),
+  });
+
+  await sendEmail({
+    to: payload.email,
+    subject: PARTNER_WELCOME_EMAIL_SUBJECT,
     text,
     html,
   });

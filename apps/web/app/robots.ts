@@ -24,6 +24,8 @@ export default function robots(): MetadataRoute.Robots {
           '/signup/*',
           '/forgot-password',
           '/forgot-password/*',
+          '/partner-access',
+          '/partner-access/*',
           '/invite',
           '/invite/*',
           '/share',

@@ -4,7 +4,14 @@ import { redirect } from 'next/navigation';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
+import { isUserAppAdmin } from '@/lib/admin';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { getCurrentOrgIdForUser } from '@/lib/org';
+import { getLinkedPartnerForUserId } from '@/lib/partners/access';
+import {
+  isPartnerOnlyUser,
+  resolvePostSignInDestination,
+} from '@/lib/partners/portal-routing';
 
 export const metadata: Metadata = {
   title: 'تسجيل الدخول',
@@ -32,22 +39,40 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const nextFromQuery = searchParams?.next ? safeDecode(searchParams.next) : '';
   const tokenFromNext = nextFromQuery.startsWith('/invite/') ? nextFromQuery.slice('/invite/'.length) : '';
   const inviteToken = tokenFromQuery || tokenFromNext;
+  const nextPath = inviteToken ? `/invite/${inviteToken}` : safeNextPath(nextFromQuery);
 
   const user = await getCurrentAuthUser();
   if (user) {
+    const [orgId, linkedPartner, isAdmin] = await Promise.all([
+      getCurrentOrgIdForUser(),
+      getLinkedPartnerForUserId(user.id),
+      isUserAppAdmin(user.id),
+    ]);
+
     if (inviteToken) {
       redirect(`/invite/${encodeURIComponent(inviteToken)}`);
     }
-    redirect('/app');
+
+    redirect(resolvePostSignInDestination({
+      requestedPath: nextPath,
+      isAdmin,
+      isPartnerOnly: isPartnerOnlyUser({
+        hasLinkedPartner: Boolean(linkedPartner),
+        hasOrganization: Boolean(orgId),
+        isAdmin,
+      }),
+    }));
   }
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
   const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
-  const nextPath = inviteToken ? `/invite/${inviteToken}` : nextFromQuery;
   const existsMessage =
     searchParams?.reason === 'exists'
       ? 'هذا البريد مسجل بالفعل. سجّل الدخول لإكمال التجربة.'
       : null;
+  const partnerMessage = nextPath === '/app/partners'
+    ? 'بعد تسجيل الدخول سيتم توجيهك مباشرة إلى بوابة الشريك.'
+    : null;
 
   const inviteBanner = inviteToken
     ? `أنت على وشك قبول دعوة لفريق. استخدم البريد المدعو${prefilledEmail ? `: ${prefilledEmail}` : '.'}`
@@ -64,7 +89,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
           <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">تسجيل الدخول</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            أدخل البريد وكلمة المرور للوصول إلى منصة المكتب.
+            أدخل البريد وكلمة المرور للوصول إلى حسابك في مسار المحامي.
           </p>
 
           {inviteBanner ? (
@@ -85,8 +110,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </p>
           ) : null}
 
+          {partnerMessage ? (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+              {partnerMessage}
+            </p>
+          ) : null}
+
           <form action="/api/signin" method="post" className="mt-6 space-y-4">
-            <input type="hidden" name="next" value={nextPath} />
+            <input type="hidden" name="next" value={nextPath ?? ''} />
             <label className="block space-y-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
               <input
@@ -136,4 +167,20 @@ function safeDecode(value: string) {
   } catch {
     return value;
   }
+}
+
+function safeNextPath(raw?: string) {
+  if (!raw) return null;
+  const value = raw.trim();
+  if (!value.startsWith('/') || value.startsWith('//')) return null;
+  if (value.includes('\n') || value.includes('\r')) return null;
+  if (value.startsWith('/app')) {
+    if (value.startsWith('/app/api')) return null;
+    return value;
+  }
+  if (value.startsWith('/admin')) {
+    if (value.startsWith('/admin/api')) return null;
+    return value;
+  }
+  return null;
 }

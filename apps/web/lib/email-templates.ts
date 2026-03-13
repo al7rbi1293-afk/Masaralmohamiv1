@@ -177,3 +177,97 @@ export const NEW_SIGNUP_ALERT_HTML = (params: {
 </body>
 </html>
 `;
+
+export const PARTNER_WELCOME_EMAIL_SUBJECT = 'تم تفعيل حسابك في شركاء النجاح | مسار المحامي';
+
+export const PARTNER_WELCOME_EMAIL_HTML = (params: {
+  fullName: string;
+  partnerCode: string;
+  referralLink: string;
+  actionLabel: string;
+  actionUrl: string;
+  actionHint: string;
+  partnerPortalUrl: string;
+  supportEmail: string;
+  siteUrl: string;
+  logoUrl: string;
+}) => `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>${PARTNER_WELCOME_EMAIL_SUBJECT}</title>
+    <style>
+        body { margin: 0; background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; direction: rtl; }
+        .wrapper { max-width: 640px; margin: 0 auto; padding: 28px 16px; }
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; overflow: hidden; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); }
+        .hero { background: linear-gradient(135deg, #0f172a 0%, #111827 55%, #0f766e 100%); color: #ffffff; padding: 28px 28px 24px; text-align: right; }
+        .hero img { display: block; width: 150px; max-width: 100%; margin: 0 0 18px auto; }
+        .hero .eyebrow { display: inline-block; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.12); font-size: 12px; letter-spacing: 0.2px; }
+        .hero h1 { margin: 14px 0 8px; font-size: 28px; line-height: 1.4; }
+        .hero p { margin: 0; font-size: 15px; line-height: 1.9; color: rgba(255,255,255,0.92); }
+        .content { padding: 28px; }
+        .content p { margin: 0 0 16px; font-size: 15px; line-height: 1.9; color: #334155; }
+        .highlight { background: linear-gradient(180deg, #f8fafc 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 18px; padding: 20px; margin: 22px 0; }
+        .label { font-size: 13px; color: #0f766e; margin-bottom: 8px; font-weight: 700; }
+        .code { display: inline-block; direction: ltr; font-size: 24px; font-weight: 800; letter-spacing: 2px; color: #065f46; background: #ffffff; border: 1px dashed #10b981; border-radius: 14px; padding: 14px 18px; }
+        .linkbox { margin-top: 16px; background: #ffffff; border: 1px solid #d1fae5; border-radius: 14px; padding: 14px; }
+        .linkbox a { color: #0f766e; text-decoration: none; word-break: break-all; }
+        .actions { margin: 26px 0 12px; text-align: center; }
+        .btn { display: inline-block; padding: 14px 22px; border-radius: 12px; background: #10b981; color: #ffffff !important; text-decoration: none; font-weight: 700; }
+        .tips { margin: 22px 0 0; padding: 18px 20px; border-radius: 18px; background: #f8fafc; border: 1px solid #e2e8f0; }
+        .tips h2 { margin: 0 0 12px; font-size: 17px; color: #0f172a; }
+        .tips ul { margin: 0; padding-right: 18px; color: #475569; }
+        .tips li { margin: 0 0 8px; line-height: 1.8; }
+        .footer { padding: 0 28px 28px; color: #64748b; font-size: 13px; line-height: 1.8; }
+        .footer a { color: #0f766e; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="card">
+            <div class="hero">
+                <img src="${params.logoUrl}" alt="شعار مسار المحامي" />
+                <span class="eyebrow">شركاء النجاح</span>
+                <h1>مرحباً ${params.fullName}، تم اعتمادك وتفعيلك بنجاح</h1>
+                <p>شكراً لك على انضمامك إلى برنامج شركاء النجاح. سعداء بثقتك، ونتطلع لأن تكون جزءاً من نمو مسار المحامي خلال المرحلة القادمة.</p>
+            </div>
+
+            <div class="content">
+                <p>يسرّنا إبلاغك بأن حسابك في <strong>شركاء النجاح</strong> أصبح مفعلاً، ويمكنك بدء مشاركة رابطك الإحالي وكودك الخاص من الآن.</p>
+
+                <div class="highlight">
+                    <div class="label">كود الشريك الخاص بك</div>
+                    <div class="code">${params.partnerCode}</div>
+
+                    <div class="label" style="margin-top:16px;">رابط الإحالة الخاص بك</div>
+                    <div class="linkbox">
+                        <a href="${params.referralLink}">${params.referralLink}</a>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <a class="btn" href="${params.actionUrl}">${params.actionLabel}</a>
+                </div>
+                <p style="text-align:center; color:#64748b; font-size:13px; margin-top:0;">${params.actionHint}</p>
+                <p style="text-align:center; color:#64748b; font-size:13px;">بوابة الشريك: <a href="${params.partnerPortalUrl}" style="color:#0f766e; text-decoration:none;">${params.partnerPortalUrl}</a></p>
+
+                <div class="tips">
+                    <h2>توصيات سريعة للانطلاق</h2>
+                    <ul>
+                        <li>شارك الرابط مباشرة مع العملاء المحتملين أو ضمن حملاتك التسويقية.</li>
+                        <li>يمكنك استخدام الكود نفسه يدويًا عند التسجيل إذا لم يُستخدم الرابط مباشرة.</li>
+                        <li>تُحتسب العمولة فقط على الاشتراكات المؤهلة بعد الدفع الناجح.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>نقدّر شراكتك مقدمًا، ونسعد بدعمك في أي وقت عبر <a href="mailto:${params.supportEmail}">${params.supportEmail}</a>.</p>
+                <p>مع خالص الشكر،<br />فريق مسار المحامي<br /><a href="${params.siteUrl}">${params.siteUrl}</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;

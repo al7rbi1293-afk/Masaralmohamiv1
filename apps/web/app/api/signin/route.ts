@@ -8,6 +8,12 @@ import {
   SESSION_COOKIE_OPTIONS,
 } from '@/lib/auth-custom';
 import { ensureTrialProvisionForUser } from '@/lib/onboarding';
+import { getCurrentOrgIdForUserId } from '@/lib/org';
+import { getLinkedPartnerForUserId } from '@/lib/partners/access';
+import {
+  isPartnerOnlyUser,
+  resolvePostSignInDestination,
+} from '@/lib/partners/portal-routing';
 
 const signInSchema = z.object({
   email: z
@@ -89,22 +95,29 @@ export async function POST(request: NextRequest) {
     // Generate custom JWT session
     const sessionToken = await generateSessionToken({ userId: user.id, email: user.email });
 
-    // Check admin status
-    let defaultRedirect = '/app';
     const { data: adminRecord } = await db
       .from('app_admins')
       .select('user_id')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (adminRecord) {
-      defaultRedirect = '/admin';
-    }
+    const [orgId, linkedPartner] = await Promise.all([
+      getCurrentOrgIdForUserId(user.id, null),
+      getLinkedPartnerForUserId(user.id),
+    ]);
+    const partnerOnly = isPartnerOnlyUser({
+      hasLinkedPartner: Boolean(linkedPartner),
+      hasOrganization: Boolean(orgId),
+      isAdmin: Boolean(adminRecord),
+    });
+    let destination = resolvePostSignInDestination({
+      requestedPath: safeNextPath(parsed.data.next),
+      isAdmin: Boolean(adminRecord),
+      isPartnerOnly: partnerOnly,
+    });
 
-    let destination = safeNextPath(parsed.data.next) ?? defaultRedirect;
-
-    // Ensure trial provisioning for non-admin accounts
-    if (!adminRecord && destination.startsWith('/app') && !destination.startsWith('/app/api')) {
+    // Ensure trial provisioning for office accounts only.
+    if (!adminRecord && !partnerOnly && destination.startsWith('/app') && !destination.startsWith('/app/api')) {
       try {
         const provision = await ensureTrialProvisionForUser({ userId: user.id, firmName: null });
         if (provision.isExpired && !destination.startsWith('/app/settings/subscription')) {

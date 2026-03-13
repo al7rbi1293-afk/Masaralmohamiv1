@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { partnerApplicationSchema } from '@/lib/partners/validation';
 import { createPartnerApplication } from '@/lib/partners/service';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
+import { DEFAULT_PHONE_COUNTRY_CODE, validateInternationalPhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = partnerApplicationSchema.safeParse({
     full_name: (payload as any)?.full_name,
+    whatsapp_country: (payload as any)?.whatsapp_country ?? (payload as any)?.whatsappCountry,
     whatsapp_number: (payload as any)?.whatsapp_number,
     email: (payload as any)?.email,
     city: (payload as any)?.city,
@@ -46,8 +48,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const whatsappValidation = validateInternationalPhone({
+    countryCode: parsed.data.whatsapp_country || DEFAULT_PHONE_COUNTRY_CODE,
+    nationalNumber: parsed.data.whatsapp_number,
+    fieldLabel: 'رقم الواتساب',
+  });
+
+  if (!whatsappValidation.ok) {
+    return NextResponse.json(
+      {
+        message: whatsappValidation.message,
+        fieldErrors: {
+          whatsapp_number: [whatsappValidation.message],
+        },
+      },
+      { status: 400 },
+    );
+  }
+
   try {
-    const application = await createPartnerApplication(parsed.data);
+    const application = await createPartnerApplication({
+      full_name: parsed.data.full_name,
+      whatsapp_number: whatsappValidation.e164,
+      email: parsed.data.email,
+      city: parsed.data.city,
+      marketing_experience: parsed.data.marketing_experience,
+      audience_notes: parsed.data.audience_notes,
+    });
 
     return NextResponse.json(
       {

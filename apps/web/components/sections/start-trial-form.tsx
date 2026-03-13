@@ -2,10 +2,18 @@
 
 import { FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  getPhoneCountryConfig,
+  getPhoneInputMaxLength,
+  PHONE_COUNTRIES,
+  type SupportedPhoneCountryCode,
+} from '@/lib/phone';
 
 export function StartTrialForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneCountry, setPhoneCountry] = useState<SupportedPhoneCountryCode>(DEFAULT_PHONE_COUNTRY_CODE);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,6 +51,8 @@ export function StartTrialForm() {
       setIsSubmitting(false);
     }
   }
+
+  const selectedCountry = getPhoneCountryConfig(phoneCountry);
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
@@ -82,12 +92,34 @@ export function StartTrialForm() {
 
         <label className="space-y-1 text-sm">
           <span className="font-medium text-slate-700 dark:text-slate-200">رقم الجوال</span>
-          <input
-            required
-            name="phone"
-            type="text"
-            className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-          />
+          <div className="flex gap-2">
+            <select
+              name="phone_country"
+              value={phoneCountry}
+              onChange={(event) => setPhoneCountry(event.target.value as SupportedPhoneCountryCode)}
+              className="h-11 w-[46%] rounded-lg border border-brand-border bg-white px-2 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            >
+              {PHONE_COUNTRIES.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.nameAr} (+{country.dialCode})
+                </option>
+              ))}
+            </select>
+            <input
+              required
+              name="phone_national"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              dir="ltr"
+              placeholder={selectedCountry.example}
+              maxLength={getPhoneInputMaxLength(phoneCountry)}
+              className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            />
+          </div>
+          <span className="block text-xs text-slate-500 dark:text-slate-400">
+            اكتب رقم الجوال بدون رمز الدولة.
+          </span>
         </label>
       </div>
 

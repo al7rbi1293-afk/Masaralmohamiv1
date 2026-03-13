@@ -19,6 +19,7 @@ import {
   type ReferralContext,
 } from '@/lib/partners/referral';
 import { normalizePartnerCode } from '@/lib/partners/utils';
+import { DEFAULT_PHONE_COUNTRY_CODE, validateInternationalPhone } from '@/lib/phone';
 
 const startTrialSchema = z.object({
   full_name: z
@@ -35,11 +36,13 @@ const startTrialSchema = z.object({
     .string()
     .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.')
     .max(72, 'كلمة المرور طويلة جدًا.'),
+  phone_country: z.string().trim().max(8, 'رمز الدولة غير صالح.').optional(),
+  phone_national: z.string().trim().max(24, 'رقم الجوال طويل جدًا.').optional(),
   phone: z
     .string()
     .trim()
-    .min(1, 'يرجى إدخال رقم الجوال.')
-    .max(40, 'رقم الجوال طويل جدًا.'),
+    .max(40, 'رقم الجوال طويل جدًا.')
+    .optional(),
   firm_name: z.string().trim().max(120, 'اسم المكتب طويل جدًا.').optional(),
   partner_code: z.string().trim().max(80, 'كود الشريك غير صالح.').optional(),
   website: z.string().trim().max(0, 'تم رفض الطلب.'),
@@ -90,7 +93,17 @@ export async function POST(request: NextRequest) {
   const fullName = parsed.data.full_name;
   const email = parsed.data.email.toLowerCase();
   const password = parsed.data.password;
-  const phone = parsed.data.phone.trim();
+  const phoneValidation = validateInternationalPhone({
+    countryCode: parsed.data.phone_country || DEFAULT_PHONE_COUNTRY_CODE,
+    nationalNumber: parsed.data.phone_national || parsed.data.phone || '',
+    fieldLabel: 'رقم الجوال',
+  });
+
+  if (!phoneValidation.ok) {
+    return jsonResponse({ message: phoneValidation.message }, 400, requestId, rate);
+  }
+
+  const phone = phoneValidation.e164;
   const firmName = emptyToNull(parsed.data.firm_name);
   const partnerCode = normalizePartnerCode(parsed.data.partner_code);
 
@@ -209,17 +222,17 @@ export async function POST(request: NextRequest) {
       }, { onConflict: 'user_id' });
 
     try {
-    await upsertPartnerLeadAttribution({
-      userId,
-      email,
-      phone,
-      status: 'signed_up',
-      signupSource: 'start_trial_signup',
-      referralContextOverride: manualReferralContext,
-    });
-  } catch (attributionError) {
-    console.warn('Referral attribution (start trial signup) failed:', attributionError);
-  }
+      await upsertPartnerLeadAttribution({
+        userId,
+        email,
+        phone,
+        status: 'signed_up',
+        signupSource: 'start_trial_signup',
+        referralContextOverride: manualReferralContext,
+      });
+    } catch (attributionError) {
+      console.warn('Referral attribution (start trial signup) failed:', attributionError);
+    }
 
     // Send Welcome Email
     try {
@@ -350,13 +363,15 @@ async function readStartTrialPayload(request: NextRequest): Promise<
     ok: true;
     value: {
       full_name: string;
-        email: string;
-        password: string;
-        phone: string;
-        firm_name: string;
-        partner_code: string;
-        website: string;
-      };
+      email: string;
+      password: string;
+      phone_country: string;
+      phone_national: string;
+      phone: string;
+      firm_name: string;
+      partner_code: string;
+      website: string;
+    };
   }
   | {
     ok: false;
@@ -383,6 +398,8 @@ async function readStartTrialPayload(request: NextRequest): Promise<
         full_name: toObjectText(data.full_name ?? data.fullName),
         email: toObjectText(data.email),
         password: toObjectText(data.password),
+        phone_country: toObjectText(data.phone_country ?? data.phoneCountry),
+        phone_national: toObjectText(data.phone_national ?? data.phoneNational),
         phone: toObjectText(data.phone),
         firm_name: toObjectText(data.firm_name ?? data.firmName),
         partner_code: toObjectText(data.partner_code ?? data.partnerCode),
@@ -404,6 +421,8 @@ async function readStartTrialPayload(request: NextRequest): Promise<
       full_name: toText(formData, 'full_name'),
       email: toText(formData, 'email'),
       password: toText(formData, 'password'),
+      phone_country: toText(formData, 'phone_country'),
+      phone_national: toText(formData, 'phone_national'),
       phone: toText(formData, 'phone'),
       firm_name: toText(formData, 'firm_name'),
       partner_code: toText(formData, 'partner_code'),

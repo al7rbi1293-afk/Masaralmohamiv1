@@ -2,9 +2,17 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  getPhoneCountryConfig,
+  getPhoneInputMaxLength,
+  PHONE_COUNTRIES,
+  type SupportedPhoneCountryCode,
+} from '@/lib/phone';
 
 type FormState = {
   full_name: string;
+  whatsapp_country: SupportedPhoneCountryCode;
   whatsapp_number: string;
   email: string;
   city: string;
@@ -15,6 +23,7 @@ type FormState = {
 
 const INITIAL_STATE: FormState = {
   full_name: '',
+  whatsapp_country: DEFAULT_PHONE_COUNTRY_CODE,
   whatsapp_number: '',
   email: '',
   city: '',
@@ -29,6 +38,7 @@ export function SuccessPartnersForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const selectedWhatsappCountry = getPhoneCountryConfig(form.whatsapp_country);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,14 +88,41 @@ export function SuccessPartnersForm() {
           required
         />
 
-        <InputField
-          label="رقم التواصل (واتساب)"
-          name="whatsapp_number"
-          value={form.whatsapp_number}
-          onChange={(value) => setForm((prev) => ({ ...prev, whatsapp_number: value }))}
-          error={fieldErrors.whatsapp_number?.[0]}
-          required
-        />
+        <label className="space-y-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">رقم التواصل (واتساب)</span>
+          <div className="flex gap-2">
+            <select
+              name="whatsapp_country"
+              value={form.whatsapp_country}
+              onChange={(event) => setForm((prev) => ({ ...prev, whatsapp_country: event.target.value as SupportedPhoneCountryCode }))}
+              className="h-11 w-[46%] rounded-lg border border-brand-border bg-white px-2 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            >
+              {PHONE_COUNTRIES.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.nameAr} (+{country.dialCode})
+                </option>
+              ))}
+            </select>
+            <input
+              required
+              name="whatsapp_number"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              dir="ltr"
+              value={form.whatsapp_number}
+              onChange={(event) => setForm((prev) => ({ ...prev, whatsapp_number: event.target.value }))}
+              placeholder={selectedWhatsappCountry.example}
+              maxLength={getPhoneInputMaxLength(form.whatsapp_country)}
+              className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            />
+          </div>
+          <span className="block text-xs text-slate-500 dark:text-slate-400">
+            أدخل الرقم المحلي بدون رمز الدولة.
+          </span>
+          {fieldErrors.whatsapp_country?.[0] ? <p className="text-xs text-red-600">{fieldErrors.whatsapp_country[0]}</p> : null}
+          {fieldErrors.whatsapp_number?.[0] ? <p className="text-xs text-red-600">{fieldErrors.whatsapp_number[0]}</p> : null}
+        </label>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-const saudiWhatsappRegex = /^(\+?966|0)?5\d{8}$/;
+import { DEFAULT_PHONE_COUNTRY_CODE } from '@/lib/phone';
 
 export const partnerApplicationSchema = z.object({
   full_name: z
@@ -8,12 +7,18 @@ export const partnerApplicationSchema = z.object({
     .trim()
     .min(10, 'يرجى إدخال الاسم الرباعي كاملًا.')
     .max(140, 'الاسم طويل جدًا.'),
+  whatsapp_country: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .max(8, 'رمز الدولة غير صالح.')
+    .optional()
+    .default(DEFAULT_PHONE_COUNTRY_CODE),
   whatsapp_number: z
     .string({ required_error: 'رقم الواتساب مطلوب.' })
     .trim()
-    .min(9, 'رقم الواتساب غير صحيح.')
-    .max(32, 'رقم الواتساب طويل جدًا.')
-    .refine((value) => saudiWhatsappRegex.test(value.replace(/\s+/g, '')), 'يرجى إدخال رقم واتساب سعودي صحيح.'),
+    .min(1, 'رقم الواتساب مطلوب.')
+    .max(24, 'رقم الواتساب طويل جدًا.'),
   email: z
     .string({ required_error: 'البريد الإلكتروني مطلوب.' })
     .trim()

@@ -34,7 +34,7 @@ test('partner approval email template supports ready sign-in flow', () => {
     partnerCode: 'MASAR-AB12CD',
     referralLink: 'https://masaralmohami.com/?ref=MASAR-AB12CD',
     actionLabel: 'تسجيل الدخول إلى بوابة الشريك',
-    actionUrl: 'https://masaralmohami.com/signin?email=ahmad%40example.com&next=%2Fapp%2Fpartners',
+    actionUrl: 'https://masaralmohami.com/auth/switch-account?email=ahmad%40example.com&next=%2Fapp%2Fpartners',
     actionHint: 'لديك حساب جاهز بالفعل.',
     partnerPortalUrl: 'https://masaralmohami.com/app/partners',
     supportEmail: 'masar.almohami@outlook.sa',
@@ -43,5 +43,5 @@ test('partner approval email template supports ready sign-in flow', () => {
   });
 
   assert.match(html, /تسجيل الدخول إلى بوابة الشريك/);
-  assert.match(html, /signin\?email=ahmad%40example\.com&next=%2Fapp%2Fpartners/);
+  assert.match(html, /auth\/switch-account\?email=ahmad%40example\.com&next=%2Fapp%2Fpartners/);
 });

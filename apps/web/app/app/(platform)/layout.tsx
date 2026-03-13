@@ -26,7 +26,7 @@ import Image from 'next/image';
 import { OfficeLogoImage } from '@/components/branding/office-logo-image';
 import { getCurrentOrgIdForUserId } from '@/lib/org';
 import { getLinkedPartnerForUserId } from '@/lib/partners/access';
-import { isPartnerOnlyUser } from '@/lib/partners/portal-routing';
+import { isPartnerOnlyUser, isPartnerUser } from '@/lib/partners/portal-routing';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getSupabaseOfficeLogoUrl, getSupabasePublicAssetUrl } from '@/lib/supabase/public-assets';
 
@@ -71,6 +71,10 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
     hasOrganization: Boolean(orgId),
     isAdmin,
   });
+  const partnerUser = isPartnerUser({
+    hasLinkedPartner: Boolean(linkedPartner),
+    isAdmin,
+  });
 
   // Fetch org data for customized branding
   let orgName = 'مسار المحامي';
@@ -97,6 +101,10 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
   const navItems: { href: string; label: string; icon: any }[] = partnerOnly
     ? [{ href: '/app/partners', label: 'بوابة الشريك', icon: LayoutDashboard }]
     : [...navItemsBase];
+
+  if (partnerUser && !partnerOnly) {
+    navItems.unshift({ href: '/app/partners', label: 'بوابة الشريك', icon: LayoutDashboard });
+  }
 
   // Add Admin Panel link if user is an admin
   if (isAdmin) {

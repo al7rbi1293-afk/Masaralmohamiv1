@@ -1,9 +1,19 @@
+export function isPartnerUser(params: {
+  hasLinkedPartner: boolean;
+  isAdmin: boolean;
+}) {
+  return params.hasLinkedPartner && !params.isAdmin;
+}
+
 export function isPartnerOnlyUser(params: {
   hasLinkedPartner: boolean;
   hasOrganization: boolean;
   isAdmin: boolean;
 }) {
-  return params.hasLinkedPartner && !params.hasOrganization && !params.isAdmin;
+  return isPartnerUser({
+    hasLinkedPartner: params.hasLinkedPartner,
+    isAdmin: params.isAdmin,
+  }) && !params.hasOrganization;
 }
 
 export function isPartnerPortalPath(pathname: string) {
@@ -25,11 +35,12 @@ export function shouldRedirectPartnerOnlyToPortal(pathname: string) {
 export function resolvePostSignInDestination(params: {
   requestedPath: string | null;
   isAdmin: boolean;
+  isPartnerUser: boolean;
   isPartnerOnly: boolean;
 }) {
   const defaultDestination = params.isAdmin
     ? '/admin'
-    : params.isPartnerOnly
+    : params.isPartnerUser
       ? '/app/partners'
       : '/app';
 
@@ -38,6 +49,10 @@ export function resolvePostSignInDestination(params: {
   }
 
   if (params.isPartnerOnly && params.requestedPath.startsWith('/app') && !isPartnerPortalPath(params.requestedPath)) {
+    return '/app/partners';
+  }
+
+  if (params.isPartnerUser && params.requestedPath === '/app') {
     return '/app/partners';
   }
 

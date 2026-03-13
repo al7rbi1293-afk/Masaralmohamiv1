@@ -9,6 +9,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getCurrentOrgIdForUser } from '@/lib/org';
 import { getLinkedPartnerForUserId } from '@/lib/partners/access';
 import {
+  isPartnerUser,
   isPartnerOnlyUser,
   resolvePostSignInDestination,
 } from '@/lib/partners/portal-routing';
@@ -29,6 +30,7 @@ type SignInPageProps = {
     error?: string;
     email?: string;
     reason?: string;
+    switched?: string;
     token?: string;
     next?: string;
   };
@@ -40,9 +42,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const tokenFromNext = nextFromQuery.startsWith('/invite/') ? nextFromQuery.slice('/invite/'.length) : '';
   const inviteToken = tokenFromQuery || tokenFromNext;
   const nextPath = inviteToken ? `/invite/${inviteToken}` : safeNextPath(nextFromQuery);
+  const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email).trim().toLowerCase() : '';
 
   const user = await getCurrentAuthUser();
   if (user) {
+    if (prefilledEmail && prefilledEmail !== user.email.toLowerCase()) {
+      redirect(buildSwitchAccountHref(prefilledEmail, nextPath));
+    }
+
     const [orgId, linkedPartner, isAdmin] = await Promise.all([
       getCurrentOrgIdForUser(),
       getLinkedPartnerForUserId(user.id),
@@ -56,6 +63,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     redirect(resolvePostSignInDestination({
       requestedPath: nextPath,
       isAdmin,
+      isPartnerUser: isPartnerUser({
+        hasLinkedPartner: Boolean(linkedPartner),
+        isAdmin,
+      }),
       isPartnerOnly: isPartnerOnlyUser({
         hasLinkedPartner: Boolean(linkedPartner),
         hasOrganization: Boolean(orgId),
@@ -65,10 +76,13 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   }
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : null;
-  const prefilledEmail = searchParams?.email ? safeDecode(searchParams.email) : '';
   const existsMessage =
     searchParams?.reason === 'exists'
       ? 'هذا البريد مسجل بالفعل. سجّل الدخول لإكمال التجربة.'
+      : null;
+  const switchedMessage =
+    searchParams?.switched === '1'
+      ? 'تم تسجيل خروج الحساب الحالي حتى تتمكن من الدخول بحساب الشريك الصحيح.'
       : null;
   const partnerMessage = nextPath === '/app/partners'
     ? 'بعد تسجيل الدخول سيتم توجيهك مباشرة إلى بوابة الشريك.'
@@ -107,6 +121,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           {error ? (
             <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
               {error}
+            </p>
+          ) : null}
+
+          {switchedMessage ? (
+            <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200">
+              {switchedMessage}
             </p>
           ) : null}
 
@@ -183,4 +203,13 @@ function safeNextPath(raw?: string) {
     return value;
   }
   return null;
+}
+
+function buildSwitchAccountHref(email: string, nextPath: string | null) {
+  const search = new URLSearchParams();
+  search.set('email', email);
+  if (nextPath) {
+    search.set('next', nextPath);
+  }
+  return `/auth/switch-account?${search.toString()}`;
 }

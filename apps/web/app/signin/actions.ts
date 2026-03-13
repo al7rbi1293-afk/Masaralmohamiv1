@@ -13,6 +13,7 @@ import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 import { getCurrentOrgIdForUserId } from '@/lib/org';
 import { getLinkedPartnerForUserId } from '@/lib/partners/access';
 import {
+  isPartnerUser,
   isPartnerOnlyUser,
   resolvePostSignInDestination,
 } from '@/lib/partners/portal-routing';
@@ -76,10 +77,15 @@ export async function signInAction(formData: FormData) {
     hasOrganization: Boolean(orgId),
     isAdmin: Boolean(adminRecord),
   });
+  const partnerUser = isPartnerUser({
+    hasLinkedPartner: Boolean(linkedPartner),
+    isAdmin: Boolean(adminRecord),
+  });
 
   let destination = resolvePostSignInDestination({
     requestedPath: null,
     isAdmin: Boolean(adminRecord),
+    isPartnerUser: partnerUser,
     isPartnerOnly: partnerOnly,
   });
 

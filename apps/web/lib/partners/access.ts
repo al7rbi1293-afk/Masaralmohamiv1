@@ -39,7 +39,7 @@ export function buildPartnerPortalUrl() {
 }
 
 export function buildPartnerSignInUrl(email: string) {
-  const url = new URL('/signin', `${getPublicSiteUrl()}/`);
+  const url = new URL('/auth/switch-account', `${getPublicSiteUrl()}/`);
   url.searchParams.set('email', email);
   url.searchParams.set('next', '/app/partners');
   return url.toString();

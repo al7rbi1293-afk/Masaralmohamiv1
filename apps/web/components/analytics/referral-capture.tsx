@@ -2,7 +2,13 @@
 
 import { useEffect } from 'react';
 import { captureUtm } from '@/lib/utm';
-import { getStoredReferral, setStoredReferral } from '@/lib/partners/referral-client';
+import {
+  clearReferralCaptureGuard,
+  getReferralCaptureGuard,
+  getStoredReferral,
+  setReferralCaptureGuard,
+  setStoredReferral,
+} from '@/lib/partners/referral-client';
 
 export function ReferralCapture() {
   useEffect(() => {
@@ -15,13 +21,28 @@ export function ReferralCapture() {
       return;
     }
 
+    const landingPage = `${window.location.pathname}${window.location.search}`.slice(0, 1000);
+    const existingGuard = getReferralCaptureGuard({
+      code: ref,
+      landingPage,
+    });
+
+    if (existingGuard) {
+      return;
+    }
+
     const previous = getStoredReferral();
     const sessionId = previous?.sessionId || crypto.randomUUID();
+    setReferralCaptureGuard({
+      code: ref,
+      landingPage,
+      sessionId,
+    });
 
     const payload = {
       ref,
       session_id: sessionId,
-      landing_page: `${window.location.pathname}${window.location.search}`.slice(0, 1000),
+      landing_page: landingPage,
       utm_source: url.searchParams.get('utm_source') || undefined,
       utm_medium: url.searchParams.get('utm_medium') || undefined,
       utm_campaign: url.searchParams.get('utm_campaign') || undefined,
@@ -35,9 +56,26 @@ export function ReferralCapture() {
       body: JSON.stringify(payload),
       credentials: 'include',
     })
-      .then((res) => res.json().catch(() => null))
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          clearReferralCaptureGuard({
+            code: ref,
+            landingPage,
+          });
+        }
+        return json;
+      })
       .then((json) => {
         const result = json?.result;
+        if (!result) {
+          clearReferralCaptureGuard({
+            code: ref,
+            landingPage,
+          });
+          return;
+        }
+
         if (!result?.captured) {
           return;
         }
@@ -51,7 +89,10 @@ export function ReferralCapture() {
         });
       })
       .catch(() => {
-        // best-effort tracking
+        clearReferralCaptureGuard({
+          code: ref,
+          landingPage,
+        });
       });
   }, []);
 

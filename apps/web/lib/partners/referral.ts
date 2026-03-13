@@ -15,6 +15,9 @@ import {
 } from '@/lib/partners/constants';
 import type { AttributionResult, PartnerLeadStatus, ReferralCaptureResult } from '@/lib/partners/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  getRecentReferralWindowStart,
+} from '@/lib/partners/referral-capture-utils';
 import { normalizePartnerCode, shouldPromoteLeadStatus } from '@/lib/partners/utils';
 import { getReferralAttributionWindowDays, getReferralIpHashSalt } from '@/lib/env';
 import { isSelfReferral, isWithinAttributionWindow } from '@/lib/partners/rules';
@@ -86,6 +89,91 @@ function isExpired(capturedAt: string | null, windowDays = getReferralAttributio
   });
 }
 
+function isDuplicateKeyError(error: { message?: string | null } | null | undefined) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('duplicate') || message.includes('unique');
+}
+
+async function ensureVisitedLeadForClick(params: {
+  db: ReturnType<typeof createSupabaseServerClient>;
+  partnerId: string;
+  clickId: string;
+}) {
+  const { data: existingLead, error: existingLeadError } = await params.db
+    .from('partner_leads')
+    .select('id, partner_id, status')
+    .eq('click_id', params.clickId)
+    .maybeSingle();
+
+  if (existingLeadError) {
+    throw new Error(existingLeadError.message);
+  }
+
+  if (existingLead) {
+    return existingLead;
+  }
+
+  const { data: insertedLead, error: insertLeadError } = await params.db
+    .from('partner_leads')
+    .insert({
+      partner_id: params.partnerId,
+      click_id: params.clickId,
+      signup_source: 'referral_visit',
+      status: 'visited',
+      attributed_at: new Date().toISOString(),
+    })
+    .select('id, partner_id, status')
+    .single();
+
+  if (!insertLeadError && insertedLead) {
+    return insertedLead;
+  }
+
+  if (isDuplicateKeyError(insertLeadError)) {
+    const { data: fallbackLead, error: fallbackLeadError } = await params.db
+      .from('partner_leads')
+      .select('id, partner_id, status')
+      .eq('click_id', params.clickId)
+      .maybeSingle();
+
+    if (fallbackLeadError) {
+      throw new Error(fallbackLeadError.message);
+    }
+
+    if (fallbackLead) {
+      return fallbackLead;
+    }
+  }
+
+  throw new Error(insertLeadError?.message || 'تعذر حفظ بيانات زيارة الإحالة.');
+}
+
+async function findRecentReferralClick(params: {
+  db: ReturnType<typeof createSupabaseServerClient>;
+  partnerId: string;
+  sessionId: string;
+  landingPage: string;
+  refCode: string;
+}) {
+  const { data, error } = await params.db
+    .from('partner_clicks')
+    .select('id, created_at')
+    .eq('partner_id', params.partnerId)
+    .eq('session_id', params.sessionId)
+    .eq('landing_page', params.landingPage)
+    .eq('ref_code', params.refCode)
+    .gte('created_at', getRecentReferralWindowStart())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
 export async function captureReferralClick(params: {
   request: NextRequest;
   referralCode?: string | null;
@@ -145,6 +233,30 @@ export async function captureReferralClick(params: {
   const requestIp = resolveRequestIp(params.request);
   const landingPage = String(params.landingPage || '/').slice(0, 1000);
   const userAgent = params.request.headers.get('user-agent') || null;
+  const existingClick = await findRecentReferralClick({
+    db,
+    partnerId: String(partner.id),
+    sessionId,
+    landingPage,
+    refCode: normalizedRef,
+  });
+
+  if (existingClick) {
+    await ensureVisitedLeadForClick({
+      db,
+      partnerId: String(partner.id),
+      clickId: String(existingClick.id),
+    });
+
+    return {
+      captured: true,
+      partnerId: String(partner.id),
+      partnerCode: String(partner.partner_code),
+      clickId: String(existingClick.id),
+      sessionId,
+      reason: 'already_captured',
+    };
+  }
 
   const { data: click, error: clickError } = await db
     .from('partner_clicks')
@@ -167,17 +279,11 @@ export async function captureReferralClick(params: {
     throw new Error(clickError?.message || 'تعذر تسجيل النقرة الإحالية.');
   }
 
-  await db
-    .from('partner_leads')
-    .insert({
-      partner_id: partner.id,
-      click_id: click.id,
-      signup_source: 'referral_visit',
-      status: 'visited',
-      attributed_at: new Date().toISOString(),
-    })
-    .select('id')
-    .maybeSingle();
+  await ensureVisitedLeadForClick({
+    db,
+    partnerId: String(partner.id),
+    clickId: String(click.id),
+  });
 
   return {
     captured: true,

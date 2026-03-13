@@ -13,6 +13,7 @@ import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 import { getCurrentOrgIdForUserId } from '@/lib/org';
 import { getLinkedPartnerForUserId } from '@/lib/partners/access';
 import {
+  isPartnerPortalPath,
   isPartnerUser,
   isPartnerOnlyUser,
   resolvePostSignInDestination,
@@ -89,7 +90,13 @@ export async function signInAction(formData: FormData) {
     isPartnerOnly: partnerOnly,
   });
 
-  if (!adminRecord && !partnerOnly && destination.startsWith('/app') && !destination.startsWith('/app/api')) {
+  if (
+    !adminRecord &&
+    !partnerOnly &&
+    !isPartnerPortalPath(destination) &&
+    destination.startsWith('/app') &&
+    !destination.startsWith('/app/api')
+  ) {
     try {
       const provision = await ensureTrialProvisionForUser({ userId: user.id, firmName: null });
       if (provision.isExpired && !destination.startsWith('/app/settings/subscription')) {

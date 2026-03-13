@@ -10,6 +10,7 @@ import {
 } from './lib/entitlements';
 import { csrfProtect } from './lib/csrf';
 import {
+  isPartnerPortalPath,
   isPartnerOnlyUser,
   shouldRedirectPartnerOnlyToPortal,
 } from './lib/partners/portal-routing';
@@ -248,7 +249,7 @@ async function getAppLockState(
   pathname: string,
   userId: string,
 ): Promise<{ locked: boolean; reason: EntitlementsResult['reason'] }> {
-  if (!pathname.startsWith('/app') || isBypassedPath(pathname)) {
+  if (!pathname.startsWith('/app') || isBypassedPath(pathname) || isPartnerPortalPath(pathname)) {
     return { locked: false, reason: 'none' };
   }
 

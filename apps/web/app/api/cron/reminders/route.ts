@@ -4,6 +4,7 @@ import { logInfo, logError } from '@/lib/logger';
 import { processCalendarReminderJob, type NotificationJobRecord } from '@/lib/calendar-reminders';
 
 export const dynamic = 'force-dynamic';
+const RETRY_DELAY_MINUTES = 15;
 
 /**
  * GET /api/cron/reminders
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
 
     let processed = 0;
     let failed = 0;
+    let retried = 0;
 
     for (const job of (jobs as NotificationJobRecord[] | null) ?? []) {
         try {
@@ -56,10 +58,21 @@ export async function GET(request: Request) {
 
             processed++;
         } catch (err) {
+            const message = err instanceof Error ? err.message : 'unknown';
             logError('reminder_failed', {
                 job_id: job.id,
-                error: err instanceof Error ? err.message : 'unknown',
+                error: message,
             });
+
+            if (shouldRetryReminder(message)) {
+                const nextRunAt = new Date(Date.now() + RETRY_DELAY_MINUTES * 60 * 1000).toISOString();
+                await adminClient
+                    .from('notification_jobs')
+                    .update({ status: 'queued', run_at: nextRunAt })
+                    .eq('id', job.id);
+                retried++;
+                continue;
+            }
 
             await adminClient
                 .from('notification_jobs')
@@ -74,6 +87,20 @@ export async function GET(request: Request) {
         ok: true,
         processed,
         failed,
+        retried,
         timestamp: now,
     });
+}
+
+function shouldRetryReminder(message: string) {
+    const normalized = message.toLowerCase();
+    return (
+        normalized.includes('smtp_not_configured') ||
+        normalized.includes('etimedout') ||
+        normalized.includes('econnrefused') ||
+        normalized.includes('econnreset') ||
+        normalized.includes('ehostunreach') ||
+        normalized.includes('eai_again') ||
+        normalized.includes('too many connections')
+    );
 }

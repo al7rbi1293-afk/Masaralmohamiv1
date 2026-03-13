@@ -63,7 +63,11 @@ export function CalendarEventCreatePanel({ matters }: CalendarEventCreatePanelPr
         }),
       });
 
-      const json = (await response.json().catch(() => ({}))) as { message?: string };
+      const json = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        reminder_jobs_count?: number;
+        reminder_warning?: string | null;
+      };
       if (!response.ok) {
         setError(String(json.message ?? 'تعذر إنشاء الموعد.'));
         return;
@@ -76,7 +80,14 @@ export function CalendarEventCreatePanel({ matters }: CalendarEventCreatePanelPr
       const nextTimes = buildInitialTimes();
       setStartAtLocal(nextTimes.startAtLocal);
       setEndAtLocal(nextTimes.endAtLocal);
-      setSuccess('تم إنشاء الموعد وجدولة التنبيهات البريدية له.');
+      const scheduledCount = Number(json.reminder_jobs_count ?? 0);
+      if (json.reminder_warning) {
+        setSuccess(String(json.reminder_warning));
+      } else if (scheduledCount > 0) {
+        setSuccess(`تم إنشاء الموعد وجدولة ${scheduledCount} تنبيه بريدي.`);
+      } else {
+        setSuccess('تم إنشاء الموعد بنجاح.');
+      }
       router.refresh();
     } catch {
       setError('تعذر إنشاء الموعد حاليًا. حاول مرة أخرى.');

@@ -9,6 +9,9 @@ const REMINDER_OFFSETS = [
   { label: '24h', offsetMs: 24 * 60 * 60 * 1000 },
   { label: '2h', offsetMs: 2 * 60 * 60 * 1000 },
 ] as const;
+const SHORT_NOTICE_LABEL = 'soon';
+const SHORT_NOTICE_LEAD_MS = 15 * 60 * 1000;
+const MIN_NOTICE_DELAY_MS = 2 * 60 * 1000;
 
 type ReminderJobInsert = {
   org_id: string;
@@ -126,9 +129,10 @@ function buildReminderJobs(params: {
     throw new Error('invalid_reminder_start_at');
   }
 
-  return REMINDER_OFFSETS.map((entry): ReminderJobInsert | null => {
+  const nowMs = Date.now();
+  const standardJobs = REMINDER_OFFSETS.map((entry): ReminderJobInsert | null => {
     const runAt = new Date(startDate.getTime() - entry.offsetMs);
-    if (runAt.getTime() <= Date.now()) {
+    if (runAt.getTime() <= nowMs) {
       return null;
     }
 
@@ -143,6 +147,39 @@ function buildReminderJobs(params: {
       status: 'queued' as const,
     };
   }).filter((job): job is ReminderJobInsert => Boolean(job));
+
+  if (standardJobs.length) {
+    return standardJobs;
+  }
+
+  // If the event is soon and standard reminders have already passed,
+  // schedule one short-notice reminder instead of dropping reminders completely.
+  if (startDate.getTime() <= nowMs) {
+    return [];
+  }
+
+  let fallbackRunAtMs = startDate.getTime() - SHORT_NOTICE_LEAD_MS;
+  if (fallbackRunAtMs <= nowMs) {
+    fallbackRunAtMs = nowMs + MIN_NOTICE_DELAY_MS;
+  }
+
+  if (fallbackRunAtMs >= startDate.getTime()) {
+    // Event is extremely close; sending before the start is no longer feasible.
+    return [];
+  }
+
+  return [
+    {
+      org_id: params.orgId,
+      type: params.type,
+      payload: {
+        ...params.payload,
+        reminder_label: SHORT_NOTICE_LABEL,
+      },
+      run_at: new Date(fallbackRunAtMs).toISOString(),
+      status: 'queued' as const,
+    },
+  ];
 }
 
 async function sendStandaloneCalendarReminder(
@@ -365,6 +402,7 @@ function uniqueStrings(values: string[]) {
 function toReminderCopy(label: string) {
   if (label === '24h') return 'قبل الموعد بـ 24 ساعة';
   if (label === '2h') return 'قبل الموعد بساعتين';
+  if (label === SHORT_NOTICE_LABEL) return 'قبل الموعد بوقت قصير';
   return 'قبل الموعد بوقت قريب';
 }
 

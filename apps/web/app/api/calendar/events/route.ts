@@ -4,6 +4,7 @@ import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { queueCalendarEventReminderJobs } from '@/lib/calendar-reminders';
+import { isSmtpConfigured } from '@/lib/env';
 import { logError } from '@/lib/logger';
 
 const createEventSchema = z.object({
@@ -95,21 +96,35 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message }, { status: 500 });
     }
 
+    let reminderJobsCount = 0;
+    let reminderWarning: string | null = null;
+
     try {
-        await queueCalendarEventReminderJobs(supabase, {
+        reminderJobsCount = await queueCalendarEventReminderJobs(supabase, {
             orgId,
             eventId: event.id,
             startAt: String(event.start_at),
             createdBy: user.id,
         });
+        if (reminderJobsCount === 0) {
+            reminderWarning = 'تم إنشاء الموعد، لكن وقت الموعد قريب جدًا لذلك لم تُجدول تنبيهات تلقائية.';
+        } else if (!isSmtpConfigured()) {
+            reminderWarning = 'تمت جدولة التنبيهات، لكن إعدادات SMTP غير مكتملة حاليًا لذلك لن يصل البريد حتى يتم تفعيلها.';
+        }
     } catch (reminderError) {
         logError('calendar_event_reminder_queue_failed', {
             eventId: event.id,
             message: reminderError instanceof Error ? reminderError.message : 'unknown',
         });
+        reminderWarning = 'تم إنشاء الموعد، لكن حدثت مشكلة أثناء جدولة التنبيهات.';
     }
 
-    return NextResponse.json({ success: true, event });
+    return NextResponse.json({
+        success: true,
+        event,
+        reminder_jobs_count: reminderJobsCount,
+        reminder_warning: reminderWarning,
+    });
 }
 
 function toCreateEventUserMessage(error: { message?: string; details?: string; hint?: string }) {

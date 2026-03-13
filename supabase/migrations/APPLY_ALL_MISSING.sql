@@ -288,7 +288,7 @@ create table if not exists public.doc_generations (
         format text not null check (format in ('pdf', 'docx')),
         file_path text,
         status text not null default 'draft' check (status in ('draft', 'exported', 'failed')),
-        created_by uuid not null references auth.users(id),
+        created_by uuid not null references public.app_users(id),
         created_at timestamptz not null default now()
 );
 create index if not exists idx_doc_generations_org on public.doc_generations (org_id);
@@ -424,7 +424,7 @@ create table if not exists public.event_attendees (
     id uuid primary key default gen_random_uuid(),
     org_id uuid not null references public.organizations(id) on delete cascade,
     event_id uuid not null references public.calendar_events(id) on delete cascade,
-    user_id uuid not null references auth.users(id),
+    user_id uuid not null references public.app_users(id),
     role text default 'required',
     created_at timestamptz not null default now()
 );

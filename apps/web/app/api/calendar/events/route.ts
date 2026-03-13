@@ -85,7 +85,15 @@ export async function POST(request: NextRequest) {
         .select('id, title, start_at, end_at')
         .single();
 
-    if (error) return NextResponse.json({ message: 'فشل إنشاء الحدث.' }, { status: 500 });
+    if (error) {
+        const message = toCreateEventUserMessage(error);
+        logError('calendar_event_create_failed', {
+            orgId,
+            userId: user.id,
+            message: error.message,
+        });
+        return NextResponse.json({ message }, { status: 500 });
+    }
 
     try {
         await queueCalendarEventReminderJobs(supabase, {
@@ -102,4 +110,25 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, event });
+}
+
+function toCreateEventUserMessage(error: { message?: string; details?: string; hint?: string }) {
+    const text = `${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
+
+    if (
+        text.includes('calendar_events_created_by_fkey') ||
+        (text.includes('created_by') && text.includes('foreign key'))
+    ) {
+        return 'تعذر إنشاء الموعد حاليًا بسبب إعدادات قاعدة البيانات. سيتم إصلاحها ثم يمكنك المحاولة مرة أخرى.';
+    }
+
+    if (text.includes('violates row-level security') || text.includes('permission denied')) {
+        return 'لا تملك صلاحية إنشاء موعد في هذا المكتب.';
+    }
+
+    if (text.includes('relation') && text.includes('calendar_events')) {
+        return 'ميزة المواعيد تحتاج تحديث قاعدة البيانات أولاً.';
+    }
+
+    return 'فشل إنشاء الحدث.';
 }

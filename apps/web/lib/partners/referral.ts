@@ -296,6 +296,7 @@ export async function captureReferralClick(params: {
 }
 
 async function findExistingLead(params: {
+  clickId?: string | null;
   userId?: string | null;
   email?: string | null;
 }) {
@@ -328,6 +329,17 @@ async function findExistingLead(params: {
     if (data) return data as any;
   }
 
+  if (params.clickId) {
+    const { data, error } = await db
+      .from('partner_leads')
+      .select('*')
+      .eq('click_id', params.clickId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (data) return data as any;
+  }
+
   return null;
 }
 
@@ -337,9 +349,10 @@ export async function upsertPartnerLeadAttribution(params: {
   phone?: string | null;
   status: Extract<PartnerLeadStatus, 'signed_up' | 'trial_started' | 'subscribed' | 'cancelled'>;
   signupSource: string;
+  referralContextOverride?: ReferralContext | null;
 }): Promise<AttributionResult> {
   const db = createSupabaseServerClient();
-  const context = readReferralContextFromCookies();
+  const context = params.referralContextOverride ?? readReferralContextFromCookies();
 
   if (!context.code) {
     return {
@@ -408,6 +421,7 @@ export async function upsertPartnerLeadAttribution(params: {
   }
 
   const existingLead = await findExistingLead({
+    clickId: context.clickId,
     userId: params.userId,
     email: normalizedEmail,
   });
@@ -476,9 +490,13 @@ export async function upsertPartnerLeadAttribution(params: {
     .single();
 
   if (insertError || !inserted) {
-    // Race condition: fetch and return if already inserted by a parallel flow.
+      // Race condition: fetch and return if already inserted by a parallel flow.
     if ((insertError?.message || '').toLowerCase().includes('duplicate')) {
-      const fallbackLead = await findExistingLead({ userId: params.userId, email: normalizedEmail });
+      const fallbackLead = await findExistingLead({
+        clickId: context.clickId,
+        userId: params.userId,
+        email: normalizedEmail,
+      });
       if (fallbackLead) {
         return {
           attributed: true,

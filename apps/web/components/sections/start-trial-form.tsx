@@ -100,6 +100,20 @@ export function StartTrialForm() {
         />
       </label>
 
+      <label className="space-y-1 text-sm">
+        <span className="font-medium text-slate-700 dark:text-slate-200">كود الشريك (اختياري)</span>
+        <input
+          name="partner_code"
+          type="text"
+          dir="ltr"
+          placeholder="MASAR-ABC123"
+          className="h-11 w-full rounded-lg border border-brand-border px-3 text-sm uppercase outline-none ring-brand-emerald transition focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+        />
+        <span className="block text-xs text-slate-500 dark:text-slate-400">
+          إذا وصلك كود من شريك نجاح، اكتبه هنا حتى تُربط عملية التسجيل به حتى بدون رابط الإحالة.
+        </span>
+      </label>
+
       <div className="hidden" aria-hidden>
         <label htmlFor="website">Website</label>
         <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />

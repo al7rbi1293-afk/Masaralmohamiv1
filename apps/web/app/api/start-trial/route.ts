@@ -11,7 +11,14 @@ import { logError, logInfo, logWarn } from '@/lib/logger';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ensureTrialProvisionForUser } from '@/lib/onboarding';
-import { upsertPartnerLeadAttribution } from '@/lib/partners/referral';
+import {
+  captureReferralClick,
+  readReferralContextFromCookies,
+  setReferralCookies,
+  upsertPartnerLeadAttribution,
+  type ReferralContext,
+} from '@/lib/partners/referral';
+import { normalizePartnerCode } from '@/lib/partners/utils';
 
 const startTrialSchema = z.object({
   full_name: z
@@ -34,6 +41,7 @@ const startTrialSchema = z.object({
     .min(1, 'يرجى إدخال رقم الجوال.')
     .max(40, 'رقم الجوال طويل جدًا.'),
   firm_name: z.string().trim().max(120, 'اسم المكتب طويل جدًا.').optional(),
+  partner_code: z.string().trim().max(80, 'كود الشريك غير صالح.').optional(),
   website: z.string().trim().max(0, 'تم رفض الطلب.'),
 });
 
@@ -84,8 +92,35 @@ export async function POST(request: NextRequest) {
   const password = parsed.data.password;
   const phone = parsed.data.phone.trim();
   const firmName = emptyToNull(parsed.data.firm_name);
+  const partnerCode = normalizePartnerCode(parsed.data.partner_code);
 
   const db = createSupabaseServerClient();
+  const currentReferralContext = readReferralContextFromCookies();
+
+  let manualReferralContext: ReferralContext | null = null;
+  if (!currentReferralContext.code && partnerCode) {
+    const referralCapture = await captureReferralClick({
+      request,
+      referralCode: partnerCode,
+      sessionId: currentReferralContext.sessionId || undefined,
+      landingPage: getStartTrialLandingPage(request),
+    });
+
+    if (!referralCapture.captured || !referralCapture.partnerId || !referralCapture.partnerCode || !referralCapture.clickId) {
+      const message = referralCapture.reason === 'inactive_partner'
+        ? 'كود الشريك غير مفعل حاليًا.'
+        : 'كود الشريك غير صالح.';
+      return jsonResponse({ message }, 400, requestId, rate);
+    }
+
+    manualReferralContext = {
+      code: referralCapture.partnerCode,
+      partnerId: referralCapture.partnerId,
+      sessionId: referralCapture.sessionId,
+      clickId: referralCapture.clickId,
+      capturedAt: new Date().toISOString(),
+    };
+  }
 
   // Save lead
   const { error: leadError } = await db.from('leads').insert({
@@ -174,16 +209,17 @@ export async function POST(request: NextRequest) {
       }, { onConflict: 'user_id' });
 
     try {
-      await upsertPartnerLeadAttribution({
-        userId,
-        email,
-        phone,
-        status: 'signed_up',
-        signupSource: 'start_trial_signup',
-      });
-    } catch (attributionError) {
-      console.warn('Referral attribution (start trial signup) failed:', attributionError);
-    }
+    await upsertPartnerLeadAttribution({
+      userId,
+      email,
+      phone,
+      status: 'signed_up',
+      signupSource: 'start_trial_signup',
+      referralContextOverride: manualReferralContext,
+    });
+  } catch (attributionError) {
+    console.warn('Referral attribution (start trial signup) failed:', attributionError);
+  }
 
     // Send Welcome Email
     try {
@@ -222,6 +258,7 @@ export async function POST(request: NextRequest) {
     );
     setRequestIdHeader(response, requestId);
     setRateLimitHeaders(response, rate);
+    applyReferralContext(response, manualReferralContext);
     return response;
   }
 
@@ -239,6 +276,7 @@ export async function POST(request: NextRequest) {
         phone,
         status: 'trial_started',
         signupSource: 'start_trial_existing_user',
+        referralContextOverride: manualReferralContext,
       });
     } catch (attributionError) {
       console.warn('Referral attribution (start trial existing user) failed:', attributionError);
@@ -268,6 +306,7 @@ export async function POST(request: NextRequest) {
     response.cookies.delete('masar-sb-refresh-token');
     setRequestIdHeader(response, requestId);
     setRateLimitHeaders(response, rate);
+    applyReferralContext(response, manualReferralContext);
     return response;
   } catch (error) {
     logError('trial_start_failed', {
@@ -311,12 +350,13 @@ async function readStartTrialPayload(request: NextRequest): Promise<
     ok: true;
     value: {
       full_name: string;
-      email: string;
-      password: string;
-      phone: string;
-      firm_name: string;
-      website: string;
-    };
+        email: string;
+        password: string;
+        phone: string;
+        firm_name: string;
+        partner_code: string;
+        website: string;
+      };
   }
   | {
     ok: false;
@@ -345,6 +385,7 @@ async function readStartTrialPayload(request: NextRequest): Promise<
         password: toObjectText(data.password),
         phone: toObjectText(data.phone),
         firm_name: toObjectText(data.firm_name ?? data.firmName),
+        partner_code: toObjectText(data.partner_code ?? data.partnerCode),
         website: toObjectText(data.website),
       },
     };
@@ -365,6 +406,7 @@ async function readStartTrialPayload(request: NextRequest): Promise<
       password: toText(formData, 'password'),
       phone: toText(formData, 'phone'),
       firm_name: toText(formData, 'firm_name'),
+      partner_code: toText(formData, 'partner_code'),
       website: toText(formData, 'website'),
     },
   };
@@ -392,6 +434,42 @@ function jsonResponse(
   setRequestIdHeader(response, requestId);
   setRateLimitHeaders(response, rate);
   return response;
+}
+
+function applyReferralContext(response: NextResponse, referralContext: ReferralContext | null) {
+  if (!referralContext?.code || !referralContext.partnerId || !referralContext.clickId) {
+    return;
+  }
+
+  setReferralCookies(response, {
+    code: referralContext.code,
+    partnerId: referralContext.partnerId,
+    sessionId: referralContext.sessionId || crypto.randomUUID(),
+    clickId: referralContext.clickId,
+    capturedAt: referralContext.capturedAt || new Date().toISOString(),
+  });
+}
+
+function getStartTrialLandingPage(request: NextRequest) {
+  const referer = request.headers.get('referer');
+
+  if (referer) {
+    try {
+      const url = new URL(referer);
+      return `${url.pathname}${url.search}`.slice(0, 1000) || '/';
+    } catch {
+      // fall through
+    }
+  }
+
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const host = forwardedHost || request.headers.get('host')?.trim();
+
+  if (host) {
+    return '/';
+  }
+
+  return '/';
 }
 
 function setRequestIdHeader(response: NextResponse, requestId: string) {

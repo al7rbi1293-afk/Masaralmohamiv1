@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
-import { Lock, Mail, Shield } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { ContactForm } from '@/components/sections/contact-form';
+import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
 import { Section } from '@/components/ui/section';
+import { CUSTOMER_SERVICE_WHATSAPP_LINK, CUSTOMER_SERVICE_WHATSAPP_NUMBER, SUPPORT_EMAIL } from '@/lib/support';
 
 export const metadata: Metadata = {
   title: 'تواصل معنا',
@@ -18,9 +20,19 @@ export const metadata: Metadata = {
 
 const contactCards = [
   {
-    title: 'للتواصل والدعم الفني',
-    email: 'Masar.almohami@outlook.sa',
+    title: 'البريد الإلكتروني',
+    value: SUPPORT_EMAIL,
+    href: `mailto:${SUPPORT_EMAIL}`,
+    valueDir: 'ltr' as const,
     icon: <Mail size={18} className="text-brand-emerald" />,
+  },
+  {
+    title: 'واتساب خدمة العملاء',
+    value: CUSTOMER_SERVICE_WHATSAPP_NUMBER,
+    href: CUSTOMER_SERVICE_WHATSAPP_LINK,
+    valueDir: 'ltr' as const,
+    external: true,
+    icon: <WhatsAppIcon className="h-[18px] w-[18px] text-[#25D366]" />,
   },
 ];
 
@@ -55,7 +67,7 @@ export default function ContactPage({ searchParams }: ContactPageProps) {
       <div className="mx-auto max-w-md">
         {contactCards.map((card) => (
           <article
-            key={card.email}
+            key={card.href}
             className="rounded-xl2 border border-brand-border bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"
           >
             <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-background dark:bg-slate-800">
@@ -63,10 +75,13 @@ export default function ContactPage({ searchParams }: ContactPageProps) {
             </div>
             <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">{card.title}</h2>
             <a
-              href={`mailto:${card.email}`}
+              href={card.href}
+              target={card.external ? '_blank' : undefined}
+              rel={card.external ? 'noreferrer' : undefined}
+              dir={card.valueDir}
               className="mt-2 inline-block text-sm text-slate-700 hover:text-brand-emerald dark:text-slate-300"
             >
-              {card.email}
+              {card.value}
             </a>
           </article>
         ))}

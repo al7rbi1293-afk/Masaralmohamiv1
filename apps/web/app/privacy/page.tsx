@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Section } from '@/components/ui/section';
+import { WhatsAppIcon } from '@/components/ui/whatsapp-icon';
+import { CUSTOMER_SERVICE_WHATSAPP_LINK, CUSTOMER_SERVICE_WHATSAPP_NUMBER, SUPPORT_EMAIL } from '@/lib/support';
 
 export const metadata: Metadata = {
   title: 'سياسة الخصوصية',
@@ -82,10 +84,22 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-brand-navy dark:text-slate-100">التواصل</h2>
           <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
             للاستفسارات المتعلقة بالخصوصية:
-            <a href="mailto:masar.almohami@outlook.sa" className="font-medium text-brand-emerald">
-              {' '}masar.almohami@outlook.sa
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium text-brand-emerald">
+              {' '}{SUPPORT_EMAIL}
             </a>
           </p>
+          <a
+            href={CUSTOMER_SERVICE_WHATSAPP_LINK}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-brand-emerald hover:opacity-90"
+          >
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#25D366]/15 text-[#25D366]">
+              <WhatsAppIcon className="h-4 w-4" />
+            </span>
+            <span>واتساب خدمة العملاء</span>
+            <span dir="ltr">{CUSTOMER_SERVICE_WHATSAPP_NUMBER}</span>
+          </a>
         </article>
       </div>
     </Section>

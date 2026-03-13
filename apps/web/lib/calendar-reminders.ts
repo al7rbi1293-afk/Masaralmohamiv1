@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { type SupabaseClient } from '@supabase/supabase-js';
-import { getPublicSiteUrl } from '@/lib/env';
+import { getPublicSiteUrl, isSmtpConfigured } from '@/lib/env';
 import { sendEmail } from '@/lib/email';
 import { enrichOrgMembers } from '@/lib/matter-members';
 
@@ -310,6 +310,10 @@ async function sendReminderEmails(
     text: string;
   },
 ) {
+  if (!isSmtpConfigured()) {
+    throw new Error('smtp_not_configured');
+  }
+
   let sentCount = 0;
   let firstError: unknown = null;
 

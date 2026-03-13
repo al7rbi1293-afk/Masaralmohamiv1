@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logInfo, logError } from '@/lib/logger';
+import { processCalendarReminderJob, type NotificationJobRecord } from '@/lib/calendar-reminders';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,14 +39,14 @@ export async function GET(request: Request) {
     let processed = 0;
     let failed = 0;
 
-    for (const job of jobs ?? []) {
+    for (const job of (jobs as NotificationJobRecord[] | null) ?? []) {
         try {
-            // For now, log the reminder (email sending can use transactional.ts)
-            // In production, this would send email/push notification
+            const result = await processCalendarReminderJob(adminClient, job);
             logInfo('reminder_processed', {
                 job_id: job.id,
                 type: job.type,
-                payload: job.payload,
+                recipients: result.recipients,
+                skipped: result.skipped,
             });
 
             await adminClient

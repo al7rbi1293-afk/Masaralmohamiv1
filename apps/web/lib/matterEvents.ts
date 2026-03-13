@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { queueMatterEventReminderJobs } from '@/lib/calendar-reminders';
 
 export const matterEventTypeSchema = z.enum([
   'hearing',
@@ -136,7 +137,24 @@ export async function createMatterEvent(
     throw error ?? new Error('تعذر إضافة الحدث.');
   }
 
-  return data as MatterEvent;
+  const created = data as MatterEvent;
+
+  if ((created.type === 'hearing' || created.type === 'meeting') && created.event_date) {
+    try {
+      await queueMatterEventReminderJobs(supabase, {
+        orgId,
+        matterEventId: created.id,
+        matterId: created.matter_id,
+        eventType: created.type,
+        eventDate: created.event_date,
+        createdBy: created.created_by,
+      });
+    } catch (reminderError) {
+      console.error('Failed to schedule matter event reminder jobs', reminderError);
+    }
+  }
+
+  return created;
 }
 
 function emptyToNull(value?: string) {
@@ -148,12 +166,24 @@ function parseEventDate(value?: string) {
   const normalized = value?.trim();
   if (!normalized) return null;
 
-  const date = new Date(normalized);
+  const date = new Date(normalizeDateTimeInput(normalized));
   if (Number.isNaN(date.getTime())) {
     throw new Error('التاريخ غير صالح.');
   }
 
   return date.toISOString();
+}
+
+function normalizeDateTimeInput(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    return `${value}:00+03:00`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)) {
+    return `${value}+03:00`;
+  }
+
+  return value;
 }
 
 function isCreatedByForeignKeyViolation(error: unknown) {

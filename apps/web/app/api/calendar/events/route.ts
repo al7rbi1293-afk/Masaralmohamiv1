@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { queueCalendarEventReminderJobs } from '@/lib/calendar-reminders';
+import { logError } from '@/lib/logger';
 
 const createEventSchema = z.object({
     title: z.string().min(1).max(200),
@@ -85,35 +87,18 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ message: 'فشل إنشاء الحدث.' }, { status: 500 });
 
-    // Schedule reminder jobs (24h and 2h before)
-    const startAt = new Date(parsed.data.start_at);
-    const reminders = [
-        { offsetMs: 24 * 60 * 60 * 1000, label: '24h' },
-        { offsetMs: 2 * 60 * 60 * 1000, label: '2h' },
-    ];
-
-    const jobInserts = reminders
-        .map((r) => {
-            const runAt = new Date(startAt.getTime() - r.offsetMs);
-            if (runAt <= new Date()) return null; // skip past reminders
-            return {
-                org_id: orgId,
-                type: 'event_reminder',
-                payload: {
-                    event_id: event.id,
-                    event_title: event.title,
-                    start_at: event.start_at,
-                    reminder_label: r.label,
-                    user_id: user.id,
-                },
-                run_at: runAt.toISOString(),
-                status: 'queued' as const,
-            };
-        })
-        .filter(Boolean);
-
-    if (jobInserts.length > 0) {
-        await supabase.from('notification_jobs').insert(jobInserts);
+    try {
+        await queueCalendarEventReminderJobs(supabase, {
+            orgId,
+            eventId: event.id,
+            startAt: String(event.start_at),
+            createdBy: user.id,
+        });
+    } catch (reminderError) {
+        logError('calendar_event_reminder_queue_failed', {
+            eventId: event.id,
+            message: reminderError instanceof Error ? reminderError.message : 'unknown',
+        });
     }
 
     return NextResponse.json({ success: true, event });

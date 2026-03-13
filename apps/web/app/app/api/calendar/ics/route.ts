@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
   const uidDomain = safeHost(siteUrl) || 'masar.local';
 
   try {
-    const [eventsRes, tasksRes, invoicesRes] = await Promise.all([
+    const [eventsRes, standaloneEventsRes, tasksRes, invoicesRes] = await Promise.all([
       supabase
         .from('matter_events')
         .select('id, type, event_date, matter_id, matters(title)')
@@ -111,6 +111,14 @@ export async function GET(request: NextRequest) {
         .gte('event_date', fromStart.toISOString())
         .lt('event_date', toEndExclusive.toISOString())
         .order('event_date', { ascending: true })
+        .limit(1500),
+      supabase
+        .from('calendar_events')
+        .select('id, title, start_at, matter_id')
+        .eq('org_id', orgId)
+        .gte('start_at', fromStart.toISOString())
+        .lt('start_at', toEndExclusive.toISOString())
+        .order('start_at', { ascending: true })
         .limit(1500),
       loadCalendarIcsTasks({
         supabase,
@@ -127,6 +135,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (eventsRes.error) throw eventsRes.error;
+    if (standaloneEventsRes.error) throw standaloneEventsRes.error;
     if (tasksRes.error) throw tasksRes.error;
     if (invoicesRes.error) throw invoicesRes.error;
 
@@ -142,6 +151,17 @@ export async function GET(request: NextRequest) {
         start: String(row.event_date),
         summary,
         url: row.matter_id ? `${siteUrl}/app/matters/${row.matter_id}` : `${siteUrl}/app/matters`,
+      });
+    });
+
+    (standaloneEventsRes.data as any[]).forEach((row) => {
+      if (!row.start_at) return;
+      const title = String(row.title ?? '').trim() || 'موعد';
+      items.push({
+        uid: `calendar-${row.id}@${uidDomain}`,
+        start: String(row.start_at),
+        summary: `موعد: ${title}`,
+        url: row.matter_id ? `${siteUrl}/app/matters/${row.matter_id}` : `${siteUrl}/app/calendar?type=events`,
       });
     });
 

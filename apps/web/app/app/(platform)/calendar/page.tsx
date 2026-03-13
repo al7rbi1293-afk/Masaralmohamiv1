@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { CalendarEventCreatePanel } from '@/components/calendar/calendar-event-create-panel';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { listMatters } from '@/lib/matters';
 import { requireOrgIdForUser } from '@/lib/org';
 import { getErrorText, isMissingColumnError, isMissingRelationError } from '@/lib/shared-utils';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
@@ -13,13 +15,15 @@ type CalendarPageProps = {
     month?: string;
     type?: string;
     mine?: string;
+    success?: string;
+    error?: string;
   };
 };
 
-type CalendarSource = 'all' | 'hearings' | 'meetings' | 'tasks' | 'invoices';
+type CalendarSource = 'all' | 'hearings' | 'meetings' | 'events' | 'tasks' | 'invoices';
 
 type CalendarItem = {
-  kind: 'hearing' | 'meeting' | 'task' | 'invoice';
+  kind: 'hearing' | 'meeting' | 'calendar' | 'task' | 'invoice';
   date: string;
   title: string;
   href: string;
@@ -29,6 +33,7 @@ const sourceOptions: Array<{ value: CalendarSource; label: string }> = [
   { value: 'all', label: 'الكل' },
   { value: 'hearings', label: 'الجلسات' },
   { value: 'meetings', label: 'الاجتماعات' },
+  { value: 'events', label: 'المواعيد' },
   { value: 'tasks', label: 'المهام' },
   { value: 'invoices', label: 'الفواتير' },
 ];
@@ -90,13 +95,14 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   const supabase = createSupabaseServerRlsClient();
   const includeEvents = source === 'all' || source === 'hearings' || source === 'meetings';
+  const includeStandaloneEvents = source === 'all' || source === 'events';
   const includeTasks = source === 'all' || source === 'tasks';
   const includeInvoices = source === 'all' || source === 'invoices';
 
   const eventTypes: Array<'hearing' | 'meeting'> =
     source === 'hearings' ? ['hearing'] : source === 'meetings' ? ['meeting'] : ['hearing', 'meeting'];
 
-  const eventsPromise = includeEvents
+  const matterEventsPromise = includeEvents
     ? loadCalendarMatterEvents({
       supabase,
       orgId,
@@ -105,6 +111,17 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       fetchStartIso: fetchStart.toISOString(),
       fetchEndIso: fetchEnd.toISOString(),
       eventTypes,
+    })
+    : Promise.resolve({ data: [], error: null } as any);
+
+  const standaloneEventsPromise = includeStandaloneEvents
+    ? loadCalendarStandaloneEvents({
+      supabase,
+      orgId,
+      userId: user.id,
+      mine,
+      fetchStartIso: fetchStart.toISOString(),
+      fetchEndIso: fetchEnd.toISOString(),
     })
     : Promise.resolve({ data: [], error: null } as any);
 
@@ -128,26 +145,37 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     })
     : Promise.resolve({ data: [], error: null } as any);
 
-  const [eventsRes, tasksRes, invoicesRes] = await Promise.all([
-    eventsPromise,
+  const mattersPromise = listMatters({ status: 'all', page: 1, limit: 80 }).catch(() => ({
+    data: [],
+    total: 0,
+    page: 1,
+    limit: 80,
+  }));
+
+  const [eventsRes, standaloneEventsRes, tasksRes, invoicesRes, mattersResult] = await Promise.all([
+    matterEventsPromise,
+    standaloneEventsPromise,
     tasksPromise,
     invoicesPromise,
+    mattersPromise,
   ]);
 
-  if (eventsRes.error || tasksRes.error || invoicesRes.error) {
-    const message = toUserMessage(eventsRes.error || tasksRes.error || invoicesRes.error);
+  if (eventsRes.error || standaloneEventsRes.error || tasksRes.error || invoicesRes.error) {
+    const message = toUserMessage(eventsRes.error || standaloneEventsRes.error || tasksRes.error || invoicesRes.error);
     return (
-      <Card className="p-6">
-        <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">التقويم</h1>
-        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-          {message}
-        </p>
-        <div className="mt-4">
-          <Link href="/app" className={buttonVariants('outline', 'sm')}>
-            العودة للوحة التحكم
-          </Link>
-        </div>
-      </Card>
+      <div className="space-y-5">
+        <Card className="p-6">
+          <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">التقويم</h1>
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+            {message}
+          </p>
+          <div className="mt-4">
+            <Link href="/app" className={buttonVariants('outline', 'sm')}>
+              العودة للوحة التحكم
+            </Link>
+          </div>
+        </Card>
+      </div>
     );
   }
 
@@ -161,6 +189,16 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       date: String(row.event_date),
       title,
       href: row.matter_id ? `/app/matters/${row.matter_id}` : '/app/matters',
+    } satisfies CalendarItem;
+  });
+
+  const standaloneEventItems = (standaloneEventsRes.data as any[]).map((row) => {
+    const title = String(row.title ?? '').trim() || 'موعد';
+    return {
+      kind: 'calendar',
+      date: String(row.start_at),
+      title: `موعد: ${title}`,
+      href: row.matter_id ? `/app/matters/${row.matter_id}` : '/app/calendar?type=events',
     } satisfies CalendarItem;
   });
 
@@ -187,7 +225,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     } satisfies CalendarItem;
   });
 
-  const allItems = [...eventItems, ...taskItems, ...invoiceItems].filter((item) => {
+  const allItems = [...eventItems, ...standaloneEventItems, ...taskItems, ...invoiceItems].filter((item) => {
     const date = new Date(item.date);
     return !Number.isNaN(date.getTime());
   });
@@ -217,15 +255,34 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const mobileDayEntries = Array.from(itemsByDay.entries()).sort(([a], [b]) => a.localeCompare(b));
   const todayKey = formatLocalDateKey(today);
   const currentMonthKey = formatMonthKey(today);
+  const visibleMatters = mattersResult.data
+    .filter((matter) => matter.status !== 'archived')
+    .map((matter) => ({ id: matter.id, title: matter.title }));
 
   return (
     <div className="space-y-5">
       <Card className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
+            <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">إضافة موعد مع تنبيه</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              أنشئ موعدًا مستقلًا داخل التقويم، وسيتم جدولة تنبيهين بريديين تلقائيًا قبل الموعد.
+            </p>
+          </div>
+          <Badge variant="default">تنبيهان تلقائيان: 24 ساعة + ساعتان</Badge>
+        </div>
+
+        <div className="mt-5">
+          <CalendarEventCreatePanel matters={visibleMatters} />
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
             <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">التقويم</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              عرض مبسط للشهر الحالي والعناصر القادمة.
+              عرض موحد للجلسات والاجتماعات والمواعيد والمهام والفواتير القادمة.
             </p>
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
@@ -248,6 +305,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           <Badge variant="default">إجمالي الشهر: {monthItems.length}</Badge>
           <Badge variant="danger">جلسات: {monthCounts.hearing}</Badge>
           <Badge variant="warning">اجتماعات: {monthCounts.meeting}</Badge>
+          <Badge variant="default">مواعيد: {monthCounts.calendar}</Badge>
           <Badge variant="success">مهام: {monthCounts.task}</Badge>
           <Badge variant="warning">فواتير: {monthCounts.invoice}</Badge>
         </div>
@@ -315,7 +373,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-brand-border bg-brand-background/60 p-3 text-xs dark:border-slate-800 dark:bg-slate-950/30">
-          {(['hearing', 'meeting', 'task', 'invoice'] as const).map((kind) => (
+          {(['hearing', 'meeting', 'calendar', 'task', 'invoice'] as const).map((kind) => (
             <div key={kind} className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
               <span className={`h-2.5 w-2.5 rounded-full ${kindDotClass(kind)}`} />
               {kindLabel(kind)}
@@ -601,6 +659,30 @@ async function loadCalendarMatterEvents(params: {
   return { data: filtered, matterById, error: null };
 }
 
+async function loadCalendarStandaloneEvents(params: {
+  supabase: ReturnType<typeof createSupabaseServerRlsClient>;
+  orgId: string;
+  userId: string;
+  mine: boolean;
+  fetchStartIso: string;
+  fetchEndIso: string;
+}) {
+  let query = params.supabase
+    .from('calendar_events')
+    .select('id, title, start_at, matter_id, created_by')
+    .eq('org_id', params.orgId)
+    .gte('start_at', params.fetchStartIso)
+    .lt('start_at', params.fetchEndIso)
+    .order('start_at', { ascending: true })
+    .limit(400);
+
+  if (params.mine) {
+    query = query.eq('created_by', params.userId);
+  }
+
+  return query;
+}
+
 async function loadCalendarInvoices(params: {
   supabase: ReturnType<typeof createSupabaseServerRlsClient>;
   orgId: string;
@@ -678,6 +760,7 @@ function countItemsByKind(items: CalendarItem[]) {
     {
       hearing: 0,
       meeting: 0,
+      calendar: 0,
       task: 0,
       invoice: 0,
     } as Record<CalendarItem['kind'], number>,
@@ -687,6 +770,7 @@ function countItemsByKind(items: CalendarItem[]) {
 function badgeVariant(kind: CalendarItem['kind']) {
   if (kind === 'hearing') return 'danger' as const;
   if (kind === 'meeting') return 'warning' as const;
+  if (kind === 'calendar') return 'default' as const;
   if (kind === 'invoice') return 'warning' as const;
   return 'success' as const;
 }
@@ -694,6 +778,7 @@ function badgeVariant(kind: CalendarItem['kind']) {
 function kindDotClass(kind: CalendarItem['kind']) {
   if (kind === 'hearing') return 'bg-red-500';
   if (kind === 'meeting') return 'bg-amber-500';
+  if (kind === 'calendar') return 'bg-sky-500';
   if (kind === 'invoice') return 'bg-orange-500';
   return 'bg-emerald-500';
 }
@@ -701,6 +786,7 @@ function kindDotClass(kind: CalendarItem['kind']) {
 function kindLabel(kind: CalendarItem['kind']) {
   if (kind === 'hearing') return 'جلسة';
   if (kind === 'meeting') return 'اجتماع';
+  if (kind === 'calendar') return 'موعد';
   if (kind === 'invoice') return 'فاتورة';
   return 'مهمة';
 }

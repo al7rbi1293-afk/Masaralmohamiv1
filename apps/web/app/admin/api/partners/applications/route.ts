@@ -5,6 +5,10 @@ import { listPartnerApplications, reviewPartnerApplication } from '@/lib/partner
 
 export const dynamic = 'force-dynamic';
 
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, max-age=0, must-revalidate',
+} as const;
+
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
@@ -22,11 +26,11 @@ export async function GET(request: NextRequest) {
       query,
     });
 
-    return NextResponse.json({ applications });
+    return NextResponse.json({ applications }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'تعذر جلب طلبات الشركاء.' },
-      { status: 500 },
+      { status: 500, headers: NO_STORE_HEADERS },
     );
   }
 }
@@ -36,19 +40,22 @@ export async function PATCH(request: NextRequest) {
   try {
     adminUserId = await requireAdmin();
   } catch {
-    return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
+    return NextResponse.json({ error: 'غير مصرح.' }, { status: 403, headers: NO_STORE_HEADERS });
   }
 
   let payload: unknown;
   try {
     payload = await request.json();
   } catch {
-    return NextResponse.json({ error: 'بيانات الطلب غير صالحة.' }, { status: 400 });
+    return NextResponse.json({ error: 'بيانات الطلب غير صالحة.' }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const parsed = adminApplicationActionSchema.safeParse(payload);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message || 'بيانات الطلب غير صالحة.' }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || 'بيانات الطلب غير صالحة.' },
+      { status: 400, headers: NO_STORE_HEADERS },
+    );
   }
 
   try {
@@ -59,11 +66,11 @@ export async function PATCH(request: NextRequest) {
       adminNotes: parsed.data.admin_notes,
     });
 
-    return NextResponse.json({ success: true, result });
+    return NextResponse.json({ success: true, result }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'تعذر تحديث الطلب.' },
-      { status: 500 },
+      { status: 500, headers: NO_STORE_HEADERS },
     );
   }
 }

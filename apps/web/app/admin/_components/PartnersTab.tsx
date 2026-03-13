@@ -97,43 +97,51 @@ export default function PartnersTab() {
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditRow[]>([]);
 
+  async function fetchJson(url: string, init?: RequestInit) {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      ...init,
+      headers: {
+        'Cache-Control': 'no-store',
+        ...(init?.headers || {}),
+      },
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || 'تعذر تحميل البيانات.');
+    }
+
+    return payload;
+  }
+
   async function loadCurrentView() {
     setLoading(true);
     setError(null);
 
     try {
       if (view === 'applications') {
-        const res = await fetch(`/admin/api/partners/applications?status=${applicationStatus}&query=${encodeURIComponent(query)}`);
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || 'تعذر جلب طلبات الشركاء.');
+        const payload = await fetchJson(`/admin/api/partners/applications?status=${applicationStatus}&query=${encodeURIComponent(query)}`);
         setApplications(payload.applications || []);
       }
 
       if (view === 'partners') {
-        const res = await fetch(`/admin/api/partners/partners?active=${partnerActive}&query=${encodeURIComponent(query)}`);
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || 'تعذر جلب الشركاء.');
+        const payload = await fetchJson(`/admin/api/partners/partners?active=${partnerActive}&query=${encodeURIComponent(query)}`);
         setPartners(payload.partners || []);
       }
 
       if (view === 'commissions') {
-        const res = await fetch(`/admin/api/partners/commissions?status=${commissionStatus}&query=${encodeURIComponent(query)}`);
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || 'تعذر جلب العمولات.');
+        const payload = await fetchJson(`/admin/api/partners/commissions?status=${commissionStatus}&query=${encodeURIComponent(query)}`);
         setCommissions(payload.commissions || []);
       }
 
       if (view === 'payouts') {
-        const res = await fetch(`/admin/api/partners/payouts?status=${payoutStatus}`);
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || 'تعذر جلب الدفعات.');
+        const payload = await fetchJson(`/admin/api/partners/payouts?status=${payoutStatus}`);
         setPayouts(payload.payouts || []);
       }
 
       if (view === 'audit') {
-        const res = await fetch('/admin/api/partners/audit');
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || 'تعذر جلب السجل.');
+        const payload = await fetchJson('/admin/api/partners/audit');
         setAuditLogs(payload.logs || []);
       }
     } catch (fetchError) {
@@ -149,18 +157,11 @@ export default function PartnersTab() {
   }, [view, applicationStatus, commissionStatus, payoutStatus, partnerActive, query]);
 
   async function patch(url: string, body: Record<string, unknown>) {
-    const response = await fetch(url, {
+    return fetchJson(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload.error || 'تعذر تنفيذ العملية.');
-    }
-
-    return payload;
   }
 
   async function applyApplicationAction(id: string, action: 'approve' | 'reject' | 'needs_review') {
@@ -171,11 +172,12 @@ export default function PartnersTab() {
     setActionBusy(id);
     setError(null);
     try {
-      await patch('/admin/api/partners/applications', {
+      const payload = await patch('/admin/api/partners/applications', {
         id,
         action,
         admin_notes: notes,
       });
+      setApplications((current) => applyApplicationResult(current, payload.result, applicationStatus, id, notes));
       await loadCurrentView();
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'تعذر تحديث الطلب.');
@@ -350,6 +352,8 @@ export default function PartnersTab() {
                 <th className="py-3 text-start font-medium">البريد</th>
                 <th className="py-3 text-start font-medium">الواتساب</th>
                 <th className="py-3 text-start font-medium">المدينة</th>
+                <th className="py-3 text-start font-medium">الخبرة التسويقية</th>
+                <th className="py-3 text-start font-medium">القنوات / الجمهور</th>
                 <th className="py-3 text-start font-medium">الحالة</th>
                 <th className="py-3 text-start font-medium">التاريخ</th>
                 <th className="py-3 text-start font-medium">إجراءات</th>
@@ -362,6 +366,16 @@ export default function PartnersTab() {
                   <td className="py-3">{application.email}</td>
                   <td className="py-3">{application.whatsapp_number}</td>
                   <td className="py-3">{application.city}</td>
+                  <td className="py-3">
+                    <div className="max-w-xs whitespace-pre-wrap break-words text-slate-700 dark:text-slate-200">
+                      {application.marketing_experience}
+                    </div>
+                  </td>
+                  <td className="py-3">
+                    <div className="max-w-xs whitespace-pre-wrap break-words text-slate-600 dark:text-slate-300">
+                      {application.audience_notes?.trim() || '—'}
+                    </div>
+                  </td>
                   <td className="py-3">{application.status}</td>
                   <td className="py-3">{new Date(application.created_at).toLocaleString('ar-SA')}</td>
                   <td className="py-3">
@@ -393,7 +407,7 @@ export default function PartnersTab() {
               ))}
               {applications.length === 0 ? (
                 <tr>
-                  <td className="py-4 text-center text-slate-500" colSpan={7}>لا توجد طلبات حالياً.</td>
+                  <td className="py-4 text-center text-slate-500" colSpan={9}>لا توجد طلبات حالياً.</td>
                 </tr>
               ) : null}
             </tbody>
@@ -621,4 +635,35 @@ export default function PartnersTab() {
       ) : null}
     </div>
   );
+}
+
+function applyApplicationResult(
+  current: PartnerApplication[],
+  result: { applicationId?: string; status?: PartnerApplication['status'] } | undefined,
+  currentFilter: (typeof APPLICATION_STATUS_OPTIONS)[number],
+  fallbackId: string,
+  notes?: string,
+) {
+  const applicationId = String(result?.applicationId || fallbackId);
+  const nextStatus = result?.status;
+
+  if (!nextStatus) {
+    return current;
+  }
+
+  const nextRows = current.map((application) => (
+    application.id === applicationId
+      ? {
+          ...application,
+          status: nextStatus,
+          admin_notes: notes ?? application.admin_notes,
+        }
+      : application
+  ));
+
+  if (currentFilter !== 'all' && currentFilter !== nextStatus) {
+    return nextRows.filter((application) => application.id !== applicationId);
+  }
+
+  return nextRows;
 }

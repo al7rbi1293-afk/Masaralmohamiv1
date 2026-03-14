@@ -28,6 +28,8 @@ type AuthUser = {
   email: string;
 };
 
+type ContactRequestSource = z.infer<typeof contactRequestSchema>['source'];
+
 export async function POST(request: NextRequest) {
   const requestId = getOrCreateRequestId(request);
   const requestIp = getRequestIp(request);
@@ -89,7 +91,7 @@ export async function POST(request: NextRequest) {
     orgId = (membershipData as MembershipRow | null)?.org_id ?? null;
   }
 
-  const { error } = await db.from('full_version_requests').insert({
+  const insertBase = {
     org_id: orgId,
     user_id: currentUser?.id ?? null,
     full_name: emptyToNull(parsed.data.full_name),
@@ -97,8 +99,49 @@ export async function POST(request: NextRequest) {
     phone: emptyToNull(parsed.data.phone),
     firm_name: emptyToNull(parsed.data.firm_name),
     message: emptyToNull(parsed.data.message),
-    source: parsed.data.source,
-  });
+  };
+
+  const insertWithSource = async (source: ContactRequestSource, includeTypeColumn: boolean) => {
+    const payload: Record<string, unknown> = {
+      ...insertBase,
+      source,
+    };
+
+    // Some deployments have the "type" column required, others still don't have it.
+    if (includeTypeColumn) {
+      payload.type = 'activation_request';
+    }
+
+    return db.from('full_version_requests').insert(payload);
+  };
+
+  let includeTypeColumn = true;
+  let persistedSource: ContactRequestSource = parsed.data.source;
+  let { error } = await insertWithSource(parsed.data.source, includeTypeColumn);
+
+  if (error && isMissingColumnError(error.message)) {
+    includeTypeColumn = false;
+    ({ error } = await insertWithSource(parsed.data.source, includeTypeColumn));
+  }
+
+  if (error && parsed.data.source === 'subscription' && isLegacySourceConstraintError(error.message)) {
+    persistedSource = 'contact';
+    ({ error } = await insertWithSource(persistedSource, includeTypeColumn));
+
+    if (error && includeTypeColumn && isMissingColumnError(error.message)) {
+      includeTypeColumn = false;
+      ({ error } = await insertWithSource(persistedSource, includeTypeColumn));
+    }
+
+    if (!error) {
+      logWarn('contact_request_source_fallback', {
+        requestId,
+        ip: requestIp,
+        requestedSource: parsed.data.source,
+        persistedSource,
+      });
+    }
+  }
 
   if (error) {
     logError('contact_request_failed', {
@@ -113,7 +156,8 @@ export async function POST(request: NextRequest) {
   logInfo('contact_request_created', {
     requestId,
     ip: requestIp,
-    source: parsed.data.source,
+    source: persistedSource,
+    requestedSource: parsed.data.source,
     orgId,
     userId: currentUser?.id ?? null,
   });
@@ -142,6 +186,19 @@ async function resolveCurrentUser(request: NextRequest): Promise<AuthUser | null
 function emptyToNull(value?: string) {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+function isMissingColumnError(message?: string) {
+  const normalized = String(message ?? '').toLowerCase();
+  return normalized.includes('column') && normalized.includes('does not exist');
+}
+
+function isLegacySourceConstraintError(message?: string) {
+  const normalized = String(message ?? '').toLowerCase();
+  return (
+    normalized.includes('full_version_requests_source_check') ||
+    (normalized.includes('check constraint') && normalized.includes('source'))
+  );
 }
 
 function getOrCreateRequestId(request: NextRequest) {

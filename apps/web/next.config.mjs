@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const PREFERRED_HOST = 'masaralmohami.com';
+const PREFERRED_ORIGIN = `https://${PREFERRED_HOST}`;
+
 const supabaseRemotePattern = (() => {
   const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   if (!rawUrl) return null;
@@ -56,6 +59,37 @@ const nextConfig = {
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: `www.${PREFERRED_HOST}`,
+          },
+        ],
+        destination: `${PREFERRED_ORIGIN}/:path*`,
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: PREFERRED_HOST,
+          },
+          {
+            type: 'header',
+            key: 'x-forwarded-proto',
+            value: 'http',
+          },
+        ],
+        destination: `${PREFERRED_ORIGIN}/:path*`,
+        permanent: true,
+      },
+    ];
   },
   images: {
     formats: ['image/avif', 'image/webp'],

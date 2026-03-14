@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: 'تسجيل الدخول',
   description: 'تسجيل الدخول إلى منصة مسار المحامي.',
   robots: { index: false, follow: false },
+  alternates: {
+    canonical: '/signin',
+  },
   openGraph: {
     title: 'تسجيل الدخول | مسار المحامي',
     description: 'تسجيل الدخول إلى مساحة /app في مسار المحامي.',

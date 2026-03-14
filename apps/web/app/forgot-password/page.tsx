@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   title: 'نسيت كلمة المرور',
   description: 'استعادة كلمة المرور لحسابك في مسار المحامي.',
   robots: { index: false, follow: false },
+  alternates: {
+    canonical: '/forgot-password',
+  },
   openGraph: {
     title: 'نسيت كلمة المرور | مسار المحامي',
     description: 'استعادة كلمة المرور عبر رمز يُرسل إلى بريدك الإلكتروني.',

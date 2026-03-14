@@ -9,6 +9,9 @@ export const metadata: Metadata = {
     title: 'ترقية الاشتراك',
     description: 'ترقية اشتراكك في منصة مسار المحامي للوصول الكامل.',
     robots: { index: false, follow: false },
+    alternates: {
+        canonical: '/upgrade',
+    },
 };
 
 export default function UpgradePage() {

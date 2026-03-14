@@ -17,19 +17,23 @@ import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
 import { SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
+import { getPublicSiteUrl } from '@/lib/env';
+
+const siteUrl = getPublicSiteUrl();
+const homeCanonicalUrl = `${siteUrl}/`;
 
 export const metadata: Metadata = {
   title: 'الرئيسية',
   description:
     'مسار المحامي: نظام سحابي عربي لإدارة مكتب المحاماة على مسار واحد، مع واجهة بسيطة وصلاحيات وسجل تدقيق.',
   alternates: {
-    canonical: '/',
+    canonical: homeCanonicalUrl,
   },
   openGraph: {
     title: 'مسار المحامي',
     description:
       'نظام سحابي عربي يلمّ شغل المكتب في مكان واحد: عملاء، قضايا، مستندات، مهام، وفواتير.',
-    url: '/',
+    url: homeCanonicalUrl,
   },
 };
 

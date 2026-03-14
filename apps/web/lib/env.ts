@@ -1,5 +1,6 @@
 import 'server-only';
 
+const PREFERRED_PRODUCTION_SITE_URL = 'https://masaralmohami.com';
 const LOCAL_SITE_URL = 'http://localhost:3000';
 
 type SupabasePublicEnv = {
@@ -125,6 +126,7 @@ export function isCopilotEnabled() {
 
 export function getPublicSiteUrl() {
   const vercelEnv = process.env.VERCEL_ENV?.trim();
+  const isProductionDeployment = vercelEnv === 'production';
   const productionUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
@@ -132,7 +134,9 @@ export function getPublicSiteUrl() {
     process.env.NEXT_PUBLIC_VERCEL_URL?.trim() ||
     process.env.VERCEL_URL?.trim();
   const rawValue =
-    vercelEnv && vercelEnv !== 'production'
+    isProductionDeployment
+      ? PREFERRED_PRODUCTION_SITE_URL
+      : vercelEnv && vercelEnv !== 'production'
       ? deploymentUrl || productionUrl || LOCAL_SITE_URL
       : productionUrl || deploymentUrl || LOCAL_SITE_URL;
 

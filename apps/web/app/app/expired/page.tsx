@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: 'انتهاء الاشتراك',
   description: 'صفحة انتهاء الاشتراك وطلب التجديد.',
   robots: { index: false, follow: false },
+  alternates: {
+    canonical: '/app/expired',
+  },
 };
 
 export default async function TrialExpiredPage() {

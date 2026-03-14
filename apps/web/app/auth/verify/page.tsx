@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: 'تفعيل البريد الإلكتروني',
   description: 'إكمال تفعيل حسابك في مسار المحامي عبر البريد الإلكتروني.',
   robots: { index: false, follow: false },
+  alternates: {
+    canonical: '/auth/verify',
+  },
 };
 
 export default function VerifyEmailPage() {

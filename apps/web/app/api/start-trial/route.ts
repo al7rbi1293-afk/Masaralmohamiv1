@@ -350,6 +350,11 @@ function getRequestSiteUrl(request: NextRequest) {
   const host = forwardedHost || request.headers.get('host')?.trim();
   const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
   const proto = forwardedProto || (host?.includes('localhost') ? 'http' : 'https');
+  const normalizedHost = host?.toLowerCase();
+
+  if (normalizedHost === 'masaralmohami.com' || normalizedHost === 'www.masaralmohami.com') {
+    return 'https://masaralmohami.com';
+  }
 
   if (host) {
     return `${proto}://${host}`;

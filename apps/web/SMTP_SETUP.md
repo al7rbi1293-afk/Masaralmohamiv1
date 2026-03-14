@@ -9,9 +9,11 @@
 | Variable Name | Value (القيمة) |
 | :--- | :--- |
 | `SMTP_USER` | `Masar.almohami@gmail.com` |
-| `SMTP_PASS` | `nylirwhwzwbeukkw` |
+| `SMTP_PASS` | `<SET_IN_VERCEL_SECRET_MANAGER>` |
 | `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `465` |
+
+> ملاحظة أمنية: لا تحفظ قيمة `SMTP_PASS` الحقيقية داخل Git أو أي ملف توثيق.
 
 ## خطوات التحديث
 

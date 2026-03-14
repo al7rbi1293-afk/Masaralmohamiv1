@@ -14,6 +14,7 @@ export type TeamMember = {
   user_id: string;
   email: string | null;
   full_name: string;
+  phone: string | null;
   role: TeamRole;
   created_at: string;
   is_current_user: boolean;
@@ -155,6 +156,13 @@ const changeRoleSchema = z.object({
   role: roleSchema,
 });
 
+const updateMemberSchema = z.object({
+  userId: z.string().uuid('العضو غير صحيح.'),
+  fullName: z.string().trim().min(2, 'يجب أن يكون الاسم الكامل من حرفين على الأقل').max(100),
+  email: z.string().trim().email('يرجى إدخال بريد إلكتروني صحيح.').max(255),
+  phone: z.string().trim().max(40, 'رقم الجوال طويل جدًا.').optional().nullable(),
+});
+
 const removeMemberSchema = z.object({
   userId: z.string().uuid('العضو غير صحيح.'),
 });
@@ -222,19 +230,12 @@ export async function listMembers(): Promise<TeamMember[]> {
   const memberRows = (memberships as any[] | null) ?? [];
   const memberIds = memberRows.map((row) => String(row.user_id));
 
-  const [profilesResult, authUsersResult] = await Promise.all([
+  const [profilesResult, appUsersResult] = await Promise.all([
     memberIds.length
-      ? supabase.from('profiles').select('user_id, full_name').in('user_id', memberIds)
+      ? supabase.from('profiles').select('user_id, full_name, phone').in('user_id', memberIds)
       : Promise.resolve({ data: [], error: null } as any),
     memberIds.length
-      ? (async () => {
-        try {
-          const service = createSupabaseServerClient();
-          return await service.schema('auth').from('users').select('id, email').in('id', memberIds);
-        } catch {
-          return { data: [], error: null } as any;
-        }
-      })()
+      ? supabase.from('app_users').select('id, email, full_name, phone').in('id', memberIds)
       : Promise.resolve({ data: [], error: null } as any),
   ]);
 
@@ -242,17 +243,38 @@ export async function listMembers(): Promise<TeamMember[]> {
     throw new TeamHttpError(400, 'تعذر تحميل أسماء الأعضاء. حاول مرة أخرى.');
   }
 
+  if (appUsersResult.error) {
+    throw new TeamHttpError(400, 'تعذر تحميل بيانات الأعضاء. حاول مرة أخرى.');
+  }
+
   const emailById = new Map<string, string>();
-  for (const row of (authUsersResult.data as any[] | null) ?? []) {
+  for (const row of (appUsersResult.data as any[] | null) ?? []) {
     if (row?.id && row?.email) {
       emailById.set(String(row.id), String(row.email));
     }
   }
 
   const nameById = new Map<string, string>();
+  const phoneById = new Map<string, string>();
   for (const row of (profilesResult.data as any[] | null) ?? []) {
     if (row?.user_id) {
       nameById.set(String(row.user_id), String(row.full_name ?? ''));
+      if (row.phone) {
+        phoneById.set(String(row.user_id), String(row.phone));
+      }
+    }
+  }
+
+  for (const row of (appUsersResult.data as any[] | null) ?? []) {
+    if (!row?.id) {
+      continue;
+    }
+    const id = String(row.id);
+    if (!nameById.get(id)?.trim() && row.full_name) {
+      nameById.set(id, String(row.full_name));
+    }
+    if (!phoneById.get(id)?.trim() && row.phone) {
+      phoneById.set(id, String(row.phone));
     }
   }
 
@@ -262,6 +284,7 @@ export async function listMembers(): Promise<TeamMember[]> {
       user_id: id,
       email: emailById.get(id) ?? null,
       full_name: nameById.get(id) ?? '',
+      phone: phoneById.get(id) ?? null,
       role: row.role as TeamRole,
       created_at: String(row.created_at),
       is_current_user: id === userId,
@@ -468,6 +491,126 @@ export async function changeMemberRole(input: unknown, req?: Request): Promise<v
     entityType: 'membership',
     entityId: String((target as any).id),
     meta: { user_id: parsed.data.userId, from: fromRole, to: toRole },
+    req,
+  });
+}
+
+export async function updateMemberProfile(input: unknown, req?: Request): Promise<void> {
+  const { orgId } = await getOwnerContext();
+
+  const parsed = updateMemberSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new TeamHttpError(
+      400,
+      parsed.error.issues[0]?.message ?? 'تعذر التحقق من البيانات.',
+    );
+  }
+
+  const supabase = createSupabaseServerRlsClient();
+  const email = parsed.data.email.toLowerCase();
+  const fullName = parsed.data.fullName.trim();
+  const phone = parsed.data.phone?.trim() ? parsed.data.phone.trim() : null;
+
+  const { data: targetMembership, error: targetMembershipError } = await supabase
+    .from('memberships')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('user_id', parsed.data.userId)
+    .maybeSingle();
+
+  if (targetMembershipError) {
+    throw new TeamHttpError(400, 'تعذر تحميل العضو. حاول مرة أخرى.');
+  }
+
+  if (!targetMembership) {
+    throw new TeamHttpError(404, 'العضو غير موجود.');
+  }
+
+  const { data: currentUserData, error: currentUserDataError } = await supabase
+    .from('app_users')
+    .select('id, email, full_name, phone')
+    .eq('id', parsed.data.userId)
+    .maybeSingle();
+
+  if (currentUserDataError) {
+    throw new TeamHttpError(400, 'تعذر تحميل بيانات العضو. حاول مرة أخرى.');
+  }
+
+  if (!currentUserData) {
+    throw new TeamHttpError(404, 'بيانات العضو غير موجودة.');
+  }
+
+  const { data: emailInUse, error: emailInUseError } = await supabase
+    .from('app_users')
+    .select('id')
+    .ilike('email', email)
+    .neq('id', parsed.data.userId)
+    .maybeSingle();
+
+  if (emailInUseError) {
+    throw new TeamHttpError(400, 'تعذر التحقق من البريد الإلكتروني. حاول مرة أخرى.');
+  }
+
+  if (emailInUse) {
+    throw new TeamHttpError(409, 'هذا البريد الإلكتروني مستخدم من عضو آخر.');
+  }
+
+  const changed: string[] = [];
+  if (String(currentUserData.full_name ?? '').trim() !== fullName) {
+    changed.push('full_name');
+  }
+  if (String(currentUserData.email ?? '').trim().toLowerCase() !== email) {
+    changed.push('email');
+  }
+  if (String(currentUserData.phone ?? '').trim() !== (phone ?? '')) {
+    changed.push('phone');
+  }
+
+  if (changed.length === 0) {
+    return;
+  }
+
+  const { error: updateError } = await supabase
+    .from('app_users')
+    .update({
+      full_name: fullName,
+      email,
+      phone,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', parsed.data.userId);
+
+  if (updateError) {
+    const code = (updateError as any)?.code ? String((updateError as any).code) : '';
+    if (code === '23505') {
+      throw new TeamHttpError(409, 'هذا البريد الإلكتروني مستخدم من عضو آخر.');
+    }
+    throw new TeamHttpError(400, 'تعذر تحديث بيانات العضو. حاول مرة أخرى.');
+  }
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        user_id: parsed.data.userId,
+        full_name: fullName,
+        phone,
+      },
+      { onConflict: 'user_id' },
+    );
+
+  if (profileError) {
+    throw new TeamHttpError(400, 'تم تحديث الحساب لكن تعذر مزامنة الملف الشخصي. حاول مرة أخرى.');
+  }
+
+  await logAudit({
+    action: 'team.member_updated',
+    entityType: 'membership',
+    entityId: String((targetMembership as any).id),
+    meta: {
+      user_id: parsed.data.userId,
+      changed,
+    },
     req,
   });
 }

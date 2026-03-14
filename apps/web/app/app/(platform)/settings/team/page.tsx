@@ -61,7 +61,7 @@ export default async function TeamSettingsPage() {
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">إدارة الفريق</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            إضافة أعضاء جدد وإدارة الأدوار (للمالك فقط).
+            إضافة أعضاء جدد وتعديل بياناتهم وإدارة الأدوار (للمالك فقط).
           </p>
         </div>
         <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>

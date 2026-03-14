@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -11,6 +10,7 @@ export type TeamMemberItem = {
   user_id: string;
   email: string | null;
   full_name: string;
+  phone: string | null;
   role: 'owner' | 'lawyer' | 'assistant';
   created_at: string;
   is_current_user: boolean;
@@ -60,6 +60,13 @@ export function TeamManagementClient({
   const [addRole, setAddRole] = useState<TeamMemberItem['role']>('lawyer');
   const [addBusy, setAddBusy] = useState(false);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editUserId, setEditUserId] = useState('');
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+
   const [busyKey, setBusyKey] = useState('');
 
   const membersSorted = useMemo(() => {
@@ -81,6 +88,16 @@ export function TeamManagementClient({
       setMessage('');
     }
   }, [addOpen]);
+
+  useEffect(() => {
+    if (!editOpen) {
+      setEditUserId('');
+      setEditFullName('');
+      setEditEmail('');
+      setEditPhone('');
+      setEditBusy(false);
+    }
+  }, [editOpen]);
 
   function openConfirm(params: {
     title: string;
@@ -209,13 +226,54 @@ export function TeamManagementClient({
     });
   }
 
-  async function copy(text: string) {
+  function openEdit(member: TeamMemberItem) {
+    setEditUserId(member.user_id);
+    setEditFullName(member.full_name ?? '');
+    setEditEmail(member.email ?? '');
+    setEditPhone(member.phone ?? '');
+    setEditOpen(true);
+    setError('');
+    setMessage('');
+  }
+
+  async function saveMemberDetails() {
+    const fullName = editFullName.trim();
+    const email = editEmail.trim().toLowerCase();
+    const phone = editPhone.trim();
+
+    if (!editUserId || !fullName || !email) {
+      setError('يرجى تعبئة الاسم والبريد الإلكتروني.');
+      return;
+    }
+
+    setEditBusy(true);
+    setError('');
+    setMessage('');
+
     try {
-      await navigator.clipboard.writeText(text);
-      setMessage('تم نسخ الرابط.');
-      setError('');
+      const response = await fetch('/app/api/team/update-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: editUserId,
+          full_name: fullName,
+          email,
+          phone: phone || null,
+        }),
+      });
+      const json = (await response.json().catch(() => ({}))) as any;
+      if (!response.ok) {
+        setError(String(json?.error ?? 'تعذر تحديث بيانات العضو.'));
+        return;
+      }
+
+      setMessage('تم تحديث بيانات العضو.');
+      setEditOpen(false);
+      router.refresh();
     } catch {
-      setError('تعذر النسخ. انسخ الرابط يدويًا.');
+      setError('تعذر تحديث بيانات العضو. حاول مرة أخرى.');
+    } finally {
+      setEditBusy(false);
     }
   }
 
@@ -223,7 +281,7 @@ export function TeamManagementClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-slate-600 dark:text-slate-300">
-          <p>يمكنك إضافة أعضاء جدد مباشرة إلى فريقك. سيتم إنشاء حساباتهم فوراً ولن تحتاج لإرسال روابط دعوة.</p>
+          <p>يمكنك إضافة أعضاء جدد وتحديث بياناتهم وإدارة أدوارهم من هذه الصفحة.</p>
         </div>
         <Button type="button" variant="primary" size="sm" onClick={() => setAddOpen(true)}>
           إضافة عضو
@@ -275,6 +333,7 @@ export function TeamManagementClient({
                 <tr>
                   <th className="py-2 text-start font-medium">الاسم</th>
                   <th className="py-2 text-start font-medium">البريد</th>
+                  <th className="py-2 text-start font-medium">الجوال</th>
                   <th className="py-2 text-start font-medium">الدور</th>
                   <th className="py-2 text-start font-medium">إجراءات</th>
                 </tr>
@@ -301,6 +360,11 @@ export function TeamManagementClient({
                           {member.email ?? '-'}
                         </span>
                       </td>
+                      <td className="py-2 text-slate-700 dark:text-slate-200">
+                        <span className="text-xs text-slate-500 dark:text-slate-400" dir="ltr">
+                          {member.phone ?? '-'}
+                        </span>
+                      </td>
                       <td className="py-2">
                         <select
                           defaultValue={member.role}
@@ -323,6 +387,14 @@ export function TeamManagementClient({
                           <button
                             type="button"
                             className={buttonVariants('outline', 'sm')}
+                            onClick={() => openEdit(member)}
+                            disabled={editBusy || busyKey === `remove:${member.user_id}`}
+                          >
+                            تعديل البيانات
+                          </button>
+                          <button
+                            type="button"
+                            className={buttonVariants('outline', 'sm')}
                             onClick={() => removeMember(member.user_id)}
                             disabled={isLastOwner || busyKey === `remove:${member.user_id}`}
                             title={lastOwnerTooltip}
@@ -339,6 +411,90 @@ export function TeamManagementClient({
           </div>
         )}
       </section>
+
+      {editOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center sm:p-4"
+          onClick={() => {
+            if (!editBusy) setEditOpen(false);
+          }}
+        >
+          <div
+            className="mobile-modal-panel w-full max-w-xl rounded-xl border border-brand-border bg-white p-4 shadow-panel sm:p-5 dark:border-slate-700 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-brand-navy dark:text-slate-100">تعديل بيانات العضو</h3>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  يمكنك تعديل الاسم والبريد والجوال لهذا العضو.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={buttonVariants('ghost', 'sm')}
+                onClick={() => setEditOpen(false)}
+                disabled={editBusy}
+              >
+                إغلاق
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-4">
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  الاسم الكامل <span className="text-red-600">*</span>
+                </span>
+                <input
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  type="text"
+                  placeholder="محمد العبدالله"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  البريد الإلكتروني <span className="text-red-600">*</span>
+                </span>
+                <input
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  type="email"
+                  dir="ltr"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">رقم الجوال</span>
+                <input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  type="tel"
+                  dir="ltr"
+                  placeholder="05XXXXXXXX"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
+
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button type="button" variant="primary" size="md" onClick={saveMemberDetails} disabled={editBusy}>
+                  {editBusy ? 'جارٍ الحفظ...' : 'حفظ التغييرات'}
+                </Button>
+                <Button type="button" variant="outline" size="md" onClick={() => setEditOpen(false)} disabled={editBusy}>
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {addOpen ? (
         <div

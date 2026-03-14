@@ -21,11 +21,18 @@ export default async function PartnerPortalPage({ searchParams }: PartnerPortalP
   }
 
   const db = createSupabaseServerClient();
-  const { data: partner } = await db
-    .from('partners')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const [{ data: partner }, { data: appUser }] = await Promise.all([
+    db
+      .from('partners')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    db
+      .from('app_users')
+      .select('full_name, email, phone')
+      .eq('id', user.id)
+      .maybeSingle(),
+  ]);
 
   if (!partner) {
     return (
@@ -59,6 +66,9 @@ export default async function PartnerPortalPage({ searchParams }: PartnerPortalP
   const totalCommission = commissions
     .filter((commission: any) => commission.status !== 'reversed')
     .reduce((sum: number, commission: any) => sum + Number(commission.partner_amount || 0), 0);
+  const displayName = String((appUser as any)?.full_name || '').trim() || String(partner.full_name || '').trim() || 'شريك النجاح';
+  const displayEmail = String((appUser as any)?.email || '').trim() || String(partner.email || '').trim() || null;
+  const displayPhone = String((appUser as any)?.phone || '').trim() || String(partner.whatsapp_number || '').trim() || null;
 
   return (
     <Card className="space-y-6 p-6">
@@ -82,7 +92,13 @@ export default async function PartnerPortalPage({ searchParams }: PartnerPortalP
 
       <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
         <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">بياناتك</h2>
-        <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{partner.full_name}</p>
+        <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{displayName}</p>
+        {displayEmail ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">{displayEmail}</p>
+        ) : null}
+        {displayPhone ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400" dir="ltr">{displayPhone}</p>
+        ) : null}
         <p className="text-sm text-slate-500 dark:text-slate-400">الكود: <code>{partner.partner_code}</code></p>
         <p className="text-sm text-slate-500 dark:text-slate-400">الرابط: <a href={partner.referral_link} className="text-brand-emerald underline" target="_blank" rel="noreferrer">{partner.referral_link}</a></p>
       </div>

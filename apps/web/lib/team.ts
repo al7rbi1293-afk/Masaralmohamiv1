@@ -603,6 +603,41 @@ export async function updateMemberProfile(input: unknown, req?: Request): Promis
     throw new TeamHttpError(400, 'تم تحديث الحساب لكن تعذر مزامنة الملف الشخصي. حاول مرة أخرى.');
   }
 
+  const { data: linkedPartner, error: linkedPartnerError } = await supabase
+    .from('partners')
+    .select('id, full_name, email, whatsapp_number')
+    .eq('user_id', parsed.data.userId)
+    .maybeSingle();
+
+  if (linkedPartnerError) {
+    throw new TeamHttpError(400, 'تم تحديث بيانات العضو لكن تعذر التحقق من ملف الشريك المرتبط.');
+  }
+
+  if (linkedPartner) {
+    const partnerUpdatePayload: Record<string, unknown> = {};
+    if (String((linkedPartner as any).full_name ?? '').trim() !== fullName) {
+      partnerUpdatePayload.full_name = fullName;
+    }
+    if (String((linkedPartner as any).email ?? '').trim().toLowerCase() !== email) {
+      partnerUpdatePayload.email = email;
+    }
+    if (phone && String((linkedPartner as any).whatsapp_number ?? '').trim() !== phone) {
+      partnerUpdatePayload.whatsapp_number = phone;
+    }
+
+    if (Object.keys(partnerUpdatePayload).length > 0) {
+      const { error: partnerUpdateError } = await supabase
+        .from('partners')
+        .update(partnerUpdatePayload)
+        .eq('id', String((linkedPartner as any).id));
+
+      if (partnerUpdateError) {
+        throw new TeamHttpError(400, 'تم تحديث بيانات العضو لكن تعذر مزامنة بيانات بوابة الشريك.');
+      }
+      changed.push('partner_profile');
+    }
+  }
+
   await logAudit({
     action: 'team.member_updated',
     entityType: 'membership',

@@ -38,24 +38,49 @@ export async function createPaymentRequest(params: {
 
     const supabase = createSupabaseServerRlsClient();
 
-    const { data, error } = await supabase
+    const basePayload = {
+        org_id: orgId,
+        amount: params.amount,
+        plan_code: params.plan_code,
+        billing_period: params.billing_period,
+        method: 'bank_transfer',
+        status: 'pending',
+        proof_url: params.proof_url ?? null,
+        bank_reference: params.bank_reference ?? null,
+    };
+
+    let { data, error } = await supabase
         .from('payment_requests')
         .insert({
-            org_id: orgId,
+            ...basePayload,
             user_id: user.id,
-            amount: params.amount,
-            plan_code: params.plan_code,
-            billing_period: params.billing_period,
-            method: 'bank_transfer',
-            status: 'pending',
-            proof_url: params.proof_url ?? null,
-            bank_reference: params.bank_reference ?? null,
         })
         .select()
         .single();
 
+    // Backward compatibility: some DBs still reference auth.users for payment_requests.user_id.
+    // In that case we retry with NULL user_id so the request is still captured.
+    if (error && isUserIdForeignKeyError(error.message)) {
+        ({ data, error } = await supabase
+            .from('payment_requests')
+            .insert({
+                ...basePayload,
+                user_id: null,
+            })
+            .select()
+            .single());
+    }
+
     if (error) throw error;
     return data as PaymentRequest;
+}
+
+function isUserIdForeignKeyError(message?: string) {
+    const normalized = String(message ?? '').toLowerCase();
+    return (
+        normalized.includes('payment_requests_user_id_fkey') ||
+        (normalized.includes('foreign key') && normalized.includes('user_id'))
+    );
 }
 
 export async function listPendingPaymentRequests() {

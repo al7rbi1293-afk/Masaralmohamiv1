@@ -93,7 +93,6 @@ export async function POST(request: NextRequest) {
 
   const insertBase = {
     org_id: orgId,
-    user_id: currentUser?.id ?? null,
     full_name: emptyToNull(parsed.data.full_name),
     email: parsed.data.email.toLowerCase(),
     phone: emptyToNull(parsed.data.phone),
@@ -101,10 +100,15 @@ export async function POST(request: NextRequest) {
     message: emptyToNull(parsed.data.message),
   };
 
-  const insertWithSource = async (source: ContactRequestSource, includeTypeColumn: boolean) => {
+  const insertWithSource = async (
+    source: ContactRequestSource,
+    includeTypeColumn: boolean,
+    includeUserId: boolean,
+  ) => {
     const payload: Record<string, unknown> = {
       ...insertBase,
       source,
+      user_id: includeUserId ? currentUser?.id ?? null : null,
     };
 
     // Some deployments have the "type" column required, others still don't have it.
@@ -116,31 +120,46 @@ export async function POST(request: NextRequest) {
   };
 
   let includeTypeColumn = true;
+  let includeUserId = true;
   let persistedSource: ContactRequestSource = parsed.data.source;
-  let { error } = await insertWithSource(parsed.data.source, includeTypeColumn);
+  let error: { message?: string } | null = null;
 
-  if (error && isMissingColumnError(error.message)) {
-    includeTypeColumn = false;
-    ({ error } = await insertWithSource(parsed.data.source, includeTypeColumn));
-  }
-
-  if (error && parsed.data.source === 'subscription' && isLegacySourceConstraintError(error.message)) {
-    persistedSource = 'contact';
-    ({ error } = await insertWithSource(persistedSource, includeTypeColumn));
-
-    if (error && includeTypeColumn && isMissingColumnError(error.message)) {
-      includeTypeColumn = false;
-      ({ error } = await insertWithSource(persistedSource, includeTypeColumn));
-    }
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const result = await insertWithSource(persistedSource, includeTypeColumn, includeUserId);
+    error = result.error;
 
     if (!error) {
+      break;
+    }
+
+    if (includeTypeColumn && isMissingColumnError(error.message)) {
+      includeTypeColumn = false;
+      continue;
+    }
+
+    if (persistedSource === 'subscription' && isLegacySourceConstraintError(error.message)) {
+      persistedSource = 'contact';
       logWarn('contact_request_source_fallback', {
         requestId,
         ip: requestIp,
         requestedSource: parsed.data.source,
         persistedSource,
       });
+      continue;
     }
+
+    if (includeUserId && isLegacyUserIdForeignKeyError(error.message)) {
+      includeUserId = false;
+      logWarn('contact_request_user_fk_fallback', {
+        requestId,
+        ip: requestIp,
+        requestedSource: parsed.data.source,
+        persistedSource,
+      });
+      continue;
+    }
+
+    break;
   }
 
   if (error) {
@@ -190,7 +209,10 @@ function emptyToNull(value?: string) {
 
 function isMissingColumnError(message?: string) {
   const normalized = String(message ?? '').toLowerCase();
-  return normalized.includes('column') && normalized.includes('does not exist');
+  return (
+    (normalized.includes('column') && normalized.includes('does not exist')) ||
+    (normalized.includes('could not find') && normalized.includes('column'))
+  );
 }
 
 function isLegacySourceConstraintError(message?: string) {
@@ -198,6 +220,14 @@ function isLegacySourceConstraintError(message?: string) {
   return (
     normalized.includes('full_version_requests_source_check') ||
     (normalized.includes('check constraint') && normalized.includes('source'))
+  );
+}
+
+function isLegacyUserIdForeignKeyError(message?: string) {
+  const normalized = String(message ?? '').toLowerCase();
+  return (
+    normalized.includes('full_version_requests_user_id_fkey') ||
+    (normalized.includes('foreign key') && normalized.includes('user_id'))
   );
 }
 

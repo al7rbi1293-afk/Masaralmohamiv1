@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 type SubRequest = {
     id: string;
+    request_kind: 'subscription_request' | 'payment_request';
     org_id: string;
     plan_requested: string;
     duration_months: number;
@@ -79,13 +80,13 @@ export default function AdminRequestsPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    async function handleAction(id: string, action: 'approve' | 'reject') {
+    async function handleAction(id: string, requestKind: SubRequest['request_kind'], action: 'approve' | 'reject') {
         const notes = action === 'reject' ? prompt('سبب الرفض (اختياري):') : null;
         setActionId(id);
         await fetch('/admin/api/requests', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, action, notes }),
+            body: JSON.stringify({ id, action, notes, request_kind: requestKind }),
         });
         await fetchRequests();
         setActionId(null);
@@ -168,7 +169,7 @@ export default function AdminRequestsPage() {
                                     <tr key={req.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                         <td className="py-3 font-medium">{req.organizations?.name ?? '—'}</td>
                                         <td className="py-3">{req.requester_name ?? '—'}</td>
-                                        <td className="py-3">{req.plan_requested}</td>
+                                        <td className="py-3">{planLabel(req.plan_requested)}</td>
                                         <td className="py-3">{req.duration_months} شهر</td>
                                         <td className="py-3">{req.payment_reference ?? '—'}</td>
                                         <td className="py-3">
@@ -182,14 +183,14 @@ export default function AdminRequestsPage() {
                                                 <div className="flex gap-2">
                                                     <button
                                                         disabled={actionId === req.id}
-                                                        onClick={() => handleAction(req.id, 'approve')}
+                                                        onClick={() => handleAction(req.id, req.request_kind, 'approve')}
                                                         className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
                                                     >
                                                         قبول
                                                     </button>
                                                     <button
                                                         disabled={actionId === req.id}
-                                                        onClick={() => handleAction(req.id, 'reject')}
+                                                        onClick={() => handleAction(req.id, req.request_kind, 'reject')}
                                                         className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
                                                     >
                                                         رفض
@@ -285,4 +286,16 @@ function compactText(value: string | null, max = 120) {
     const normalized = value.replace(/\s+/g, ' ').trim();
     if (normalized.length <= max) return normalized;
     return `${normalized.slice(0, max)}...`;
+}
+
+function planLabel(p: string) {
+    const map: Record<string, string> = {
+        'SOLO': 'محامي مستقل (1 مستخدم)',
+        'TEAM': 'مكتب صغير (5 مستخدمين)',
+        'SMALL_OFFICE': 'مكتب صغير (5 مستخدمين)',
+        'BUSINESS': 'مكتب متوسط (25 مستخدم)',
+        'MEDIUM_OFFICE': 'مكتب متوسط (25 مستخدم)',
+        'ENTERPRISE': 'مكتب كبير (مفتوح)'
+    };
+    return map[p] || p;
 }

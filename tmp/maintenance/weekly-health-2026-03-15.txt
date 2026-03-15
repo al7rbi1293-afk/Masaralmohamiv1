@@ -1,0 +1,31 @@
+Weekly Health Check
+Date: 2026-03-15 14:41:54 UTC
+Base URL: https://masaralmohami.com
+Domain: masaralmohami.com
+
+[Reachability]
+Root: HTTP=200 TTFB=0.363782s TOTAL=0.409407s
+Health: HTTP=200 TTFB=0.541496s TOTAL=0.541781s
+
+[DNS]
+A Records: 216.150.16.129 216.150.1.1 
+
+[TLS Certificate]
+notBefore=Mar  7 03:20:53 2026 GMT
+notAfter=Jun  5 03:20:52 2026 GMT
+
+[Headers]
+HTTP/2 200 
+cache-control: public, max-age=0, must-revalidate
+content-security-policy: default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net; connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com
+permissions-policy: camera=(), microphone=(), geolocation=()
+referrer-policy: strict-origin-when-cross-origin
+server: Vercel
+strict-transport-security: max-age=63072000
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-vercel-cache: HIT
+
+[Sitemap and Robots]
+robots.txt: HTTP=200 TTFB=0.292272s TOTAL=0.294247s
+sitemap.xml: HTTP=200 TTFB=0.286261s TOTAL=0.286442s

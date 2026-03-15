@@ -25,6 +25,7 @@ export type Matter = {
   claims: string | null;
   assigned_user_id: string | null;
   is_private: boolean;
+  najiz_case_number: string | null;
   created_at: string;
   updated_at: string;
   client: MatterClient | null;
@@ -50,7 +51,7 @@ export type PaginatedResult<T> = {
 };
 
 const MATTER_SELECT =
-  'id, org_id, client_id, title, status, summary, case_type, claims, assigned_user_id, is_private, created_at, updated_at, client:clients(id, name, email, phone)';
+  'id, org_id, client_id, title, status, summary, najiz_case_number, case_type, claims, assigned_user_id, is_private, created_at, updated_at, client:clients(id, name, email, phone)';
 
 export async function listMatters(params: ListMattersParams = {}): Promise<PaginatedResult<Matter>> {
   const orgId = await requireOrgIdForUser();
@@ -163,6 +164,7 @@ export type CreateMatterPayload = {
   title: string;
   status?: MatterStatus;
   summary?: string | null;
+  najiz_case_number?: string | null;
   case_type?: string | null;
   claims?: string | null;
   assigned_user_id?: string | null;
@@ -206,6 +208,7 @@ export async function createMatter(payload: CreateMatterPayload): Promise<Matter
   };
   const extendedInsertPayload = {
     ...baseInsertPayload,
+    najiz_case_number: payload.najiz_case_number ?? null,
     case_type: payload.case_type ?? null,
     claims: payload.claims ?? null,
   };
@@ -321,6 +324,7 @@ export async function updateMatter(id: string, payload: UpdateMatterPayload): Pr
   if (payload.title !== undefined) update.title = payload.title;
   if (payload.status !== undefined) update.status = payload.status;
   if (payload.summary !== undefined) update.summary = payload.summary;
+  if (payload.najiz_case_number !== undefined) update.najiz_case_number = payload.najiz_case_number;
   if (payload.case_type !== undefined) update.case_type = payload.case_type;
   if (payload.claims !== undefined) update.claims = payload.claims;
   if (payload.assigned_user_id !== undefined) update.assigned_user_id = payload.assigned_user_id;

@@ -19,6 +19,10 @@ export class UpdateMatterDto {
 
   @IsOptional()
   @IsString()
+  najizCaseNumber?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()

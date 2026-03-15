@@ -15,6 +15,7 @@ const matterSchema = z.object({
   client_id: z.string().uuid('يرجى اختيار الموكل.').optional().or(z.literal('')),
   status: z.enum(['new', 'in_progress', 'on_hold', 'closed', 'archived']),
   summary: z.string().trim().max(5000, 'الملخص طويل جدًا.').optional().or(z.literal('')),
+  najiz_case_number: z.string().trim().max(100, 'رقم القضية طويل جدًا.').optional().or(z.literal('')),
   case_type: z.string().trim().max(100, 'نوع القضية طويل جدًا.').optional().or(z.literal('')),
   claims: z.string().trim().max(10000, 'تفاصيل المطالبات طويلة جدًا.').optional().or(z.literal('')),
   assigned_user_id: z.string().uuid('يرجى اختيار محامٍ صحيح.').optional().or(z.literal('')),
@@ -214,6 +215,7 @@ function toPayload(formData: FormData) {
     client_id: clientIdStr || undefined,
     status: String(formData.get('status') ?? 'new'),
     summary: String(formData.get('summary') ?? ''),
+    najiz_case_number: String(formData.get('najiz_case_number') ?? ''),
     case_type: String(formData.get('case_type') ?? ''),
     claims: String(formData.get('claims') ?? ''),
     assigned_user_id: assignedUserIdStr || undefined,
@@ -235,6 +237,7 @@ function normalize(data: z.infer<typeof matterSchema>) {
     client_id: emptyToNull(data.client_id),
     status: data.status,
     summary: emptyToNull(data.summary),
+    najiz_case_number: emptyToNull(data.najiz_case_number),
     case_type: emptyToNull(data.case_type),
     claims: emptyToNull(data.claims),
     assigned_user_id: emptyToNull(data.assigned_user_id),
@@ -317,7 +320,7 @@ function diffMatterFields(
   after: import('@/lib/matters').Matter,
 ): string[] {
   if (!before || !after) return [];
-  const keys = ['title', 'status', 'summary', 'client_id', 'is_private', 'assigned_user_id', 'case_type', 'claims'] as const;
+  const keys = ['title', 'status', 'summary', 'najiz_case_number', 'client_id', 'is_private', 'assigned_user_id', 'case_type', 'claims'] as const;
   const changed: string[] = [];
   for (const key of keys) {
     if ((before as any)[key] !== (after as any)[key]) changed.push(key);

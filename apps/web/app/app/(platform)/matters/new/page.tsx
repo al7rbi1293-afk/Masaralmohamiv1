@@ -151,6 +151,16 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
               <option value="enforcement">تنفيذ</option>
             </select>
           </label>
+
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">رقم القضية في ناجز (اختياري)</span>
+            <input
+              type="text"
+              name="najiz_case_number"
+              className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+              placeholder="مثال: 4410123456"
+            />
+          </label>
         </div>
 
         <label className="flex items-center gap-3 text-sm">

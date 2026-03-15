@@ -148,6 +148,7 @@ model Matter {
   tenantId    String      @db.Uuid @map("tenant_id")
   clientId    String      @db.Uuid @map("client_id")
   title       String
+  najizCaseNumber String? @map("najiz_case_number")
   description String?
   status      MatterStatus @default(OPEN)
   assigneeId  String?     @db.Uuid @map("assignee_id")

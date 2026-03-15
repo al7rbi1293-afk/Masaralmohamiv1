@@ -17,6 +17,10 @@ export class CreateMatterDto {
 
   @IsOptional()
   @IsString()
+  najizCaseNumber?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()

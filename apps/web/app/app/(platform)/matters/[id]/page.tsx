@@ -339,6 +339,14 @@ async function MatterSummarySection({
                             : matter.case_type ?? 'غير محدد'}
             </p>
             <p>
+              <span className="font-medium">رقم القضية قي ناجز:</span>{' '}
+              {matter.najiz_case_number ? (
+                <span dir="ltr" className="inline-block text-slate-900 dark:text-slate-50 font-semibold">{matter.najiz_case_number}</span>
+              ) : (
+                'غير محدد'
+              )}
+            </p>
+            <p>
               <span className="font-medium">تاريخ الإنشاء:</span>{' '}
               {new Date(matter.created_at).toLocaleString('ar-SA')}
             </p>

@@ -8,6 +8,7 @@ import { sendEmail } from '@/lib/email';
 import {
   CLIENT_PORTAL_WELCOME_EMAIL_HTML,
   CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
+  CLIENT_PORTAL_WELCOME_EMAIL_TEXT,
 } from '@/lib/email-templates';
 import {
   createClient,
@@ -86,6 +87,10 @@ export async function createClientAction(formData: FormData) {
         await sendEmail({
           to: String(created.email || '').trim().toLowerCase(),
           subject: CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
+          text: CLIENT_PORTAL_WELCOME_EMAIL_TEXT({
+            clientName: created.name,
+            portalUrl,
+          }),
           html: CLIENT_PORTAL_WELCOME_EMAIL_HTML({
             clientName: created.name,
             portalUrl,

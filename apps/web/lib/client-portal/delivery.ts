@@ -1,7 +1,12 @@
 import 'server-only';
 
-import { isSmtpConfigured } from '@/lib/env';
+import { getPublicSiteUrl, isSmtpConfigured } from '@/lib/env';
 import { sendEmail } from '@/lib/email';
+import {
+  CLIENT_PORTAL_OTP_EMAIL_HTML,
+  CLIENT_PORTAL_OTP_EMAIL_SUBJECT,
+  CLIENT_PORTAL_OTP_EMAIL_TEXT,
+} from '@/lib/email-templates';
 
 export type ClientPortalOtpChannel = 'email';
 
@@ -21,7 +26,7 @@ export type ClientPortalOtpDeliveryResult =
       fallbackTried: false;
     };
 
-const DEFAULT_EMAIL_SUBJECT = 'رمز الدخول إلى بوابة العميل';
+const DEFAULT_EMAIL_SUBJECT = CLIENT_PORTAL_OTP_EMAIL_SUBJECT;
 const DEFAULT_EMAIL_TEMPLATE = 'رمز الدخول إلى بوابة العميل: {{CODE}}. صالح لمدة {{TTL_MIN}} دقائق.';
 
 function renderTemplate(template: string, params: { code: string; ttlMinutes: number }) {
@@ -38,15 +43,6 @@ function shouldUseMockProvider() {
 function shouldForceMockFailure() {
   const raw = String(process.env.CLIENT_PORTAL_MOCK_FAIL_EMAIL ?? '').trim().toLowerCase();
   return raw === '1' || raw === 'true';
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }
 
 async function sendViaMock(params: { email: string | null }) : Promise<ClientPortalOtpDeliveryResult> {
@@ -106,20 +102,30 @@ async function sendViaEmail(params: {
   }
 
   const subject = process.env.CLIENT_PORTAL_OTP_EMAIL_SUBJECT?.trim() || DEFAULT_EMAIL_SUBJECT;
-  const textBody = renderTemplate(
-    process.env.CLIENT_PORTAL_OTP_EMAIL_TEMPLATE?.trim() || DEFAULT_EMAIL_TEMPLATE,
-    {
-      code: params.code,
-      ttlMinutes: Math.max(1, Math.ceil(params.ttlSeconds / 60)),
-    },
-  );
+  const ttlMinutes = Math.max(1, Math.ceil(params.ttlSeconds / 60));
+  const portalUrl = `${getPublicSiteUrl()}/client-portal/signin`;
+  const textBody = process.env.CLIENT_PORTAL_OTP_EMAIL_TEMPLATE?.trim()
+    ? renderTemplate(process.env.CLIENT_PORTAL_OTP_EMAIL_TEMPLATE.trim(), {
+        code: params.code,
+        ttlMinutes,
+      })
+    : CLIENT_PORTAL_OTP_EMAIL_TEXT({
+        code: params.code,
+        ttlMinutes,
+        portalUrl,
+      });
+  const htmlBody = CLIENT_PORTAL_OTP_EMAIL_HTML({
+    code: params.code,
+    ttlMinutes,
+    portalUrl,
+  });
 
   try {
     await sendEmail({
       to,
       subject,
       text: textBody,
-      html: `<p>${escapeHtml(textBody)}</p>`,
+      html: htmlBody,
     });
 
     return {

@@ -1,3 +1,91 @@
+const SUPPORT_EMAIL = 'masar.almohami@outlook.sa';
+const EMAIL_BRAND_NAME = 'مسار المحامي';
+const EMAIL_BRAND_TAGLINE = 'إدارة قانونية أكثر وضوحاً وتنظيماً.';
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderEmailShell(params: {
+  subject: string;
+  preheader: string;
+  eyebrow: string;
+  title: string;
+  intro: string;
+  bodyHtml: string;
+  footerHtml?: string;
+}) {
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(params.subject)}</title>
+    <style>
+        body { margin: 0; padding: 24px 0; background: #eef2f7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; direction: rtl; }
+        .preheader { display: none !important; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0; overflow: hidden; mso-hide: all; }
+        .wrapper { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+        .card { background: #ffffff; border: 1px solid #dbe4ee; border-radius: 26px; overflow: hidden; box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08); }
+        .hero { background: linear-gradient(135deg, #0f172a 0%, #102a43 58%, #0f766e 100%); color: #ffffff; padding: 28px 28px 24px; }
+        .brand { font-size: 13px; letter-spacing: 0.4px; opacity: 0.92; margin-bottom: 14px; }
+        .eyebrow { display: inline-block; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.14); font-size: 12px; line-height: 1.2; margin-bottom: 16px; }
+        .hero h1 { margin: 0; font-size: 28px; line-height: 1.45; font-weight: 800; }
+        .hero p { margin: 12px 0 0; font-size: 15px; line-height: 1.95; color: rgba(255,255,255,0.92); }
+        .content { padding: 28px; }
+        .content p { margin: 0 0 16px; font-size: 15px; line-height: 1.95; color: #334155; }
+        .panel { margin: 22px 0; padding: 20px 22px; border-radius: 20px; border: 1px solid #dbeafe; background: linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%); }
+        .panel-success { border-color: #bbf7d0; background: linear-gradient(180deg, #f7fffb 0%, #ecfdf5 100%); }
+        .panel-muted { border-color: #e2e8f0; background: #f8fafc; }
+        .panel-title { margin: 0 0 12px; font-size: 16px; line-height: 1.6; color: #0f172a; font-weight: 800; }
+        .meta-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .meta-table td { padding: 10px 0; vertical-align: top; }
+        .meta-table td:first-child { color: #64748b; width: 34%; }
+        .meta-table td:last-child { color: #0f172a; font-weight: 700; }
+        .meta-table tr + tr td { border-top: 1px solid #e2e8f0; }
+        .steps, .list { margin: 0; padding-right: 18px; color: #475569; }
+        .steps li, .list li { margin: 0 0 10px; line-height: 1.9; }
+        .cta { margin: 24px 0 0; text-align: center; }
+        .btn { display: inline-block; padding: 14px 24px; border-radius: 12px; background: #10b981; color: #ffffff !important; text-decoration: none; font-weight: 800; }
+        .link-box { margin-top: 14px; border: 1px solid #dbeafe; border-radius: 14px; background: #ffffff; padding: 14px; direction: ltr; text-align: left; word-break: break-all; font-size: 13px; color: #0f172a; }
+        .code-box { display: inline-block; direction: ltr; font-size: 30px; line-height: 1; letter-spacing: 8px; font-weight: 800; color: #065f46; background: #ffffff; border: 1px dashed #10b981; border-radius: 16px; padding: 16px 22px; }
+        .note { padding: 16px 18px; border-radius: 16px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; font-size: 14px; line-height: 1.9; }
+        .footer { padding: 0 28px 28px; color: #64748b; font-size: 12px; line-height: 1.9; }
+        .footer a, .content a { color: #0f766e; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <span class="preheader">${escapeHtml(params.preheader)}</span>
+    <div class="wrapper">
+        <div class="card">
+            <div class="hero">
+                <div class="brand">${EMAIL_BRAND_NAME}</div>
+                <span class="eyebrow">${escapeHtml(params.eyebrow)}</span>
+                <h1>${escapeHtml(params.title)}</h1>
+                <p>${escapeHtml(params.intro)}</p>
+            </div>
+            <div class="content">
+                ${params.bodyHtml}
+            </div>
+            <div class="footer">
+                ${params.footerHtml ?? `
+                <p style="margin:0 0 6px;">هذه رسالة آلية من ${EMAIL_BRAND_NAME}.</p>
+                <p style="margin:0 0 6px;">للدعم: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+                <p style="margin:0;">${EMAIL_BRAND_TAGLINE}</p>
+                `}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;
+}
+
 export const WELCOME_EMAIL_SUBJECT = 'مرحباً بك في مسار المحامي - خطواتك الأولى';
 
 export const WELCOME_EMAIL_HTML = (name: string, verificationLink: string) => `
@@ -232,55 +320,215 @@ export const NEW_SIGNUP_ALERT_HTML = (params: {
 </html>
 `;
 
-export const CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT = 'تم تسجيلك في بوابة العميل | مسار المحامي';
+export const CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT = 'مرحباً بك في بوابة العميل | مسار المحامي';
+
+export const CLIENT_PORTAL_WELCOME_EMAIL_TEXT = (params: {
+  clientName: string;
+  portalUrl: string;
+}) => [
+  `مرحباً ${params.clientName}،`,
+  '',
+  'تم إنشاء وصولك إلى بوابة العميل في مسار المحامي بنجاح.',
+  'يمكنك من خلال البوابة متابعة القضايا والمستندات والفواتير المرتبطة بك بشكل آمن وسريع.',
+  '',
+  'خطوات الدخول:',
+  '1. افتح رابط بوابة العميل.',
+  '2. أدخل بريدك الإلكتروني المسجل.',
+  '3. استخدم رمز التحقق الذي سيصلك على هذا البريد لإتمام الدخول.',
+  '',
+  `رابط البوابة: ${params.portalUrl}`,
+  '',
+  'إذا لم تكن تتوقع هذه الرسالة، يرجى التواصل مع مكتب المحامي مباشرة.',
+  '',
+  'مع التحية،',
+  EMAIL_BRAND_NAME,
+].join('\n');
 
 export const CLIENT_PORTAL_WELCOME_EMAIL_HTML = (params: {
   clientName: string;
   portalUrl: string;
-}) => `
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <title>${CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT}</title>
-    <style>
-        body { margin: 0; background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; direction: rtl; }
-        .wrapper { max-width: 640px; margin: 0 auto; padding: 28px 16px; }
-        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; }
-        .hero { background: linear-gradient(135deg, #0f172a 0%, #102a43 55%, #0f766e 100%); color: #ffffff; padding: 26px 24px; }
-        .hero h1 { margin: 0; font-size: 24px; line-height: 1.5; }
-        .hero p { margin: 10px 0 0; font-size: 14px; line-height: 1.9; color: rgba(255,255,255,0.92); }
-        .content { padding: 24px; }
-        .content p { margin: 0 0 14px; font-size: 15px; line-height: 1.9; color: #334155; }
-        .cta { margin: 20px 0; text-align: center; }
-        .btn { display: inline-block; background: #10b981; color: #ffffff !important; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-weight: 700; }
-        .link-box { margin: 14px 0 0; padding: 12px; border: 1px solid #dbeafe; background: #f8fafc; border-radius: 10px; font-size: 13px; direction: ltr; word-break: break-all; text-align: left; }
-        .footer { padding: 0 24px 22px; font-size: 12px; color: #64748b; }
-    </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="card">
-      <div class="hero">
-        <h1>تم تسجيلك في بوابة العميل</h1>
-        <p>يمكنك الآن متابعة القضايا والمستندات والفواتير الخاصة بك عبر بوابة العميل.</p>
+}) =>
+  renderEmailShell({
+    subject: CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
+    preheader: 'تم تجهيز وصولك إلى بوابة العميل، ويمكنك تسجيل الدخول خلال لحظات.',
+    eyebrow: 'بوابة العميل',
+    title: 'تم تجهيز وصولك إلى بوابة العميل',
+    intro: 'لديك الآن طريقة آمنة ومباشرة لمتابعة القضايا والمستندات والفواتير الخاصة بك.',
+    bodyHtml: `
+      <p>مرحباً <strong>${escapeHtml(params.clientName)}</strong>،</p>
+      <p>تمت إضافتك بنجاح إلى بوابة العميل. صُممت هذه البوابة لتسهيل متابعتك مع المكتب بشكل مهني وواضح، مع الاعتماد على تسجيل دخول آمن باستخدام رمز تحقق يرسل إلى بريدك الإلكتروني.</p>
+
+      <div class="panel panel-success">
+        <h2 class="panel-title">ماذا ستجد داخل البوابة؟</h2>
+        <ul class="list">
+          <li>متابعة القضايا والحالة الحالية لكل ملف.</li>
+          <li>الوصول إلى المستندات والمرفقات المرتبطة بك.</li>
+          <li>مراجعة الفواتير والحالات المالية ذات الصلة.</li>
+        </ul>
       </div>
-      <div class="content">
-        <p>مرحباً ${params.clientName}،</p>
-        <p>تمت إضافتك بنجاح في بوابة العميل الخاصة بمكتب المحامي. للدخول استخدم بريدك الإلكتروني ثم أدخل رمز التحقق الذي يصلك على نفس البريد.</p>
+
+      <div class="panel">
+        <h2 class="panel-title">خطوات الدخول</h2>
+        <ol class="steps">
+          <li>افتح رابط بوابة العميل من الزر أدناه أو عبر الرابط المباشر.</li>
+          <li>أدخل بريدك الإلكتروني المسجل لدينا.</li>
+          <li>سيصلك رمز تحقق على البريد نفسه لإتمام تسجيل الدخول.</li>
+        </ol>
         <div class="cta">
-          <a class="btn" href="${params.portalUrl}">الدخول إلى بوابة العميل</a>
+          <a class="btn" href="${escapeHtml(params.portalUrl)}">الدخول إلى بوابة العميل</a>
         </div>
-        <div class="link-box">${params.portalUrl}</div>
+        <div class="link-box">${escapeHtml(params.portalUrl)}</div>
       </div>
-      <div class="footer">
-        <p>إذا احتجت أي مساعدة، تواصل مع مكتب المحامي مباشرة.</p>
+
+      <div class="note">
+        إذا لم تكن تتوقع هذه الرسالة أو كانت لديك أي ملاحظة على بيانات الدخول، يرجى التواصل مع مكتب المحامي مباشرة للتحقق.
       </div>
-    </div>
-  </div>
-</body>
-</html>
-`;
+    `,
+    footerHtml: `
+      <p style="margin:0 0 6px;">أُرسلت هذه الرسالة بعد إضافتك إلى بوابة العميل من قبل المكتب.</p>
+      <p style="margin:0 0 6px;">للاستفسارات التقنية: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+      <p style="margin:0;">${EMAIL_BRAND_TAGLINE}</p>
+    `,
+  });
+
+export const CLIENT_PORTAL_OTP_EMAIL_SUBJECT = 'رمز التحقق للدخول إلى بوابة العميل | مسار المحامي';
+
+export const CLIENT_PORTAL_OTP_EMAIL_TEXT = (params: {
+  code: string;
+  ttlMinutes: number;
+  portalUrl: string;
+}) => [
+  'مرحباً،',
+  '',
+  'تلقّينا طلب دخول إلى بوابة العميل باستخدام بريدك الإلكتروني.',
+  `رمز التحقق الخاص بك هو: ${params.code}`,
+  `صلاحية الرمز: ${params.ttlMinutes} دقائق.`,
+  '',
+  `رابط بوابة العميل: ${params.portalUrl}`,
+  '',
+  'إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة بأمان.',
+  '',
+  'مع التحية،',
+  EMAIL_BRAND_NAME,
+].join('\n');
+
+export const CLIENT_PORTAL_OTP_EMAIL_HTML = (params: {
+  code: string;
+  ttlMinutes: number;
+  portalUrl: string;
+}) =>
+  renderEmailShell({
+    subject: CLIENT_PORTAL_OTP_EMAIL_SUBJECT,
+    preheader: `رمز التحقق الخاص بك هو ${params.code} وصلاحيته ${params.ttlMinutes} دقائق.`,
+    eyebrow: 'تحقق آمن',
+    title: 'رمز التحقق للدخول إلى بوابة العميل',
+    intro: 'استخدم الرمز التالي لإتمام الدخول الآمن إلى حسابك في بوابة العميل.',
+    bodyHtml: `
+      <p>تلقّينا طلب دخول إلى بوابة العميل باستخدام بريدك الإلكتروني. يرجى إدخال الرمز التالي في صفحة تسجيل الدخول لإتمام العملية:</p>
+
+      <div class="panel panel-success" style="text-align:center;">
+        <h2 class="panel-title" style="margin-bottom:16px;">رمز التحقق</h2>
+        <div class="code-box">${escapeHtml(params.code)}</div>
+        <p style="margin:16px 0 0; font-size:14px; color:#065f46;">هذا الرمز صالح لمدة <strong>${escapeHtml(String(params.ttlMinutes))} دقائق</strong>.</p>
+      </div>
+
+      <div class="panel panel-muted">
+        <h2 class="panel-title">قبل المتابعة</h2>
+        <ul class="list">
+          <li>أدخل الرمز كما هو تماماً في صفحة تسجيل الدخول.</li>
+          <li>يمكنك طلب رمز جديد إذا انتهت المهلة المحددة.</li>
+          <li>إذا لم تطلب هذا الرمز، تجاهل الرسالة ولن يتم الدخول إلى حسابك.</li>
+        </ul>
+        <div class="cta">
+          <a class="btn" href="${escapeHtml(params.portalUrl)}">فتح بوابة العميل</a>
+        </div>
+        <div class="link-box">${escapeHtml(params.portalUrl)}</div>
+      </div>
+    `,
+  });
+
+export const TASK_REMINDER_EMAIL_SUBJECT = (taskTitle: string) => `تنبيه مهمة | ${taskTitle}`;
+
+export const TASK_REMINDER_EMAIL_TEXT = (params: {
+  recipientName?: string | null;
+  taskTitle: string;
+  matterTitle?: string | null;
+  dueLabel?: string | null;
+  statusLabel: string;
+  message?: string | null;
+}) =>
+  [
+    `مرحباً ${params.recipientName?.trim() || 'عميلنا الكريم'}،`,
+    '',
+    'نود تذكيرك بالمهمة التالية:',
+    `عنوان المهمة: ${params.taskTitle}`,
+    params.matterTitle ? `القضية / الملف: ${params.matterTitle}` : '',
+    params.dueLabel ? `موعد الاستحقاق: ${params.dueLabel}` : '',
+    `الحالة الحالية: ${params.statusLabel}`,
+    params.message?.trim() ? '' : '',
+    params.message?.trim() ? 'ملاحظة إضافية:' : '',
+    params.message?.trim() ? params.message.trim() : '',
+    '',
+    'مع التحية،',
+    EMAIL_BRAND_NAME,
+  ].filter(Boolean).join('\n');
+
+export const TASK_REMINDER_EMAIL_HTML = (params: {
+  recipientName?: string | null;
+  taskTitle: string;
+  matterTitle?: string | null;
+  dueLabel?: string | null;
+  statusLabel: string;
+  message?: string | null;
+}) =>
+  renderEmailShell({
+    subject: TASK_REMINDER_EMAIL_SUBJECT(params.taskTitle),
+    preheader: `تذكير بالمهمة "${params.taskTitle}" وحالتها الحالية ${params.statusLabel}.`,
+    eyebrow: 'تنبيه مهمة',
+    title: 'تذكير بمهمة تحتاج إلى المتابعة',
+    intro: 'أرسل لك المكتب هذا التذكير للمحافظة على وضوح الخطوات القادمة وسهولة المتابعة.',
+    bodyHtml: `
+      <p>مرحباً <strong>${escapeHtml(params.recipientName?.trim() || 'عميلنا الكريم')}</strong>،</p>
+      <p>نود تذكيرك بالمهمة الموضحة أدناه. تم إعداد هذا التنبيه لمساعدتك على متابعة المتطلبات في الوقت المناسب.</p>
+
+      <div class="panel">
+        <h2 class="panel-title">ملخص المهمة</h2>
+        <table role="presentation" class="meta-table">
+          <tr>
+            <td>عنوان المهمة</td>
+            <td>${escapeHtml(params.taskTitle)}</td>
+          </tr>
+          ${params.matterTitle ? `
+          <tr>
+            <td>القضية / الملف</td>
+            <td>${escapeHtml(params.matterTitle)}</td>
+          </tr>
+          ` : ''}
+          ${params.dueLabel ? `
+          <tr>
+            <td>موعد الاستحقاق</td>
+            <td>${escapeHtml(params.dueLabel)}</td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td>الحالة الحالية</td>
+            <td>${escapeHtml(params.statusLabel)}</td>
+          </tr>
+        </table>
+      </div>
+
+      ${params.message?.trim() ? `
+      <div class="panel panel-muted">
+        <h2 class="panel-title">ملاحظة من المكتب</h2>
+        <p style="margin:0; white-space:pre-line;">${escapeHtml(params.message.trim())}</p>
+      </div>
+      ` : ''}
+
+      <div class="note">
+        هذه الرسالة مخصصة للتذكير والمتابعة. إذا احتجت إلى توضيح إضافي، يرجى الرد على المكتب عبر القنوات المعتمدة لديكم.
+      </div>
+    `,
+  });
 
 export const PARTNER_WELCOME_EMAIL_SUBJECT = 'تم تفعيل حسابك في شركاء النجاح | مسار المحامي';
 

@@ -5,6 +5,11 @@ import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { sendEmail } from '@/lib/email';
+import {
+  TASK_REMINDER_EMAIL_HTML,
+  TASK_REMINDER_EMAIL_SUBJECT,
+  TASK_REMINDER_EMAIL_TEXT,
+} from '@/lib/email-templates';
 import { logError, logInfo } from '@/lib/logger';
 
 export const runtime = 'nodejs';
@@ -67,27 +72,42 @@ export async function POST(request: NextRequest) {
 
     const title = String((task as any).title ?? '').trim() || 'مهمة';
     const dueAt = (task as any).due_at ? new Date(String((task as any).due_at)) : null;
-    const dueLabel = dueAt && !Number.isNaN(dueAt.getTime()) ? dueAt.toLocaleString('ar-SA') : '';
+    const dueLabel =
+      dueAt && !Number.isNaN(dueAt.getTime())
+        ? dueAt.toLocaleString('ar-SA', {
+            timeZone: 'Asia/Riyadh',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '';
 
-    const subject = `تذكير مهمة - ${title}`;
+    const subject = TASK_REMINDER_EMAIL_SUBJECT(title);
     const matterTitle = (task as any).matters?.title ? String((task as any).matters.title) : '';
+    const statusLabel = formatTaskStatusLabel(String((task as any).status ?? ''));
 
-    const textParts = [
-      'مرحباً،',
-      '',
-      `تذكير بالمهمة: ${title}`,
-      matterTitle ? `القضية: ${matterTitle}` : '',
-      dueLabel ? `الاستحقاق: ${dueLabel}` : '',
-      `الحالة الحالية: ${String((task as any).status ?? '')}`,
-      parsed.data.message_optional ? `\nرسالة:\n${parsed.data.message_optional.trim()}\n` : '',
-      'مع التحية،',
-      'مسار المحامي',
-    ].filter(Boolean);
+    const textBody = TASK_REMINDER_EMAIL_TEXT({
+      taskTitle: title,
+      matterTitle,
+      dueLabel,
+      statusLabel,
+      message: parsed.data.message_optional ?? null,
+    });
+    const htmlBody = TASK_REMINDER_EMAIL_HTML({
+      taskTitle: title,
+      matterTitle,
+      dueLabel,
+      statusLabel,
+      message: parsed.data.message_optional ?? null,
+    });
 
     await sendEmail({
       to: parsed.data.to_email,
       subject,
-      text: textParts.join('\n'),
+      text: textBody,
+      html: htmlBody,
     });
 
     const { error: insertLogError } = await rls.from('email_logs').insert({
@@ -148,4 +168,12 @@ function toUserMessage(error: unknown) {
   }
 
   return message || 'تعذر إرسال البريد.';
+}
+
+function formatTaskStatusLabel(status: string) {
+  if (status === 'todo') return 'للإنجاز';
+  if (status === 'doing') return 'قيد التنفيذ';
+  if (status === 'done') return 'مكتملة';
+  if (status === 'canceled') return 'ملغاة';
+  return status || 'غير محددة';
 }

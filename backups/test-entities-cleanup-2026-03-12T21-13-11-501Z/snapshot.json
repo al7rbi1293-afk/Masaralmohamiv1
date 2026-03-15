@@ -1,0 +1,116 @@
+{
+  "generated_at": "2026-03-12T21:13:11.156Z",
+  "target_users": [
+    {
+      "id": "bb7f955e-3dd3-41ed-a89d-7935ae6cac94",
+      "email": "codex-1772833275799@example.com",
+      "password_hash": "$2b$12$1zVqjfygtssSaForkTKJROkmPsDzOx4NTg83R97GVJukQeugnKExa",
+      "full_name": "Codex Test User",
+      "phone": null,
+      "status": "active",
+      "email_verified": true,
+      "created_at": "2026-03-06T21:41:17.261728+00:00",
+      "updated_at": "2026-03-06T21:41:17.261728+00:00",
+      "email_verification_token": null,
+      "email_verification_expires_at": null
+    },
+    {
+      "id": "2cf51be1-8f08-46af-818f-cc2d0745aa96",
+      "email": "calendar.preview@example.com",
+      "password_hash": "$2b$10$X9wvTLR1bts5ZZjPTgxnoefiF3nLsHRymJT7jaZ51bc75lfiQmDLa",
+      "full_name": "Calendar Preview User",
+      "phone": null,
+      "status": "active",
+      "email_verified": true,
+      "created_at": "2026-03-11T11:00:22.310645+00:00",
+      "updated_at": "2026-03-11T11:00:22.310645+00:00",
+      "email_verification_token": null,
+      "email_verification_expires_at": null
+    },
+    {
+      "id": "62528469-dae7-48d0-9439-6a50f102c95f",
+      "email": "dup-test-1773317725@example.com",
+      "password_hash": "$2b$12$b3IvGYIm/fzHH1C3p/L6.eRt/ggu5i97MUu3N56UcJif6KzJz1KGu",
+      "full_name": "اختبار مكرر",
+      "phone": null,
+      "status": "active",
+      "email_verified": false,
+      "created_at": "2026-03-12T12:15:28.571038+00:00",
+      "updated_at": "2026-03-12T12:15:28.571038+00:00",
+      "email_verification_token": "a75c12800c0047b1980ea485c518f4e4d1cdc11f60bf4dc38a55bc4e1b620c0d",
+      "email_verification_expires_at": "2026-03-13T12:15:28.394+00:00"
+    },
+    {
+      "id": "12f10e07-9bd7-42ba-8dcb-594f0774e53f",
+      "email": "dup-verified-1773317762@example.com",
+      "password_hash": "$2b$12$95qUbHpGKeQQU3SufQRdzuxtZQY/J96yU/Gn5BVxcc8aCUuQkJ0SK",
+      "full_name": "اختبار مفعّل",
+      "phone": null,
+      "status": "active",
+      "email_verified": true,
+      "created_at": "2026-03-12T12:16:03.514333+00:00",
+      "updated_at": "2026-03-12T12:16:03.514333+00:00",
+      "email_verification_token": "1e848db449d841b29139154be73e31d1f86001828376455dbad2f7ad6f87dbd4",
+      "email_verification_expires_at": "2026-03-13T12:16:03.322+00:00"
+    }
+  ],
+  "target_orgs": [
+    {
+      "id": "a7fcd93a-7e27-4910-9caf-1f8542f1a02c",
+      "name": "Codex Firm 1772833279168",
+      "created_at": "2026-03-06T21:41:19.289712+00:00",
+      "status": "active",
+      "logo_url": null
+    },
+    {
+      "id": "82ff6406-cde4-4b5e-bc3b-acc72fa763b1",
+      "name": "مكتب معاينة التقويم",
+      "created_at": "2026-03-11T11:00:22.913813+00:00",
+      "status": "active",
+      "logo_url": null
+    }
+  ],
+  "memberships": [
+    {
+      "id": "848299c7-dfbd-4c42-a878-875e7b4f9a71",
+      "org_id": "a7fcd93a-7e27-4910-9caf-1f8542f1a02c",
+      "user_id": "bb7f955e-3dd3-41ed-a89d-7935ae6cac94",
+      "role": "owner",
+      "created_at": "2026-03-06T21:41:19.707633+00:00"
+    },
+    {
+      "id": "3ae758fe-6a56-4593-b000-dbe4c48a0e18",
+      "org_id": "82ff6406-cde4-4b5e-bc3b-acc72fa763b1",
+      "user_id": "2cf51be1-8f08-46af-818f-cc2d0745aa96",
+      "role": "owner",
+      "created_at": "2026-03-11T11:00:23.108729+00:00"
+    },
+    {
+      "id": "894b5de7-ebf9-4507-b399-16ab7add6dcc",
+      "org_id": "0e2cd351-7b40-44c8-8361-24c033267beb",
+      "user_id": "12f10e07-9bd7-42ba-8dcb-594f0774e53f",
+      "role": "owner",
+      "created_at": "2026-03-12T12:16:07.469532+00:00"
+    }
+  ],
+  "trial_subscriptions": [
+    {
+      "org_id": "a7fcd93a-7e27-4910-9caf-1f8542f1a02c",
+      "started_at": "2026-03-06T21:41:19.995+00:00",
+      "ends_at": "2026-03-20T21:41:19.995+00:00",
+      "status": "active",
+      "updated_at": "2026-03-06T21:41:20.115488+00:00"
+    },
+    {
+      "org_id": "82ff6406-cde4-4b5e-bc3b-acc72fa763b1",
+      "started_at": "2026-03-11T11:00:23.099+00:00",
+      "ends_at": "2026-03-25T11:00:23.097+00:00",
+      "status": "active",
+      "updated_at": "2026-03-11T11:00:23.232149+00:00"
+    }
+  ],
+  "subscriptions": [],
+  "payment_requests_by_org": [],
+  "payment_requests_by_user": [],
+  "tap_payments": []
+}

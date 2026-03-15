@@ -6,6 +6,7 @@ import { createCommissionForTapPayment, reverseCommissionByPaymentId } from '@/l
 import { addPartnerAuditLog } from '@/lib/partners/service';
 import { toSubscriptionPlanCode } from '@/lib/partners/plan';
 import { updateLeadStatusForUser } from '@/lib/partners/referral';
+import { sendSubscriptionInvoiceEmail } from '@/lib/subscription-invoice-email';
 
 type TapWebhookProcessResult = {
   eventId: string;
@@ -179,6 +180,19 @@ async function activateSubscriptionFromTapPayment(tapPayment: any) {
       org_id: orgId,
       user_id: userId,
     },
+  });
+
+  await sendSubscriptionInvoiceEmail({
+    orgId,
+    planCode: normalizedPlan,
+    durationMonths: billingPeriod === 'yearly' ? 12 : 1,
+    billingPeriod,
+    amount: Number(tapPayment.amount || 0),
+    currency: String(tapPayment.currency || 'SAR'),
+    requestedByUserId: userId,
+    sourceKind: 'tap',
+    sourceId: String(tapPayment.id || tapPayment.tap_charge_id || ''),
+    sentByUserId: userId,
   });
 
   return subscription;

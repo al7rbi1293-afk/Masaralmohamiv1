@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { sendSubscriptionInvoiceEmail } from '@/lib/subscription-invoice-email';
 
 export const dynamic = 'force-dynamic';
 
@@ -513,6 +514,16 @@ export async function PATCH(request: NextRequest) {
           period_end: activation.periodEndIso,
         },
       });
+
+      await sendSubscriptionInvoiceEmail({
+        orgId: subscriptionRequest.org_id,
+        planCode: activation.planCode,
+        durationMonths: activation.durationMonths,
+        requestedByUserId: subscriptionRequest.requester_user_id,
+        sourceKind: 'subscription_request',
+        sourceId: subscriptionRequest.id,
+        sentByUserId: adminId,
+      });
     } else {
       await adminClient.from('audit_logs').insert({
         org_id: subscriptionRequest.org_id,
@@ -571,6 +582,19 @@ export async function PATCH(request: NextRequest) {
           duration_months: activation.durationMonths,
           period_end: activation.periodEndIso,
         },
+      });
+
+      await sendSubscriptionInvoiceEmail({
+        orgId: paymentRequest.org_id,
+        planCode: activation.planCode,
+        durationMonths: activation.durationMonths,
+        billingPeriod: String(paymentRequest.billing_period).toLowerCase() === 'yearly' ? 'yearly' : 'monthly',
+        amount: paymentRequest.amount,
+        currency: paymentRequest.currency,
+        requestedByUserId: paymentRequest.user_id,
+        sourceKind: 'payment_request',
+        sourceId: paymentRequest.id,
+        sentByUserId: adminId,
       });
     } else {
       await adminClient.from('audit_logs').insert({

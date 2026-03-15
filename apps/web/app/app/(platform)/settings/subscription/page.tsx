@@ -92,7 +92,7 @@ export default async function SubscriptionSettingsPage({ searchParams }: Subscri
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/app/settings/subscription/pricing" className={buttonVariants('primary', 'md')}>
-            ترقية عبر الدفع الإلكتروني
+            طلب ترقية (تحويل بنكي)
           </Link>
           <Link href="/app/settings" className={buttonVariants('outline', 'md')}>
             رجوع

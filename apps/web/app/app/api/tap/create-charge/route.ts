@@ -8,8 +8,18 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { readReferralContextFromCookies } from '@/lib/partners/referral';
 
 export const runtime = 'nodejs';
+const TAP_CARD_CHECKOUT_ENABLED = process.env.TAP_CARD_CHECKOUT_ENABLED === 'true';
 
 export async function POST(request: NextRequest) {
+  if (!TAP_CARD_CHECKOUT_ENABLED) {
+    return NextResponse.json(
+      {
+        error: 'الدفع بالبطاقة غير متاح حاليًا. يرجى اختيار التحويل البنكي مؤقتًا.',
+      },
+      { status: 503 },
+    );
+  }
+
   const user = await getCurrentAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'الرجاء تسجيل الدخول.' }, { status: 401 });

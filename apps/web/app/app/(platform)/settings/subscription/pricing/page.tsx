@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 
 export default async function SubscriptionPricingPage() {
+  const isCardPaymentEnabled = process.env.TAP_CARD_CHECKOUT_ENABLED === 'true';
   let errorMessage = '';
 
   try {
@@ -50,7 +51,7 @@ export default async function SubscriptionPricingPage() {
         </p>
       ) : null}
 
-      <PricingClient />
+      <PricingClient isCardPaymentEnabled={isCardPaymentEnabled} />
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
         ملاحظة: إذا كانت التجربة منتهية، يمكنك ترقية الخطة ثم سيُفتح الوصول تلقائيًا بعد مراجعة الدفع.

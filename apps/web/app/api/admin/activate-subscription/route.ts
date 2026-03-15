@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getAdminActivationSecret } from '@/lib/env';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { logError, logInfo } from '@/lib/logger';
+import { sendSubscriptionInvoiceEmail } from '@/lib/subscription-invoice-email';
 
 export const runtime = 'nodejs';
 
@@ -109,6 +110,18 @@ export async function POST(request: NextRequest) {
       planCode,
       seats,
       periodDays,
+    });
+
+    await sendSubscriptionInvoiceEmail({
+      orgId,
+      planCode,
+      durationMonths: Math.max(1, Math.round(periodDays / 30)),
+      amount: null,
+      currency: 'SAR',
+      sourceKind: 'manual_activation',
+      sourceId: orgId,
+      sentByUserId: null,
+      requestedByUserId: null,
     });
 
     return NextResponse.json(

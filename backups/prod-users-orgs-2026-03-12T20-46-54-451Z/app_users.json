@@ -1,0 +1,93 @@
+[
+  {
+    "id": "4a393970-ff90-46a7-a29c-82bb35fa6e76",
+    "email": "masar.almohami@outlook.sa",
+    "password_hash": "$2b$12$8sBNLp7Ra3evjWk0zA68OOLvNIlmCCvxT7DL9qtQpqD5kyQp7ImNm",
+    "full_name": "ادارة الموقع",
+    "phone": "0599222396",
+    "status": "active",
+    "email_verified": true,
+    "created_at": "2026-02-22T13:28:31.730198+00:00",
+    "updated_at": "2026-02-22T13:28:31.730198+00:00",
+    "email_verification_token": null,
+    "email_verification_expires_at": null
+  },
+  {
+    "id": "2175e06b-f128-4f8a-b3e5-c4cf4c713cef",
+    "email": "lawyerzeez@gmail.com",
+    "password_hash": "$2b$12$ZDEc4uANCALlmRuWa8ErG.EYk9NO9v.efPGx5nwied.afdnzvlSWq",
+    "full_name": "عبدالعزيز فهد الحازمي",
+    "phone": "0599222396",
+    "status": "active",
+    "email_verified": true,
+    "created_at": "2026-02-23T20:12:23.714557+00:00",
+    "updated_at": "2026-02-23T20:12:23.714557+00:00",
+    "email_verification_token": null,
+    "email_verification_expires_at": null
+  },
+  {
+    "id": "db5092a7-87f7-4a52-a64d-0bab9a671f05",
+    "email": "al7rbi1293@gmail.com",
+    "password_hash": "$2b$12$A.9uF5f7IxEvqu1psawXJeTgwleRJOCI4mIoqvPC7b07v.dlTkVkm",
+    "full_name": "عبدالعزيز الحازمي 1",
+    "phone": null,
+    "status": "active",
+    "email_verified": true,
+    "created_at": "2026-02-25T14:57:21.893514+00:00",
+    "updated_at": "2026-02-25T14:57:21.893514+00:00",
+    "email_verification_token": null,
+    "email_verification_expires_at": null
+  },
+  {
+    "id": "bb7f955e-3dd3-41ed-a89d-7935ae6cac94",
+    "email": "codex-1772833275799@example.com",
+    "password_hash": "$2b$12$1zVqjfygtssSaForkTKJROkmPsDzOx4NTg83R97GVJukQeugnKExa",
+    "full_name": "Codex Test User",
+    "phone": null,
+    "status": "active",
+    "email_verified": true,
+    "created_at": "2026-03-06T21:41:17.261728+00:00",
+    "updated_at": "2026-03-06T21:41:17.261728+00:00",
+    "email_verification_token": null,
+    "email_verification_expires_at": null
+  },
+  {
+    "id": "2cf51be1-8f08-46af-818f-cc2d0745aa96",
+    "email": "calendar.preview@example.com",
+    "password_hash": "$2b$10$X9wvTLR1bts5ZZjPTgxnoefiF3nLsHRymJT7jaZ51bc75lfiQmDLa",
+    "full_name": "Calendar Preview User",
+    "phone": null,
+    "status": "active",
+    "email_verified": true,
+    "created_at": "2026-03-11T11:00:22.310645+00:00",
+    "updated_at": "2026-03-11T11:00:22.310645+00:00",
+    "email_verification_token": null,
+    "email_verification_expires_at": null
+  },
+  {
+    "id": "62528469-dae7-48d0-9439-6a50f102c95f",
+    "email": "dup-test-1773317725@example.com",
+    "password_hash": "$2b$12$b3IvGYIm/fzHH1C3p/L6.eRt/ggu5i97MUu3N56UcJif6KzJz1KGu",
+    "full_name": "اختبار مكرر",
+    "phone": null,
+    "status": "active",
+    "email_verified": false,
+    "created_at": "2026-03-12T12:15:28.571038+00:00",
+    "updated_at": "2026-03-12T12:15:28.571038+00:00",
+    "email_verification_token": "a75c12800c0047b1980ea485c518f4e4d1cdc11f60bf4dc38a55bc4e1b620c0d",
+    "email_verification_expires_at": "2026-03-13T12:15:28.394+00:00"
+  },
+  {
+    "id": "12f10e07-9bd7-42ba-8dcb-594f0774e53f",
+    "email": "dup-verified-1773317762@example.com",
+    "password_hash": "$2b$12$95qUbHpGKeQQU3SufQRdzuxtZQY/J96yU/Gn5BVxcc8aCUuQkJ0SK",
+    "full_name": "اختبار مفعّل",
+    "phone": null,
+    "status": "active",
+    "email_verified": true,
+    "created_at": "2026-03-12T12:16:03.514333+00:00",
+    "updated_at": "2026-03-12T12:16:03.514333+00:00",
+    "email_verification_token": "1e848db449d841b29139154be73e31d1f86001828376455dbad2f7ad6f87dbd4",
+    "email_verification_expires_at": "2026-03-13T12:16:03.322+00:00"
+  }
+]

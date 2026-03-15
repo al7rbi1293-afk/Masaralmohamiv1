@@ -4,12 +4,6 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
-import { sendEmail } from '@/lib/email';
-import {
-  CLIENT_PORTAL_WELCOME_EMAIL_HTML,
-  CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
-  CLIENT_PORTAL_WELCOME_EMAIL_TEXT,
-} from '@/lib/email-templates';
 import {
   createClient,
   deleteClient,
@@ -20,8 +14,12 @@ import {
   uploadClientAgencyAttachment,
   validateClientAgencyFile,
 } from '@/lib/clients';
+import {
+  sendClientPortalWelcomeEmail,
+  shouldSendClientPortalWelcomeEmail,
+} from '@/lib/client-portal-welcome';
 import { logAudit } from '@/lib/audit';
-import { getPublicSiteUrl, isSmtpConfigured } from '@/lib/env';
+import { isSmtpConfigured } from '@/lib/env';
 import { logError, logInfo } from '@/lib/logger';
 import { toUserMessage, emptyToNull, isValidUuid } from '@/lib/shared-utils';
 
@@ -82,26 +80,14 @@ export async function createClientAction(formData: FormData) {
 
     let successMessage = 'تم إنشاء العميل.';
     if (isSmtpConfigured()) {
-      try {
-        const portalUrl = `${getPublicSiteUrl()}/client-portal/signin`;
-        await sendEmail({
-          to: String(created.email || '').trim().toLowerCase(),
-          subject: CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
-          text: CLIENT_PORTAL_WELCOME_EMAIL_TEXT({
-            clientName: created.name,
-            portalUrl,
-          }),
-          html: CLIENT_PORTAL_WELCOME_EMAIL_HTML({
-            clientName: created.name,
-            portalUrl,
-          }),
-        });
+      const welcomeEmailStatus = await sendClientPortalWelcomeEmail({
+        clientId: created.id,
+        clientName: created.name,
+        email: created.email ?? '',
+      });
+      if (welcomeEmailStatus === 'sent') {
         successMessage = 'تم إنشاء العميل وإرسال بريد بوابة العميل بنجاح.';
-      } catch (emailError) {
-        logError('client_portal_welcome_email_failed', {
-          clientId: created.id,
-          message: emailError instanceof Error ? emailError.message : String(emailError ?? ''),
-        });
+      } else {
         successMessage = 'تم إنشاء العميل، لكن تعذر إرسال بريد بوابة العميل.';
       }
     } else {
@@ -191,7 +177,31 @@ export async function updateClientAction(id: string, formData: FormData) {
     logInfo('client_updated', { clientId: id });
     revalidatePath('/app/clients');
     revalidatePath(`/app/clients/${id}`);
-    redirect(`/app/clients/${id}?success=${encodeURIComponent('تم تحديث بيانات العميل.')}`);
+
+    let successMessage = 'تم تحديث بيانات العميل.';
+    if (
+      shouldSendClientPortalWelcomeEmail({
+        previousEmail: before?.email,
+        nextEmail: updated.email,
+        clientStatus: updated.status,
+      })
+    ) {
+      const welcomeEmailStatus = await sendClientPortalWelcomeEmail({
+        clientId: updated.id,
+        clientName: updated.name,
+        email: updated.email ?? '',
+      });
+
+      if (welcomeEmailStatus === 'sent') {
+        successMessage = 'تم تحديث بيانات العميل وإرسال بريد بوابة العميل بنجاح.';
+      } else if (welcomeEmailStatus === 'smtp_not_configured') {
+        successMessage = 'تم تحديث بيانات العميل. لم يتم إرسال بريد الدعوة لأن إعداد SMTP غير مكتمل.';
+      } else {
+        successMessage = 'تم تحديث بيانات العميل، لكن تعذر إرسال بريد بوابة العميل.';
+      }
+    }
+
+    redirect(`/app/clients/${id}?success=${encodeURIComponent(successMessage)}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
     if (!clientUpdated && uploadedAgency?.storage_path) {

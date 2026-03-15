@@ -50,8 +50,9 @@ type StoragePathRow = {
   storage_path: string | null;
 };
 
-type ClientAgencyPathRow = {
+type ClientAgencyAttachmentMetaRow = {
   agency_storage_path: string | null;
+  agency_file_name: string | null;
 };
 
 const CLIENT_SELECT_COLUMNS = [
@@ -331,14 +332,22 @@ export async function removeClientAgencyAttachment(storagePath: string | null | 
 
 export async function getClientAgencySignedDownloadUrl(clientId: string): Promise<string> {
   const orgId = await requireOrgIdForUser();
-  const storagePath = await getClientAgencyStoragePath(orgId, clientId);
+  const attachmentMeta = await getClientAgencyAttachmentMeta(orgId, clientId);
+  const storagePath = attachmentMeta?.storagePath ?? null;
 
   if (!storagePath) {
     throw new Error('not_found');
   }
 
+  const downloadFileName =
+    sanitizeDownloadFileName(attachmentMeta?.fileName || null) ||
+    sanitizeDownloadFileName(storagePath.split('/').pop() ?? '') ||
+    'agency-attachment';
+
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.storage.from(CLIENT_AGENCY_BUCKET).createSignedUrl(storagePath, 300);
+  const { data, error } = await supabase.storage.from(CLIENT_AGENCY_BUCKET).createSignedUrl(storagePath, 300, {
+    download: downloadFileName,
+  });
 
   if (error || !data?.signedUrl) {
     throw error ?? new Error('تعذر تجهيز رابط التنزيل.');
@@ -497,10 +506,18 @@ async function listDocumentStoragePaths(orgId: string, documentIds: string[]): P
 }
 
 async function getClientAgencyStoragePath(orgId: string, clientId: string): Promise<string | null> {
+  const meta = await getClientAgencyAttachmentMeta(orgId, clientId);
+  return meta?.storagePath ?? null;
+}
+
+async function getClientAgencyAttachmentMeta(
+  orgId: string,
+  clientId: string,
+): Promise<{ storagePath: string; fileName: string | null } | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from('clients')
-    .select('agency_storage_path')
+    .select('agency_storage_path, agency_file_name')
     .eq('org_id', orgId)
     .eq('id', clientId)
     .maybeSingle();
@@ -509,8 +526,17 @@ async function getClientAgencyStoragePath(orgId: string, clientId: string): Prom
     throw error;
   }
 
-  const path = String((data as ClientAgencyPathRow | null)?.agency_storage_path ?? '').trim();
-  return path || null;
+  const row = data as ClientAgencyAttachmentMetaRow | null;
+  const storagePath = String(row?.agency_storage_path ?? '').trim();
+  if (!storagePath) {
+    return null;
+  }
+
+  const fileName = String(row?.agency_file_name ?? '').trim() || null;
+  return {
+    storagePath,
+    fileName,
+  };
 }
 
 async function deleteByIds(
@@ -588,4 +614,20 @@ function toSafeFileName(value: string) {
     .slice(0, 12);
 
   return safeExt ? `${safeBase}.${safeExt}` : safeBase;
+}
+
+function sanitizeDownloadFileName(value: string | null | undefined) {
+  const normalized = String(value ?? '')
+    .replaceAll('\u0000', '')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized
+    .replace(/[\\/]/g, '_')
+    .replace(/\s+/g, ' ')
+    .slice(0, 180);
 }

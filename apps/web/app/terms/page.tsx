@@ -83,6 +83,55 @@ export default function TermsPage() {
           </p>
         </article>
 
+        <article dir="rtl">
+          <h2 className="text-lg font-semibold text-brand-navy dark:text-slate-100">سياسة الاسترجاع والاسترداد</h2>
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            تلتزم منصة مسار المحامي بالوضوح والشفافية في تنظيم آلية الاسترجاع والاسترداد للاشتراكات والخدمات الإلكترونية
+            المقدمة عبر المنصة.
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            يحق للمستخدم طلب استرداد رسوم الاشتراك خلال 7 أيام من تاريخ الشراء، بشرط عدم تفعيل الحساب المدفوع أو عدم
+            استخدام المنصة أو الانتفاع بأي من خدماتها أو مزاياها المدفوعة.
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            وبمجرد تفعيل الاشتراك أو بدء استخدام المنصة أو الاستفادة من أي خدمة رقمية مقدمة عبرها، فإن رسوم الاشتراك عن
+            الفترة الحالية تعد غير مستردة.
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            ويجوز للمستخدم إلغاء التجديد التلقائي قبل موعد التجديد القادم، على أن يستمر الاشتراك حتى نهاية المدة المدفوعة،
+            دون استرداد عن الفترة الجارية بعد بدئها.
+          </p>
+
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">ويحق للمستخدم طلب الاسترداد في الحالات التالية:</p>
+          <ul className="mt-2 list-disc space-y-1 pr-5 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            <li>إذا تم دفع الرسوم ولم يتم تفعيل الاشتراك.</li>
+            <li>إذا تم خصم المبلغ أكثر من مرة أو وقع خطأ في عملية السداد.</li>
+            <li>إذا وجد خلل تقني جوهري من طرف المنصة حال دون الانتفاع بالخدمة ولم تتم معالجته خلال مدة معقولة.</li>
+            <li>إذا تم إلغاء الطلب قبل الانتفاع بالخدمة وضمن المدة النظامية.</li>
+          </ul>
+
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">ولا يحق طلب الاسترداد في الحالات التالية:</p>
+          <ul className="mt-2 list-disc space-y-1 pr-5 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            <li>بعد تفعيل الاشتراك أو بدء استخدام المنصة.</li>
+            <li>إذا كان سبب الطلب مجرد العدول عن الاشتراك بعد الانتفاع بالخدمة.</li>
+            <li>إذا كانت الخدمة قد نُفذت أو بدأ استخدامها فعليًا.</li>
+            <li>إذا كانت الخدمة مخصصة أو معدّة خصيصًا بناءً على طلب المستخدم.</li>
+          </ul>
+
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            تتم مراجعة طلبات الاسترداد خلال مدة تقديرية من 5 إلى 10 أيام عمل من تاريخ استلام الطلب مكتملًا، وفي حال
+            الموافقة يتم رد المبلغ عبر وسيلة الدفع الأصلية متى أمكن ذلك.
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            ولتقديم طلب الاسترداد، يجب التواصل عبر القنوات الرسمية المعتمدة لدى المنصة مع تزويدنا ببيانات الحساب ورقم
+            الطلب أو مرجع عملية الدفع وسبب الطلب.
+          </p>
+          <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            وتخضع هذه السياسة للأنظمة واللوائح المعمول بها في المملكة العربية السعودية، وفي حال وجود أي تعارض، يُعمل
+            بالنص النظامي الواجب التطبيق.
+          </p>
+        </article>
+
         <article>
           <h2 className="text-lg font-semibold text-brand-navy dark:text-slate-100">التواصل</h2>
           <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">

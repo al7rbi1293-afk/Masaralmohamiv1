@@ -34,6 +34,7 @@ export const metadata: Metadata = {
     description:
       'نظام سحابي عربي يلمّ شغل المكتب في مكان واحد: عملاء، قضايا، مستندات، مهام، وفواتير.',
     url: homeCanonicalUrl,
+    images: ['/masar-logo.png'],
   },
 };
 

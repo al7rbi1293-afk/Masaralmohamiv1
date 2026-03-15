@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     title: 'سياسة الخصوصية | مسار المحامي',
     description: 'تفاصيل سياسة الخصوصية لمستخدمي مسار المحامي.',
     url: '/privacy',
+    images: ['/masar-logo.png'],
   },
 };
 

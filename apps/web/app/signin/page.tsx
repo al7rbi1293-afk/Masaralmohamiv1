@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     title: 'تسجيل الدخول | مسار المحامي',
     description: 'تسجيل الدخول إلى مساحة /app في مسار المحامي.',
     url: '/signin',
+    images: ['/masar-logo.png'],
   },
 };
 

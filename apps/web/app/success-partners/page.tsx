@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     description:
       'برنامج شركاء النجاح: تسويق بالعمولة بنسبة واضحة مع لوحة متابعة إدارية وتتبّع احترافي للإحالات.',
     url: '/success-partners',
+    images: ['/masar-logo.png'],
   },
 };
 

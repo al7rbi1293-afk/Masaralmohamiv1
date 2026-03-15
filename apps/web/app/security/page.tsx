@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     title: 'الأمان والخصوصية في مسار المحامي',
     description: 'تفاصيل الأمان والخصوصية لعملاء مسار المحامي.',
     url: '/security',
+    images: ['/masar-logo.png'],
   },
 };
 

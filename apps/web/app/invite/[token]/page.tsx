@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     title: 'قبول الدعوة | مسار المحامي',
     description: 'قبول دعوة الانضمام إلى فريق مسار المحامي.',
     url: '/invite',
+    images: ['/masar-logo.png'],
   },
 };
 

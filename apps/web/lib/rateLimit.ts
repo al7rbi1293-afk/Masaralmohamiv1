@@ -34,13 +34,46 @@ const redis = (() => {
   }
 })();
 
+const inMemoryRateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimitInMemory(config: RateLimitConfig, now: number): RateLimitResult {
+  const { key, limit, windowMs } = config;
+  const current = inMemoryRateLimitStore.get(key);
+
+  if (!current || current.resetAt <= now) {
+    const resetAt = now + windowMs;
+    inMemoryRateLimitStore.set(key, { count: 1, resetAt });
+    return { allowed: true, limit, remaining: Math.max(0, limit - 1), resetAt };
+  }
+
+  const nextCount = current.count + 1;
+  const next = { count: nextCount, resetAt: current.resetAt };
+  inMemoryRateLimitStore.set(key, next);
+
+  // Opportunistic cleanup to avoid unbounded map growth.
+  if (Math.random() < 0.01) {
+    for (const [entryKey, entry] of inMemoryRateLimitStore.entries()) {
+      if (entry.resetAt <= now) {
+        inMemoryRateLimitStore.delete(entryKey);
+      }
+    }
+  }
+
+  return {
+    allowed: nextCount <= limit,
+    limit,
+    remaining: Math.max(0, limit - nextCount),
+    resetAt: next.resetAt,
+  };
+}
+
 export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
   const { key, limit, windowMs } = config;
   const now = Date.now();
   const resetAt = now + windowMs;
 
   if (!redis) {
-    return { allowed: true, limit, remaining: limit - 1, resetAt };
+    return checkRateLimitInMemory(config, now);
   }
 
   try {

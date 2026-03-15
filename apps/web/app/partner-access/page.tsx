@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     title: 'إعداد حساب الشريك | مسار المحامي',
     description: 'إعداد الوصول إلى بوابة الشريك في مسار المحامي.',
     url: '/partner-access',
+    images: ['/masar-logo.png'],
   },
 };
 

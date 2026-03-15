@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     title: 'تواصل معنا | مسار المحامي',
     description: 'قنوات التواصل الرسمية لمنصة مسار المحامي.',
     url: '/contact',
+    images: ['/masar-logo.png'],
   },
 };
 

@@ -19,6 +19,7 @@ export const metadata: Metadata = {
     title: 'إنشاء حساب | مسار المحامي',
     description: 'إنشاء حساب وتجربة منصة مسار المحامي.',
     url: '/signup',
+    images: ['/masar-logo.png'],
   },
 };
 

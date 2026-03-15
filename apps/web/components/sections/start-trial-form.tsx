@@ -9,6 +9,7 @@ import {
   PHONE_COUNTRIES,
   type SupportedPhoneCountryCode,
 } from '@/lib/phone';
+import { trackEvent } from '@/lib/track';
 
 export function StartTrialForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export function StartTrialForm() {
     event.preventDefault();
     setErrorMessage(null);
     setIsSubmitting(true);
+    trackEvent('signup_started', { source: 'landing' });
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -31,6 +33,7 @@ export function StartTrialForm() {
       });
 
       if (response.redirected) {
+        trackEvent('signup_completed', { source: 'landing' });
         window.location.assign(response.url);
         return;
       }
@@ -40,6 +43,7 @@ export function StartTrialForm() {
         | null;
 
       if (payload?.redirectTo) {
+        trackEvent('signup_completed', { source: 'landing' });
         window.location.assign(payload.redirectTo);
         return;
       }

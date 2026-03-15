@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { trackEvent } from '@/lib/track';
 
 type FormState = {
   fullName: string;
@@ -76,6 +77,7 @@ export function ContactForm({ defaultMessage = '' }: ContactFormProps) {
         return;
       }
 
+      trackEvent('lead_submit', { source: 'contact_form' });
       setStatus('success');
       setForm({
         ...initialState,

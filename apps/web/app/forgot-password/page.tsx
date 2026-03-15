@@ -18,6 +18,7 @@ export const metadata: Metadata = {
     title: 'نسيت كلمة المرور | مسار المحامي',
     description: 'استعادة كلمة المرور عبر رمز يُرسل إلى بريدك الإلكتروني.',
     url: '/forgot-password',
+    images: ['/masar-logo.png'],
   },
 };
 

@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     title: 'الشروط والأحكام | مسار المحامي',
     description: 'الشروط القانونية المنظمة لاستخدام منصة مسار المحامي.',
     url: '/terms',
+    images: ['/masar-logo.png'],
   },
 };
 

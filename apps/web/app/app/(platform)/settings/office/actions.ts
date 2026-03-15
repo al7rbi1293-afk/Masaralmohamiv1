@@ -11,6 +11,8 @@ export async function updateOfficeIdentityAction(formData: FormData) {
         return { success: false, error: 'تعذر الحفظ (غير مصرح).' };
     }
     const name = String(formData.get('name') || '').trim();
+    const taxNumber = String(formData.get('tax_number') || '').trim();
+    const address = String(formData.get('address') || '').trim();
 
     if (!name) {
         return { success: false, error: 'اسم المكتب مطلوب.' };
@@ -20,7 +22,11 @@ export async function updateOfficeIdentityAction(formData: FormData) {
         const orgId = await requireOrgIdForUser();
         const supabase = createSupabaseServerRlsClient();
 
-        const updateData: any = { name };
+        const updateData: any = { 
+            name, 
+            tax_number: taxNumber || null,
+            address: address || null
+        };
 
         const logo = formData.get('logo') as File | null;
         if (logo && logo.size > 0) {

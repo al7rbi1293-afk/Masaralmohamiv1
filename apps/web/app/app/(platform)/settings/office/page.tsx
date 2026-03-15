@@ -40,7 +40,7 @@ export default async function OfficeIdentityPage() {
     // Fetch the current organization info
     const { data: organization } = await supabase
         .from('organizations')
-        .select('name, logo_url')
+        .select('name, logo_url, tax_number, address')
         .eq('id', orgId)
         .maybeSingle();
 
@@ -58,8 +58,10 @@ export default async function OfficeIdentityPage() {
 
             <OfficeIdentityForm
                 currentName={organization?.name || ''}
-                currentLogoUrl={getSupabaseOfficeLogoUrl(rawLogoUrl, 160)}
-                currentLogoFallbackUrl={getSupabasePublicAssetUrl(rawLogoUrl)}
+                currentTaxNumber={organization?.tax_number || ''}
+                currentAddress={organization?.address || ''}
+                currentLogoUrl={organization?.logo_url || ''}
+                currentLogoFallbackUrl=""
                 csrfToken={csrfToken}
             />
         </Card>

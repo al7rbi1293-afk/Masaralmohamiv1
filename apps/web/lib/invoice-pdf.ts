@@ -21,12 +21,15 @@ export type InvoicePdfPayload = {
   status: string;
   issued_at: string;
   due_at: string | null;
-  clientName: string | null;
-  orgName: string | null;
-  logoUrl: string | null;
+  clientName?: string | null;
+  clientAddress?: string | null;
+  orgName?: string | null;
+  orgAddress?: string | null;
+  logoUrl?: string | null;
   paidAmount: number;
   remaining: number;
   taxNumber?: string | null;
+  qrCode?: string | null;
 };
 
 export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
@@ -73,6 +76,26 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
       height: 64,
       objectFit: 'contain' as any,
       borderRadius: 6,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 30,
+    },
+    infoBlock: {
+      width: '45%',
+    },
+    infoTitle: {
+      fontSize: 10,
+      color: '#64748B',
+      marginBottom: 4,
+      fontFamily: 'IBM Plex Sans Arabic', // Changed from Outfit to match existing font
+    },
+    infoText: {
+      fontSize: 11,
+      color: '#1E293B',
+      fontFamily: 'IBM Plex Sans Arabic', // Changed from Outfit to match existing font
+      lineHeight: 1.4,
     },
     title: {
       fontSize: 18,
@@ -127,6 +150,12 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
       fontSize: 10,
       color: '#64748B',
     },
+    qrCode: {
+      marginTop: 20,
+      width: 80,
+      height: 80,
+      alignSelf: 'flex-start',
+    },
   });
 
   const items = normalizeItems(payload.items);
@@ -155,6 +184,33 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
           ? React.createElement(Image, { style: styles.logo, src: payload.logoUrl })
           : null,
       ),
+
+      React.createElement(
+        View,
+        { style: styles.infoRow },
+        React.createElement(
+          View,
+          { style: styles.infoBlock },
+          React.createElement(Text, { style: styles.infoTitle }, 'من:'),
+          React.createElement(Text, { style: styles.infoText }, payload.orgName || 'إدارة المكتب'),
+          payload.orgAddress
+            ? React.createElement(Text, { style: styles.infoText }, payload.orgAddress)
+            : null,
+          payload.taxNumber
+            ? React.createElement(Text, { style: styles.infoText }, `الرقم الضريبي: ${payload.taxNumber}`)
+            : null,
+        ),
+        React.createElement(
+          View,
+          { style: styles.infoBlock },
+          React.createElement(Text, { style: styles.infoTitle }, 'إلى:'),
+          React.createElement(Text, { style: styles.infoText }, payload.clientName || 'العميل'),
+          payload.clientAddress
+            ? React.createElement(Text, { style: styles.infoText }, payload.clientAddress)
+            : null,
+        ),
+      ),
+
       React.createElement(
         View,
         { style: styles.section },
@@ -278,6 +334,15 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
           ),
         ),
       ),
+      payload.qrCode
+        ? React.createElement(
+          View,
+          { style: styles.qrCode },
+          React.createElement(Image, {
+            src: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(payload.qrCode)}`,
+          }),
+        )
+        : null,
       React.createElement(
         Text,
         { style: styles.note },

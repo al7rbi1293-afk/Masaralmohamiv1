@@ -16,6 +16,7 @@ import {
   listPayments,
   type InvoiceStatus,
 } from '@/lib/billing';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { archiveInvoiceAction, deleteInvoiceAction, restoreInvoiceAction, updateInvoiceAction } from '../../actions';
 
 type InvoiceDetailsPageProps = {
@@ -58,16 +59,21 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
 
-  const [clientsResult, mattersResult, payments, paidAmount] = await Promise.all([
+  const [clientsResult, mattersResult, payments, paidAmount, orgResult] = await Promise.all([
     listClients({ status: 'active', page: 1, limit: 100 }),
     listMatters({ status: 'all', page: 1, limit: 100 }),
     listPayments(invoice.id),
     computeInvoicePaidAmount(invoice.id),
+    createSupabaseServerRlsClient().from('organizations').select('name, address').eq('id', invoice.org_id).maybeSingle().then((res) => res),
   ]);
+
+  const org = (orgResult as any)?.data;
 
   const matters = mattersResult.data.filter((matter) => matter.status !== 'archived');
   const items = Array.isArray(invoice.items) ? invoice.items : [];
-  const clientEmail = clientsResult.data.find((client) => client.id === invoice.client_id)?.email ?? '';
+  const client = clientsResult.data.find((c) => c.id === invoice.client_id);
+  const clientEmail = client?.email ?? '';
+  const clientAddress = (client as any)?.address ?? '';
 
   const total = Number(invoice.total);
   const remaining = Math.max(0, (Number.isFinite(total) ? total : 0) - paidAmount);
@@ -187,11 +193,49 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
               الاستحقاق: {new Date(invoice.due_at).toLocaleDateString('ar-SA')}
             </p>
           ) : null}
-          {invoice.tax_number ? (
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              الرقم الضريبي: <span dir="ltr">{invoice.tax_number}</span>
-            </p>
-          ) : null}
+            {invoice.tax_number ? (
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                الرقم الضريبي للمكتب: <span dir="ltr">{invoice.tax_number}</span>
+              </p>
+            ) : null}
+
+            {org?.address ? (
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 text-pretty">
+                عنوان المكتب: {org.address}
+              </p>
+            ) : null}
+
+            {clientAddress ? (
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 text-pretty border-t border-brand-border/30 pt-2 dark:border-slate-700/50">
+                عنوان العميل: {clientAddress}
+              </p>
+            ) : null}
+
+            {invoice.tax_enabled && invoice.tax_number && (
+              <div className="mt-4 flex justify-center lg:justify-start">
+                <div className="rounded-lg border border-brand-border bg-white p-2 dark:border-slate-700">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
+                      (() => {
+                        const { generateZatcaQrCode } = require('@/lib/zatca');
+                        return generateZatcaQrCode({
+                          sellerName: org?.name ?? 'إدارة المكتب',
+                          vatNumber: invoice.tax_number!,
+                          timestamp: invoice.issued_at,
+                          totalAmount: invoice.total,
+                          vatAmount: invoice.tax,
+                        });
+                      })()
+                    )}`}
+                    alt="VAT QR Code"
+                    width={100}
+                    height={100}
+                    className="block"
+                  />
+                  <p className="mt-1 text-center text-[10px] text-slate-400">Barcode ZATCA</p>
+                </div>
+              </div>
+            )}
         </div>
 
         <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700 min-w-0 lg:col-span-2">

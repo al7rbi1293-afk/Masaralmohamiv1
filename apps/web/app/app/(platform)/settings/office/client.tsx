@@ -10,6 +10,8 @@ type OfficeIdentityFormProps = {
     currentName: string;
     currentLogoUrl: string;
     currentLogoFallbackUrl: string;
+    currentTaxNumber: string;
+    currentAddress: string;
     csrfToken: string;
 };
 
@@ -17,6 +19,8 @@ export function OfficeIdentityForm({
     currentName,
     currentLogoUrl,
     currentLogoFallbackUrl,
+    currentTaxNumber,
+    currentAddress,
     csrfToken,
 }: OfficeIdentityFormProps) {
     const [previewUrl, setPreviewUrl] = useState(currentLogoUrl);
@@ -80,6 +84,41 @@ export function OfficeIdentityForm({
                     </div>
                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                         سيظهر هذا الاسم في أعلى المنصة وفي الفواتير والمستندات الرسمية.
+                    </p>
+                </div>
+
+                <div>
+                    <label htmlFor="tax_number" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        الرقم الضريبي (VAT Number) <span className="text-xs font-normal text-slate-500">(اختياري)</span>
+                    </label>
+                    <div className="mt-1">
+                        <input
+                            type="text"
+                            name="tax_number"
+                            id="tax_number"
+                            defaultValue={currentTaxNumber}
+                            placeholder="مثال: 300000000000003"
+                            className="block w-full rounded-lg border-brand-border bg-white px-3 py-2.5 text-brand-navy shadow-sm focus:border-brand-emerald focus:ring-brand-emerald dark:border-slate-700 dark:bg-slate-950 dark:text-white sm:text-sm"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label htmlFor="address" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        عنوان المكتب أو الشركة <span className="text-xs font-normal text-slate-500">(اختياري)</span>
+                    </label>
+                    <div className="mt-1">
+                        <textarea
+                            name="address"
+                            id="address"
+                            defaultValue={currentAddress}
+                            rows={3}
+                            placeholder="مثال: الرياض، حي الملقا، طريق الملك فهد"
+                            className="block w-full rounded-lg border-brand-border bg-white px-3 py-2.5 text-brand-navy shadow-sm focus:border-brand-emerald focus:ring-brand-emerald dark:border-slate-700 dark:bg-slate-950 dark:text-white sm:text-sm"
+                        />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        سيظهر هذا العنوان في ترويسة الفاتورة.
                     </p>
                 </div>
 

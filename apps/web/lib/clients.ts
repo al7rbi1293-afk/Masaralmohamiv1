@@ -23,6 +23,7 @@ export type Client = {
   agency_storage_path: string | null;
   agency_file_size: number | null;
   agency_file_mime_type: string | null;
+  address: string | null;
   status: ClientStatus;
   created_at: string;
   updated_at: string;
@@ -70,6 +71,7 @@ const CLIENT_SELECT_COLUMNS = [
   'agency_storage_path',
   'agency_file_size',
   'agency_file_mime_type',
+  'address',
   'status',
   'created_at',
   'updated_at',
@@ -152,6 +154,7 @@ export type CreateClientPayload = {
   agency_storage_path?: string | null;
   agency_file_size?: number | null;
   agency_file_mime_type?: string | null;
+  address?: string | null;
 };
 
 export async function createClient(payload: CreateClientPayload): Promise<Client> {
@@ -179,6 +182,7 @@ export async function createClient(payload: CreateClientPayload): Promise<Client
       agency_storage_path: payload.agency_storage_path ?? null,
       agency_file_size: payload.agency_file_size ?? null,
       agency_file_mime_type: payload.agency_file_mime_type ?? null,
+      address: payload.address ?? null,
       status: 'active',
     })
     .select(CLIENT_SELECT_COLUMNS)
@@ -218,6 +222,7 @@ export async function updateClient(id: string, payload: UpdateClientPayload): Pr
   if (payload.agency_storage_path !== undefined) update.agency_storage_path = payload.agency_storage_path;
   if (payload.agency_file_size !== undefined) update.agency_file_size = payload.agency_file_size;
   if (payload.agency_file_mime_type !== undefined) update.agency_file_mime_type = payload.agency_file_mime_type;
+  if (payload.address !== undefined) update.address = payload.address;
   if (payload.status) update.status = payload.status;
 
   const { data, error } = await supabase

@@ -197,6 +197,17 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
         ) : null}
 
         <label className="block space-y-1 text-sm sm:col-span-2">
+          <span className="font-medium text-slate-700 dark:text-slate-200">العنوان (اختياري)</span>
+          <textarea
+            name="address"
+            rows={3}
+            defaultValue={client.address ?? ''}
+            placeholder="مثال: الرياض، حي الصحافة، طريق الملك عبدالعزيز"
+            className="w-full rounded-lg border border-brand-border px-3 py-2 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+          />
+        </label>
+
+        <label className="block space-y-1 text-sm sm:col-span-2">
           <span className="font-medium text-slate-700 dark:text-slate-200">ملاحظات (اختياري)</span>
           <textarea
             name="notes"

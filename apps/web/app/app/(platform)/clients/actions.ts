@@ -39,6 +39,7 @@ const clientSchema = z.object({
   phone: z.string().trim().max(60, 'رقم الجوال طويل جدًا.').optional().or(z.literal('')),
   notes: z.string().trim().max(4000, 'الملاحظات طويلة جدًا.').optional().or(z.literal('')),
   agency_number: z.string().trim().max(200, 'رقم الوكالة طويل جدًا.').optional().or(z.literal('')),
+  address: z.string().trim().max(1000, 'العنوان طويل جدًا.').optional().or(z.literal('')),
 });
 
 export async function createClientAction(formData: FormData) {
@@ -349,6 +350,7 @@ function toPayload(formData: FormData) {
     phone: String(formData.get('phone') ?? ''),
     notes: String(formData.get('notes') ?? ''),
     agency_number: String(formData.get('agency_number') ?? ''),
+    address: String(formData.get('address') ?? ''),
   };
 }
 
@@ -362,6 +364,7 @@ function normalize(data: z.infer<typeof clientSchema>) {
     phone: emptyToNull(data.phone),
     notes: emptyToNull(data.notes),
     agency_number: emptyToNull(data.agency_number),
+    address: emptyToNull(data.address),
   };
 }
 
@@ -381,6 +384,7 @@ function diffClientFields(before: Awaited<ReturnType<typeof getClientById>>, aft
     'phone',
     'notes',
     'agency_number',
+    'address',
     'agency_file_name',
     'agency_storage_path',
     'agency_file_size',

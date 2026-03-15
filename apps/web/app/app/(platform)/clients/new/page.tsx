@@ -41,7 +41,7 @@ export default function ClientNewPage({ searchParams }: ClientNewPageProps) {
         </p>
       ) : null}
 
-      <form action={createClientAction} className="mt-6 grid gap-4 sm:grid-cols-2">
+      <form action={createClientAction} encType="multipart/form-data" className="mt-6 grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1 text-sm">
           <span className="font-medium text-slate-700 dark:text-slate-200">النوع</span>
           <select
@@ -97,6 +97,27 @@ export default function ClientNewPage({ searchParams }: ClientNewPageProps) {
             name="phone"
             className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
           />
+        </label>
+
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">رقم الوكالة (اختياري)</span>
+          <input
+            name="agency_number"
+            className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+          />
+        </label>
+
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">مرفق الوكالة (اختياري)</span>
+          <input
+            name="agency_file"
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+            className="block w-full rounded-lg border border-brand-border bg-white px-3 py-2 text-sm text-slate-700 file:me-3 file:rounded-md file:border-0 file:bg-brand-background file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-navy hover:file:bg-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:file:bg-slate-800 dark:file:text-slate-100"
+          />
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            يمكنك رفع نسخة PDF أو صورة أو ملف Word حتى 20 ميجابايت.
+          </span>
         </label>
 
         <label className="block space-y-1 text-sm sm:col-span-2">

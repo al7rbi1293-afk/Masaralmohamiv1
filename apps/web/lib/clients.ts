@@ -18,6 +18,11 @@ export type Client = {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  agency_number: string | null;
+  agency_file_name: string | null;
+  agency_storage_path: string | null;
+  agency_file_size: number | null;
+  agency_file_mime_type: string | null;
   status: ClientStatus;
   created_at: string;
   updated_at: string;
@@ -45,6 +50,33 @@ type StoragePathRow = {
   storage_path: string | null;
 };
 
+type ClientAgencyPathRow = {
+  agency_storage_path: string | null;
+};
+
+const CLIENT_SELECT_COLUMNS = [
+  'id',
+  'org_id',
+  'type',
+  'name',
+  'identity_no',
+  'commercial_no',
+  'email',
+  'phone',
+  'notes',
+  'agency_number',
+  'agency_file_name',
+  'agency_storage_path',
+  'agency_file_size',
+  'agency_file_mime_type',
+  'status',
+  'created_at',
+  'updated_at',
+].join(', ');
+
+const CLIENT_AGENCY_BUCKET = 'documents';
+const MAX_CLIENT_AGENCY_FILE_SIZE = 20 * 1024 * 1024;
+
 export async function listClients(params: ListClientsParams = {}): Promise<PaginatedResult<Client>> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
@@ -59,10 +91,7 @@ export async function listClients(params: ListClientsParams = {}): Promise<Pagin
 
   let query = supabase
     .from('clients')
-    .select(
-      'id, org_id, type, name, identity_no, commercial_no, email, phone, notes, status, created_at, updated_at',
-      { count: 'exact' },
-    )
+    .select(CLIENT_SELECT_COLUMNS, { count: 'exact' })
     .eq('org_id', orgId)
     .order('updated_at', { ascending: false })
     .range(from, to);
@@ -83,7 +112,7 @@ export async function listClients(params: ListClientsParams = {}): Promise<Pagin
   }
 
   return {
-    data: (data as Client[] | null) ?? [],
+    data: (data as unknown as Client[] | null) ?? [],
     page,
     limit,
     total: count ?? 0,
@@ -96,9 +125,7 @@ export async function getClientById(id: string): Promise<Client | null> {
 
   const { data, error } = await supabase
     .from('clients')
-    .select(
-      'id, org_id, type, name, identity_no, commercial_no, email, phone, notes, status, created_at, updated_at',
-    )
+    .select(CLIENT_SELECT_COLUMNS)
     .eq('org_id', orgId)
     .eq('id', id)
     .maybeSingle();
@@ -107,10 +134,11 @@ export async function getClientById(id: string): Promise<Client | null> {
     throw error;
   }
 
-  return (data as Client | null) ?? null;
+  return (data as unknown as Client | null) ?? null;
 }
 
 export type CreateClientPayload = {
+  id?: string;
   type: ClientType;
   name: string;
   identity_no?: string | null;
@@ -118,6 +146,11 @@ export type CreateClientPayload = {
   email?: string | null;
   phone?: string | null;
   notes?: string | null;
+  agency_number?: string | null;
+  agency_file_name?: string | null;
+  agency_storage_path?: string | null;
+  agency_file_size?: number | null;
+  agency_file_mime_type?: string | null;
 };
 
 export async function createClient(payload: CreateClientPayload): Promise<Client> {
@@ -127,6 +160,7 @@ export async function createClient(payload: CreateClientPayload): Promise<Client
   const { data, error } = await supabase
     .from('clients')
     .insert({
+      id: payload.id,
       org_id: orgId,
       type: payload.type,
       name: payload.name,
@@ -135,18 +169,21 @@ export async function createClient(payload: CreateClientPayload): Promise<Client
       email: payload.email ?? null,
       phone: payload.phone ?? null,
       notes: payload.notes ?? null,
+      agency_number: payload.agency_number ?? null,
+      agency_file_name: payload.agency_file_name ?? null,
+      agency_storage_path: payload.agency_storage_path ?? null,
+      agency_file_size: payload.agency_file_size ?? null,
+      agency_file_mime_type: payload.agency_file_mime_type ?? null,
       status: 'active',
     })
-    .select(
-      'id, org_id, type, name, identity_no, commercial_no, email, phone, notes, status, created_at, updated_at',
-    )
+    .select(CLIENT_SELECT_COLUMNS)
     .single();
 
   if (error || !data) {
     throw error ?? new Error('تعذر إنشاء العميل.');
   }
 
-  return data as Client;
+  return data as unknown as Client;
 }
 
 export type UpdateClientPayload = Partial<CreateClientPayload> & {
@@ -165,6 +202,11 @@ export async function updateClient(id: string, payload: UpdateClientPayload): Pr
   if (payload.email !== undefined) update.email = payload.email;
   if (payload.phone !== undefined) update.phone = payload.phone;
   if (payload.notes !== undefined) update.notes = payload.notes;
+  if (payload.agency_number !== undefined) update.agency_number = payload.agency_number;
+  if (payload.agency_file_name !== undefined) update.agency_file_name = payload.agency_file_name;
+  if (payload.agency_storage_path !== undefined) update.agency_storage_path = payload.agency_storage_path;
+  if (payload.agency_file_size !== undefined) update.agency_file_size = payload.agency_file_size;
+  if (payload.agency_file_mime_type !== undefined) update.agency_file_mime_type = payload.agency_file_mime_type;
   if (payload.status) update.status = payload.status;
 
   const { data, error } = await supabase
@@ -172,9 +214,7 @@ export async function updateClient(id: string, payload: UpdateClientPayload): Pr
     .update(update)
     .eq('org_id', orgId)
     .eq('id', id)
-    .select(
-      'id, org_id, type, name, identity_no, commercial_no, email, phone, notes, status, created_at, updated_at',
-    )
+    .select(CLIENT_SELECT_COLUMNS)
     .maybeSingle();
 
   if (error) {
@@ -185,7 +225,7 @@ export async function updateClient(id: string, payload: UpdateClientPayload): Pr
     throw new Error('not_found');
   }
 
-  return data as Client;
+  return data as unknown as Client;
 }
 
 export async function setClientStatus(id: string, status: ClientStatus): Promise<void> {
@@ -193,6 +233,9 @@ export async function setClientStatus(id: string, status: ClientStatus): Promise
 }
 
 export async function deleteClient(id: string): Promise<void> {
+  const orgId = await requireOrgIdForUser();
+  const agencyStoragePath = await getClientAgencyStoragePath(orgId, id);
+
   try {
     await runCascadeDelete('delete_client_cascade', { p_client_id: id });
   } catch (error) {
@@ -207,6 +250,91 @@ export async function deleteClient(id: string): Promise<void> {
 
     await deleteClientDirect(id);
   }
+
+  if (agencyStoragePath) {
+    await removeDocumentStorageObjects([agencyStoragePath]).catch((error) => {
+      logWarn('client_agency_storage_cleanup_failed', {
+        clientId: id,
+        message: error instanceof Error ? error.message : String(error ?? ''),
+      });
+    });
+  }
+}
+
+export function validateClientAgencyFile(file: File): string | null {
+  if (file.size <= 0) {
+    return 'ملف الوكالة غير صالح.';
+  }
+
+  if (file.size > MAX_CLIENT_AGENCY_FILE_SIZE) {
+    return 'يجب ألا يتجاوز حجم مرفق الوكالة 20 ميجابايت.';
+  }
+
+  if (!file.name.trim()) {
+    return 'اسم ملف الوكالة غير صالح.';
+  }
+
+  return null;
+}
+
+export type ClientAgencyUploadResult = {
+  file_name: string;
+  storage_path: string;
+  file_size: number;
+  mime_type: string | null;
+};
+
+export async function uploadClientAgencyAttachment(
+  clientId: string,
+  file: File,
+): Promise<ClientAgencyUploadResult> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerClient();
+  const safeFileName = toSafeFileName(file.name);
+  const storagePath = buildClientAgencyStoragePath(orgId, clientId, safeFileName);
+
+  const { error } = await supabase.storage.from(CLIENT_AGENCY_BUCKET).upload(storagePath, file, {
+    upsert: true,
+    contentType: file.type || undefined,
+  });
+
+  if (error) {
+    throw new Error('تعذر رفع مرفق الوكالة.');
+  }
+
+  return {
+    file_name: file.name.trim(),
+    storage_path: storagePath,
+    file_size: file.size,
+    mime_type: file.type ? file.type.trim() : null,
+  };
+}
+
+export async function removeClientAgencyAttachment(storagePath: string | null | undefined): Promise<void> {
+  const normalized = String(storagePath ?? '').trim();
+  if (!normalized) {
+    return;
+  }
+
+  await removeDocumentStorageObjects([normalized]);
+}
+
+export async function getClientAgencySignedDownloadUrl(clientId: string): Promise<string> {
+  const orgId = await requireOrgIdForUser();
+  const storagePath = await getClientAgencyStoragePath(orgId, clientId);
+
+  if (!storagePath) {
+    throw new Error('not_found');
+  }
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.storage.from(CLIENT_AGENCY_BUCKET).createSignedUrl(storagePath, 300);
+
+  if (error || !data?.signedUrl) {
+    throw error ?? new Error('تعذر تجهيز رابط التنزيل.');
+  }
+
+  return data.signedUrl;
 }
 
 function cleanQuery(value?: string) {
@@ -358,6 +486,23 @@ async function listDocumentStoragePaths(orgId: string, documentIds: string[]): P
   return Array.from(paths);
 }
 
+async function getClientAgencyStoragePath(orgId: string, clientId: string): Promise<string | null> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('clients')
+    .select('agency_storage_path')
+    .eq('org_id', orgId)
+    .eq('id', clientId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const path = String((data as ClientAgencyPathRow | null)?.agency_storage_path ?? '').trim();
+  return path || null;
+}
+
 async function deleteByIds(
   table: 'tasks' | 'invoices' | 'quotes' | 'documents',
   orgId: string,
@@ -405,4 +550,32 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 function uniqueIds(rows: IdRow[]): string[] {
   return Array.from(new Set(rows.map((row) => String(row.id))));
+}
+
+function buildClientAgencyStoragePath(orgId: string, clientId: string, fileName: string) {
+  return `org/${orgId}/client/${clientId}/agency/${Date.now()}-${fileName}`;
+}
+
+function toSafeFileName(value: string) {
+  const cleaned = value
+    .replaceAll('\\', '_')
+    .replaceAll('/', '_')
+    .replaceAll('\u0000', '')
+    .trim();
+
+  const parts = cleaned.split('.').filter(Boolean);
+  const ext = parts.length > 1 ? parts[parts.length - 1] : '';
+  const base = parts.length > 1 ? parts.slice(0, -1).join('.') : cleaned;
+
+  const safeBase = base
+    .replace(/[^A-Za-z0-9 _-]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80) || 'file';
+
+  const safeExt = ext
+    .replace(/[^A-Za-z0-9]/g, '')
+    .slice(0, 12);
+
+  return safeExt ? `${safeBase}.${safeExt}` : safeBase;
 }

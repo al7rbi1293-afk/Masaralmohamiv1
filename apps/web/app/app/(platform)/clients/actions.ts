@@ -4,7 +4,16 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
-import { createClient, getClientById, setClientStatus, updateClient, deleteClient } from '@/lib/clients';
+import {
+  createClient,
+  deleteClient,
+  getClientById,
+  removeClientAgencyAttachment,
+  setClientStatus,
+  updateClient,
+  uploadClientAgencyAttachment,
+  validateClientAgencyFile,
+} from '@/lib/clients';
 import { logAudit } from '@/lib/audit';
 import { logError, logInfo } from '@/lib/logger';
 import { toUserMessage, emptyToNull, isValidUuid } from '@/lib/shared-utils';
@@ -25,6 +34,7 @@ const clientSchema = z.object({
     }),
   phone: z.string().trim().max(60, 'رقم الجوال طويل جدًا.').optional().or(z.literal('')),
   notes: z.string().trim().max(4000, 'الملاحظات طويلة جدًا.').optional().or(z.literal('')),
+  agency_number: z.string().trim().max(200, 'رقم الوكالة طويل جدًا.').optional().or(z.literal('')),
 });
 
 export async function createClientAction(formData: FormData) {
@@ -33,8 +43,30 @@ export async function createClientAction(formData: FormData) {
     redirect(`/app/clients/new?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? 'تعذر الحفظ. حاول مرة أخرى.')}`);
   }
 
+  const agencyFile = getOptionalFile(formData, 'agency_file');
+  const agencyFileError = agencyFile ? validateClientAgencyFile(agencyFile) : null;
+  if (agencyFileError) {
+    redirect(`/app/clients/new?error=${encodeURIComponent(agencyFileError)}`);
+  }
+
+  const clientId = crypto.randomUUID();
+  let uploadedAgency: Awaited<ReturnType<typeof uploadClientAgencyAttachment>> | null = null;
+  let clientCreated = false;
+
   try {
-    const created = await createClient(normalize(parsed.data));
+    if (agencyFile) {
+      uploadedAgency = await uploadClientAgencyAttachment(clientId, agencyFile);
+    }
+
+    const created = await createClient({
+      id: clientId,
+      ...normalize(parsed.data),
+      agency_file_name: uploadedAgency?.file_name ?? null,
+      agency_storage_path: uploadedAgency?.storage_path ?? null,
+      agency_file_size: uploadedAgency?.file_size ?? null,
+      agency_file_mime_type: uploadedAgency?.mime_type ?? null,
+    });
+    clientCreated = true;
     await logAudit({
       action: 'client.created',
       entityType: 'client',
@@ -46,7 +78,13 @@ export async function createClientAction(formData: FormData) {
     redirect(`/app/clients/${created.id}?success=${encodeURIComponent('تم إنشاء العميل.')}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
-    const message = toUserMessage(error);
+    if (!clientCreated && uploadedAgency?.storage_path) {
+      await removeClientAgencyAttachment(uploadedAgency.storage_path).catch(() => undefined);
+    }
+    const message =
+      error instanceof Error && error.message.includes('تعذر رفع مرفق الوكالة.')
+        ? error.message
+        : toUserMessage(error);
     logError('client_create_failed', { message });
     redirect(`/app/clients/new?error=${encodeURIComponent(message)}`);
   }
@@ -58,9 +96,54 @@ export async function updateClientAction(id: string, formData: FormData) {
     redirect(`/app/clients/${id}?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? 'تعذر الحفظ. حاول مرة أخرى.')}`);
   }
 
+  const agencyFile = getOptionalFile(formData, 'agency_file');
+  const removeAgencyAttachment = formData.get('remove_agency_attachment') === 'on';
+  const agencyFileError = agencyFile ? validateClientAgencyFile(agencyFile) : null;
+  if (agencyFileError) {
+    redirect(`/app/clients/${id}?error=${encodeURIComponent(agencyFileError)}`);
+  }
+
+  let uploadedAgency: Awaited<ReturnType<typeof uploadClientAgencyAttachment>> | null = null;
+  let clientUpdated = false;
+
   try {
     const before = await getClientById(id).catch(() => null);
-    const updated = await updateClient(id, normalize(parsed.data));
+
+    if (agencyFile) {
+      uploadedAgency = await uploadClientAgencyAttachment(id, agencyFile);
+    }
+
+    const updated = await updateClient(id, {
+      ...normalize(parsed.data),
+      ...(uploadedAgency
+        ? {
+            agency_file_name: uploadedAgency.file_name,
+            agency_storage_path: uploadedAgency.storage_path,
+            agency_file_size: uploadedAgency.file_size,
+            agency_file_mime_type: uploadedAgency.mime_type,
+          }
+        : removeAgencyAttachment
+          ? {
+              agency_file_name: null,
+              agency_storage_path: null,
+              agency_file_size: null,
+              agency_file_mime_type: null,
+            }
+          : {}),
+    });
+    clientUpdated = true;
+
+    const previousAgencyStoragePath = before?.agency_storage_path ?? null;
+    const shouldRemovePreviousAgency =
+      previousAgencyStoragePath &&
+      (
+        (uploadedAgency && previousAgencyStoragePath !== uploadedAgency.storage_path) ||
+        (!uploadedAgency && removeAgencyAttachment)
+      );
+
+    if (shouldRemovePreviousAgency) {
+      await removeClientAgencyAttachment(previousAgencyStoragePath).catch(() => undefined);
+    }
 
     const changed = diffClientFields(before, updated);
     await logAudit({
@@ -76,7 +159,13 @@ export async function updateClientAction(id: string, formData: FormData) {
     redirect(`/app/clients/${id}?success=${encodeURIComponent('تم تحديث بيانات العميل.')}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
-    const message = toUserMessage(error);
+    if (!clientUpdated && uploadedAgency?.storage_path) {
+      await removeClientAgencyAttachment(uploadedAgency.storage_path).catch(() => undefined);
+    }
+    const message =
+      error instanceof Error && error.message.includes('تعذر رفع مرفق الوكالة.')
+        ? error.message
+        : toUserMessage(error);
     logError('client_update_failed', { clientId: id, message });
     redirect(`/app/clients/${id}?error=${encodeURIComponent(message)}`);
   }
@@ -161,6 +250,7 @@ function toPayload(formData: FormData) {
     email: String(formData.get('email') ?? ''),
     phone: String(formData.get('phone') ?? ''),
     notes: String(formData.get('notes') ?? ''),
+    agency_number: String(formData.get('agency_number') ?? ''),
   };
 }
 
@@ -173,6 +263,7 @@ function normalize(data: z.infer<typeof clientSchema>) {
     email: emptyToNull(data.email),
     phone: emptyToNull(data.phone),
     notes: emptyToNull(data.notes),
+    agency_number: emptyToNull(data.agency_number),
   };
 }
 
@@ -183,10 +274,33 @@ function withToast(path: string, key: 'success' | 'error', message: string) {
 
 function diffClientFields(before: Awaited<ReturnType<typeof getClientById>>, after: Awaited<ReturnType<typeof updateClient>>): string[] {
   if (!before || !after) return [];
-  const keys = ['type', 'name', 'identity_no', 'commercial_no', 'email', 'phone', 'notes', 'status'] as const;
+  const keys = [
+    'type',
+    'name',
+    'identity_no',
+    'commercial_no',
+    'email',
+    'phone',
+    'notes',
+    'agency_number',
+    'agency_file_name',
+    'agency_storage_path',
+    'agency_file_size',
+    'agency_file_mime_type',
+    'status',
+  ] as const;
   const changed: string[] = [];
   for (const key of keys) {
     if ((before as any)[key] !== (after as any)[key]) changed.push(key);
   }
   return changed;
+}
+
+function getOptionalFile(formData: FormData, key: string): File | null {
+  const value = formData.get(key);
+  if (!(value instanceof File) || value.size <= 0) {
+    return null;
+  }
+
+  return value;
 }

@@ -17,7 +17,7 @@ export async function GET(request: Request, context: { params: { id: string } })
     const { data: invoice, error } = await supabase
       .from('invoices')
       .select(
-        'id, org_id, number, items, subtotal, tax, total, currency, status, issued_at, due_at, client:clients(id, name)',
+        'id, org_id, number, items, subtotal, tax, total, currency, status, tax_number, issued_at, due_at, client:clients(id, name)',
       )
       .eq('org_id', orgId)
       .eq('id', invoiceId)
@@ -62,6 +62,7 @@ export async function GET(request: Request, context: { params: { id: string } })
         logoUrl: org?.logo_url ? String(org.logo_url) : null,
         paidAmount,
         remaining,
+        taxNumber: (invoice as any).tax_number ? String((invoice as any).tax_number) : null,
       });
     } catch (error) {
       if (error instanceof TimeoutError || error instanceof CircuitOpenError) {

@@ -12,19 +12,30 @@ export type BillingItemInput = {
 type BillingItemsEditorProps = {
   name: string;
   taxName?: string;
+  taxEnabledName?: string;
+  taxNumberName?: string;
   defaultItems?: BillingItemInput[];
+  defaultTaxEnabled?: boolean;
+  defaultTaxNumber?: string;
   disabled?: boolean;
 };
 
 export function BillingItemsEditor({
   name,
   taxName,
+  taxEnabledName,
+  taxNumberName,
   defaultItems = [{ desc: '', qty: 1, unit_price: 0 }],
+  defaultTaxEnabled = false,
+  defaultTaxNumber = '',
   disabled = false,
 }: BillingItemsEditorProps) {
   const [items, setItems] = useState<BillingItemInput[]>(
     defaultItems.length ? defaultItems : [{ desc: '', qty: 1, unit_price: 0 }],
   );
+
+  const [taxEnabled, setTaxEnabled] = useState(defaultTaxEnabled);
+  const [taxNumber, setTaxNumber] = useState(defaultTaxNumber);
 
   const jsonValue = useMemo(() => {
     const normalized = items.map((item) => ({
@@ -41,9 +52,9 @@ export function BillingItemsEditor({
   }, [items]);
 
   const tax = useMemo(() => {
-    if (!taxName) return 0;
+    if (!taxName || !taxEnabled) return 0;
     return Math.round(((subtotal * 0.15) + Number.EPSILON) * 100) / 100;
-  }, [taxName, subtotal]);
+  }, [taxName, taxEnabled, subtotal]);
 
   const total = useMemo(() => subtotal + tax, [subtotal, tax]);
 
@@ -70,6 +81,8 @@ export function BillingItemsEditor({
     <div className="space-y-3">
       <input type="hidden" name={name} value={jsonValue} />
       {taxName && <input type="hidden" name={taxName} value={tax} />}
+      {taxEnabledName && <input type="hidden" name={taxEnabledName} value={taxEnabled ? '1' : '0'} />}
+      {taxNumberName && <input type="hidden" name={taxNumberName} value={taxEnabled ? taxNumber : ''} />}
 
       <div className="overflow-x-auto rounded-lg border border-brand-border dark:border-slate-700">
         <table className="w-full text-sm">
@@ -147,14 +160,44 @@ export function BillingItemsEditor({
             المجموع: <span className="font-semibold">{formatMoney(subtotal)} SAR</span>
           </p>
           {taxName && (
-            <>
-              <p>
-                ضريبة القيمة المضافة (15%): <span className="font-semibold">{formatMoney(tax)} SAR</span>
-              </p>
-              <p className="text-base font-bold text-brand-emerald">
-                الإجمالي الشامل: <span>{formatMoney(total)} SAR</span>
-              </p>
-            </>
+            <div className="space-y-2">
+              <label className="flex items-center justify-end gap-2 cursor-pointer">
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  تطبيق ضريبة القيمة المضافة (15%)
+                </span>
+                <input
+                  type="checkbox"
+                  checked={taxEnabled}
+                  disabled={disabled}
+                  onChange={(e) => setTaxEnabled(e.target.checked)}
+                  className="h-4 w-4 rounded border-brand-border text-brand-emerald focus:ring-brand-emerald"
+                />
+              </label>
+              {taxEnabled && (
+                <>
+                  <p>
+                    ضريبة القيمة المضافة (15%): <span className="font-semibold">{formatMoney(tax)} SAR</span>
+                  </p>
+                  <label className="flex items-center justify-end gap-2">
+                    <input
+                      type="text"
+                      value={taxNumber}
+                      disabled={disabled}
+                      onChange={(e) => setTaxNumber(e.target.value)}
+                      placeholder="الرقم الضريبي (اختياري)"
+                      dir="ltr"
+                      className="h-9 w-48 rounded-lg border border-brand-border px-3 text-sm text-left outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                    />
+                    <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">الرقم الضريبي</span>
+                  </label>
+                </>
+              )}
+              {taxEnabled && (
+                <p className="text-base font-bold text-brand-emerald">
+                  الإجمالي الشامل: <span>{formatMoney(total)} SAR</span>
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -166,4 +209,3 @@ function formatMoney(value: number) {
   const safe = Number.isFinite(value) ? value : 0;
   return safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-

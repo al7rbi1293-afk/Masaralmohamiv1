@@ -26,6 +26,7 @@ export type InvoicePdfPayload = {
   logoUrl: string | null;
   paidAmount: number;
   remaining: number;
+  taxNumber?: string | null;
 };
 
 export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
@@ -175,6 +176,14 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
             { style: styles.row },
             React.createElement(Text, { style: styles.label }, 'تاريخ الاستحقاق'),
             React.createElement(Text, { style: styles.value }, formatDate(payload.due_at)),
+          )
+          : null,
+        payload.taxNumber
+          ? React.createElement(
+            View,
+            { style: styles.row },
+            React.createElement(Text, { style: styles.label }, 'الرقم الضريبي'),
+            React.createElement(Text, { style: styles.value }, payload.taxNumber),
           )
           : null,
       ),

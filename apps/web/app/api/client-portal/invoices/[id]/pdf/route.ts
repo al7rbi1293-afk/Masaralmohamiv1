@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, context: { params: { id: string 
   try {
     const { data: invoice, error: invoiceError } = await db
       .from('invoices')
-      .select('id, number, items, subtotal, tax, total, currency, status, issued_at, due_at')
+      .select('id, number, items, subtotal, tax, total, currency, status, tax_number, issued_at, due_at')
       .eq('org_id', session.orgId)
       .eq('client_id', session.clientId)
       .eq('id', invoiceId)
@@ -100,6 +100,7 @@ export async function GET(request: NextRequest, context: { params: { id: string 
         logoUrl: org?.logo_url ? String(org.logo_url) : null,
         paidAmount,
         remaining,
+        taxNumber: (invoiceRow as any).tax_number ? String((invoiceRow as any).tax_number) : null,
       });
     } catch (error) {
       if (error instanceof TimeoutError || error instanceof CircuitOpenError) {

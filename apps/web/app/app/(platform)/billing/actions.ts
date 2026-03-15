@@ -102,6 +102,8 @@ const invoiceFormSchema = z.object({
   matter_id: z.string().uuid().optional().or(z.literal('')),
   due_at: z.string().trim().optional().or(z.literal('')),
   tax: z.string().trim().optional().or(z.literal('')),
+  tax_enabled: z.string().trim().optional().or(z.literal('')),
+  tax_number: z.string().trim().optional().or(z.literal('')),
   status: z.enum(['active', 'void']).optional().or(z.literal('')),
   items_json: z.string().min(2, 'يرجى إضافة بند واحد على الأقل.'),
 });
@@ -128,11 +130,14 @@ export async function createInvoiceAction(formData: FormData) {
   }
 
   try {
+    const taxEnabled = parsed.data.tax_enabled === '1';
     const created = await createInvoice({
       client_id: parsed.data.client_id,
       matter_id: emptyToNull(parsed.data.matter_id),
       items,
       tax: tax ?? 0,
+      tax_enabled: taxEnabled,
+      tax_number: taxEnabled ? (parsed.data.tax_number || null) : null,
       due_at: dueAtIso,
     });
 
@@ -175,12 +180,15 @@ export async function updateInvoiceAction(id: string, formData: FormData) {
   }
 
   try {
+    const taxEnabled = parsed.data.tax_enabled === '1';
     const before = await getInvoiceById(id).catch(() => null);
     const updated = await updateInvoice(id, {
       client_id: parsed.data.client_id,
       matter_id: emptyToNull(parsed.data.matter_id),
       items,
       tax: tax ?? 0,
+      tax_enabled: taxEnabled,
+      tax_number: taxEnabled ? (parsed.data.tax_number || null) : null,
       due_at: dueAtIso,
       status: parsed.data.status === 'void' ? 'void' : undefined,
     });
@@ -285,6 +293,8 @@ function toInvoiceObject(formData: FormData) {
     matter_id: String(formData.get('matter_id') ?? ''),
     due_at: String(formData.get('due_at') ?? ''),
     tax: String(formData.get('tax') ?? ''),
+    tax_enabled: String(formData.get('tax_enabled') ?? ''),
+    tax_number: String(formData.get('tax_number') ?? ''),
     status: String(formData.get('status') ?? 'active'),
     items_json: String(formData.get('items_json') ?? ''),
   };

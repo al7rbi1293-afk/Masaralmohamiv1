@@ -187,6 +187,11 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
               الاستحقاق: {new Date(invoice.due_at).toLocaleDateString('ar-SA')}
             </p>
           ) : null}
+          {invoice.tax_number ? (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              الرقم الضريبي: <span dir="ltr">{invoice.tax_number}</span>
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700 min-w-0 lg:col-span-2">
@@ -258,7 +263,15 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
 
             <section className="space-y-3">
               <h4 className="font-semibold text-brand-navy dark:text-slate-100">البنود</h4>
-              <BillingItemsEditor name="items_json" taxName="tax" defaultItems={items.map((item) => ({ ...item }))} />
+              <BillingItemsEditor
+                name="items_json"
+                taxName="tax"
+                taxEnabledName="tax_enabled"
+                taxNumberName="tax_number"
+                defaultItems={items.map((item) => ({ ...item }))}
+                defaultTaxEnabled={invoice.tax_enabled}
+                defaultTaxNumber={invoice.tax_number ?? ''}
+              />
             </section>
 
             <div className="flex flex-wrap gap-3">

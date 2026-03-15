@@ -50,6 +50,8 @@ export type Invoice = {
   total: string;
   currency: string;
   status: InvoiceStatus;
+  tax_enabled: boolean;
+  tax_number: string | null;
   is_archived: boolean;
   issued_at: string;
   due_at: string | null;
@@ -64,6 +66,8 @@ type InvoiceRow = Omit<Invoice, 'client' | 'matter'> & {
 };
 
 type InvoiceRowLike = Omit<InvoiceRow, 'is_archived'> & {
+  tax_enabled?: boolean;
+  tax_number?: string | null;
   is_archived?: boolean;
 };
 
@@ -94,9 +98,9 @@ const QUOTE_SELECT =
   'id, org_id, client_id, matter_id, number, items, total, currency, status, created_by, created_at, client:clients(id, name), matter:matters(id, title)';
 
 const INVOICE_SELECT =
-  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, is_archived, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, is_archived, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
 const INVOICE_SELECT_LEGACY =
-  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
 
 const itemSchema = z.object({
   desc: z.string().trim().min(1, 'وصف البند مطلوب.').max(400, 'وصف البند طويل جدًا.'),
@@ -140,9 +144,16 @@ function normalizeInvoiceRow(row: InvoiceRowLike): Invoice {
     client: Invoice['client'];
     matter: Invoice['matter'];
   };
+  const rawTaxNumber = typeof normalized.tax_number === 'string' ? normalized.tax_number.trim() : '';
+  const taxEnabled =
+    typeof normalized.tax_enabled === 'boolean'
+      ? normalized.tax_enabled
+      : Number(normalized.tax) > 0;
 
   return {
     ...normalized,
+    tax_enabled: taxEnabled,
+    tax_number: taxEnabled && rawTaxNumber ? rawTaxNumber : null,
     is_archived: Boolean(row.is_archived ?? false),
   };
 }
@@ -422,6 +433,8 @@ export type CreateInvoicePayload = {
   matter_id?: string | null;
   items: BillingItem[];
   tax?: number;
+  tax_enabled?: boolean;
+  tax_number?: string | null;
   due_at?: string | null;
 };
 
@@ -439,7 +452,9 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<Invo
 
   const items = normalizeItems(parsedItems.data);
   const subtotal = sumItems(items);
-  const tax = round2(Math.max(0, payload.tax ?? 0));
+  const taxEnabled = Boolean(payload.tax_enabled);
+  const tax = taxEnabled ? round2(Math.max(0, payload.tax ?? 0)) : 0;
+  const taxNumber = taxEnabled ? normalizeTaxNumber(payload.tax_number) : null;
   const total = round2(subtotal + tax);
 
   const year = new Date().getFullYear();
@@ -463,6 +478,8 @@ export async function createInvoice(payload: CreateInvoicePayload): Promise<Invo
         subtotal,
         tax,
         total,
+        tax_enabled: taxEnabled,
+        tax_number: taxNumber,
         currency: 'SAR',
         status: 'unpaid',
         due_at: payload.due_at ?? null,
@@ -501,6 +518,8 @@ export type UpdateInvoicePayload = {
   matter_id?: string | null;
   items: BillingItem[];
   tax?: number;
+  tax_enabled?: boolean;
+  tax_number?: string | null;
   due_at?: string | null;
   status?: InvoiceStatus;
 };
@@ -516,7 +535,9 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
 
   const items = normalizeItems(parsedItems.data);
   const subtotal = sumItems(items);
-  const tax = round2(Math.max(0, payload.tax ?? 0));
+  const taxEnabled = Boolean(payload.tax_enabled);
+  const tax = taxEnabled ? round2(Math.max(0, payload.tax ?? 0)) : 0;
+  const taxNumber = taxEnabled ? normalizeTaxNumber(payload.tax_number) : null;
   const total = round2(subtotal + tax);
 
   const existing = await getInvoiceById(id);
@@ -537,6 +558,8 @@ export async function updateInvoice(id: string, payload: UpdateInvoicePayload): 
       subtotal,
       tax,
       total,
+      tax_enabled: taxEnabled,
+      tax_number: taxNumber,
       due_at: payload.due_at ?? null,
       status: effectiveStatus,
     })
@@ -726,6 +749,11 @@ function computeInvoiceStatus(total: number, paidAmount: number): InvoiceStatus 
   if (paidAmount <= 0) return 'unpaid';
   if (paidAmount + 0.0001 >= safeTotal) return 'paid';
   return 'partial';
+}
+
+function normalizeTaxNumber(value: string | null | undefined) {
+  const raw = String(value ?? '').trim();
+  return raw || null;
 }
 
 async function generateNextNumber(params: {

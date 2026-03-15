@@ -114,7 +114,7 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
 
         <section className="space-y-3">
           <h3 className="font-semibold text-brand-navy dark:text-slate-100">بنود الفاتورة</h3>
-          <BillingItemsEditor name="items_json" taxName="tax" />
+          <BillingItemsEditor name="items_json" taxName="tax" taxEnabledName="tax_enabled" taxNumberName="tax_number" />
         </section>
 
         <div className="flex flex-wrap gap-3">

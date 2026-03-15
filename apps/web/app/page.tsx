@@ -116,6 +116,13 @@ const features = [
   },
 ];
 
+const clientPortalMarketingLines = [
+  'بوابة عميل احترافية باسم مكتبك تعزز الثقة من أول دخول.',
+  'العميل يطّلع على القضايا والمستندات والفواتير لحظة بلحظة دون انتظار.',
+  'تحديثات واضحة تقلل الاستفسارات المتكررة وتمنح فريقك وقتًا أكبر للعمل القانوني.',
+  'تجربة رقمية منظمة ترفع رضا العميل وتدعم صورة مكتبك أمام العملاء الجدد.',
+];
+
 const faqs = [
   {
     question: 'هل البيانات معزولة لكل مكتب؟',
@@ -254,6 +261,22 @@ export default function HomePage() {
             />
           ))}
         </div>
+      </Section>
+
+      <Section
+        title="بوابة العميل: ثقة أعلى وتجربة أرقى"
+        subtitle="واجهة واضحة للعميل تقلل الضغط على فريق المكتب وتزيد الاحترافية في كل تواصل."
+      >
+        <article className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
+          <ul className="space-y-3 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            {clientPortalMarketingLines.map((line) => (
+              <li key={line} className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-brand-emerald" aria-hidden />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </article>
       </Section>
 
       <Section>

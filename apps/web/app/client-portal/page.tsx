@@ -2,9 +2,16 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
-import { buttonVariants } from '@/components/ui/button';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getCurrentClientPortalSession } from '@/lib/client-portal/session';
+import {
+  ClientPortalDashboard,
+  type ClientPortalDashboardData,
+  type ClientPortalDocument,
+  type ClientPortalDocumentVersion,
+  type ClientPortalInvoice,
+  type ClientPortalMatter,
+  type ClientPortalMatterEvent,
+} from '@/components/client-portal/client-portal-dashboard';
+import { getActiveClientPortalAccess } from '@/lib/client-portal/access';
 
 export const metadata: Metadata = {
   title: 'بوابة العميل',
@@ -15,41 +22,13 @@ export const metadata: Metadata = {
   },
 };
 
-const MATTER_STATUS_LABELS: Record<string, string> = {
-  new: 'جديدة',
-  in_progress: 'قيد المعالجة',
-  on_hold: 'معلّقة',
-  closed: 'مغلقة',
-  archived: 'مؤرشفة',
-};
-
-const INVOICE_STATUS_LABELS: Record<string, string> = {
-  unpaid: 'غير مدفوعة',
-  partial: 'مدفوعة جزئيًا',
-  paid: 'مدفوعة',
-  void: 'ملغاة',
-};
-
 export default async function ClientPortalHomePage() {
-  const session = await getCurrentClientPortalSession();
-  if (!session) {
+  const access = await getActiveClientPortalAccess();
+  if (!access) {
     redirect('/client-portal/signin');
   }
 
-  const db = createSupabaseServerClient();
-
-  const { data: portalUser } = await db
-    .from('client_portal_users')
-    .select('id, email, status')
-    .eq('id', session.portalUserId)
-    .eq('org_id', session.orgId)
-    .eq('client_id', session.clientId)
-    .eq('email', session.email)
-    .maybeSingle();
-
-  if (!portalUser || String((portalUser as any).status || '') !== 'active') {
-    redirect('/client-portal/signin');
-  }
+  const { db, session } = access;
 
   const [clientRes, mattersRes, invoicesRes, documentsRes] = await Promise.all([
     db
@@ -60,25 +39,25 @@ export default async function ClientPortalHomePage() {
       .maybeSingle(),
     db
       .from('matters')
-      .select('id, title, status, updated_at')
+      .select('id, title, status, summary, case_type, updated_at')
       .eq('org_id', session.orgId)
       .eq('client_id', session.clientId)
       .order('updated_at', { ascending: false })
-      .limit(5),
+      .limit(50),
     db
       .from('invoices')
-      .select('id, number, status, total, currency, issued_at, due_at')
+      .select('id, number, status, total, currency, issued_at, due_at, matter:matters(id, title)')
       .eq('org_id', session.orgId)
       .eq('client_id', session.clientId)
       .order('issued_at', { ascending: false })
-      .limit(5),
+      .limit(50),
     db
       .from('documents')
-      .select('id, title, created_at')
+      .select('id, title, matter_id, created_at, matter:matters(id, title)')
       .eq('org_id', session.orgId)
       .eq('client_id', session.clientId)
       .order('created_at', { ascending: false })
-      .limit(5),
+      .limit(50),
   ]);
 
   const client = clientRes.data as { name?: string; email?: string | null; phone?: string | null } | null;
@@ -86,134 +65,220 @@ export default async function ClientPortalHomePage() {
     redirect('/client-portal/signin');
   }
 
-  const matters = (mattersRes.data ?? []) as Array<{
-    id: string;
-    title: string;
-    status: string;
-    updated_at: string;
-  }>;
-  const invoices = (invoicesRes.data ?? []) as Array<{
-    id: string;
-    number: string;
-    status: string;
-    total: number;
-    currency: string | null;
-    issued_at: string | null;
-    due_at: string | null;
-  }>;
-  const documents = (documentsRes.data ?? []) as Array<{
-    id: string;
-    title: string;
-    created_at: string;
-  }>;
+  const matters = ((mattersRes.data as RawMatterRow[] | null) ?? []).map((matter) => ({
+    id: String(matter.id),
+    title: String(matter.title ?? ''),
+    status: String(matter.status ?? ''),
+    summary: matter.summary ? String(matter.summary) : null,
+    case_type: matter.case_type ? String(matter.case_type) : null,
+    updated_at: String(matter.updated_at ?? new Date().toISOString()),
+  }));
 
-  const openMattersCount = matters.filter((matter) => matter.status !== 'closed' && matter.status !== 'archived').length;
-  const unpaidInvoicesCount = invoices.filter((invoice) => invoice.status === 'unpaid' || invoice.status === 'partial').length;
+  const matterIds = matters.map((matter) => matter.id);
+  const matterEventsByMatter = new Map<string, ClientPortalMatterEvent[]>();
+
+  if (matterIds.length) {
+    const { data: eventsRows } = await db
+      .from('matter_events')
+      .select('id, matter_id, type, note, event_date, created_at, creator:app_users(full_name)')
+      .eq('org_id', session.orgId)
+      .in('matter_id', matterIds)
+      .order('created_at', { ascending: false })
+      .limit(300);
+
+    const events = (eventsRows as RawMatterEventRow[] | null) ?? [];
+    for (const event of events) {
+      const matterId = String(event.matter_id ?? '').trim();
+      if (!matterId) continue;
+
+      const current = matterEventsByMatter.get(matterId) ?? [];
+      if (current.length >= 5) continue;
+
+      const creator = pickRelation<{ full_name: string | null }>(event.creator);
+
+      current.push({
+        id: String(event.id),
+        type: String(event.type ?? 'note'),
+        note: event.note ? String(event.note) : null,
+        event_date: event.event_date ? String(event.event_date) : null,
+        created_at: String(event.created_at ?? new Date().toISOString()),
+        created_by_name: creator?.full_name ? String(creator.full_name) : null,
+      });
+      matterEventsByMatter.set(matterId, current);
+    }
+  }
+
+  const matterData = matters.map((matter) => ({
+    ...matter,
+    events: matterEventsByMatter.get(matter.id) ?? [],
+  })) satisfies ClientPortalMatter[];
+
+  const rawInvoices = ((invoicesRes.data as RawInvoiceRow[] | null) ?? []).map((invoice) => ({
+    id: String(invoice.id),
+    number: String(invoice.number ?? ''),
+    status: String(invoice.status ?? ''),
+    total: toNumber(invoice.total),
+    currency: invoice.currency ? String(invoice.currency) : 'SAR',
+    issued_at: invoice.issued_at ? String(invoice.issued_at) : null,
+    due_at: invoice.due_at ? String(invoice.due_at) : null,
+    matter_title: pickRelation<{ id: string; title: string }>(invoice.matter)?.title ?? null,
+  }));
+
+  const invoiceIds = rawInvoices.map((invoice) => invoice.id);
+  const paidByInvoice = new Map<string, number>();
+  if (invoiceIds.length) {
+    const { data: paymentsRows } = await db
+      .from('payments')
+      .select('invoice_id, amount')
+      .eq('org_id', session.orgId)
+      .in('invoice_id', invoiceIds);
+
+    const payments = (paymentsRows as RawPaymentRow[] | null) ?? [];
+    for (const payment of payments) {
+      const invoiceId = String(payment.invoice_id ?? '').trim();
+      if (!invoiceId) continue;
+      const amount = toNumber(payment.amount);
+      const current = paidByInvoice.get(invoiceId) ?? 0;
+      paidByInvoice.set(invoiceId, current + amount);
+    }
+  }
+
+  const invoices = rawInvoices.map((invoice) => {
+    const paid = round2(paidByInvoice.get(invoice.id) ?? 0);
+    const remaining = Math.max(0, round2(invoice.total - paid));
+    return {
+      ...invoice,
+      paid_amount: paid,
+      remaining_amount: remaining,
+    };
+  }) satisfies ClientPortalInvoice[];
+
+  const rawDocuments = ((documentsRes.data as RawDocumentRow[] | null) ?? []).map((document) => ({
+    id: String(document.id),
+    title: String(document.title ?? ''),
+    matter_id: document.matter_id ? String(document.matter_id) : null,
+    matter_title: pickRelation<{ id: string; title: string }>(document.matter)?.title ?? null,
+    created_at: String(document.created_at ?? new Date().toISOString()),
+  }));
+
+  const documentIds = rawDocuments.map((document) => document.id);
+  const latestVersionByDocument = new Map<string, ClientPortalDocumentVersion>();
+
+  if (documentIds.length) {
+    const { data: versionRows } = await db
+      .from('document_versions')
+      .select('document_id, version_no, storage_path, file_name, file_size, mime_type, created_at')
+      .eq('org_id', session.orgId)
+      .in('document_id', documentIds)
+      .order('version_no', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    const versions = (versionRows as RawDocumentVersionRow[] | null) ?? [];
+    for (const version of versions) {
+      const documentId = String(version.document_id ?? '').trim();
+      if (!documentId) continue;
+      if (latestVersionByDocument.has(documentId)) continue;
+      latestVersionByDocument.set(documentId, {
+        version_no: Number(version.version_no ?? 1),
+        storage_path: String(version.storage_path ?? ''),
+        file_name: String(version.file_name ?? ''),
+        file_size: Number(version.file_size ?? 0),
+        mime_type: version.mime_type ? String(version.mime_type) : null,
+        created_at: String(version.created_at ?? new Date().toISOString()),
+      });
+    }
+  }
+
+  const documents = rawDocuments.map((document) => ({
+    ...document,
+    latest_version: latestVersionByDocument.get(document.id) ?? null,
+  })) satisfies ClientPortalDocument[];
+
+  const dashboardData: ClientPortalDashboardData = {
+    client: {
+      name: String(client.name ?? 'عميلنا'),
+      email: client.email ? String(client.email) : session.email,
+      phone: client.phone ? String(client.phone) : null,
+    },
+    matters: matterData,
+    invoices,
+    documents,
+  };
 
   return (
     <Section className="py-12 sm:py-16">
       <Container className="max-w-5xl">
-        <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">مرحبًا {client.name}</h1>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                هذه لوحة المتابعة الخاصة بك في بوابة العميل.
-              </p>
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400" dir="ltr">
-                {client.email || session.email}
-                {client.phone ? ` · ${client.phone}` : ''}
-              </p>
-            </div>
-
-            <form action="/api/client-portal/auth/logout" method="post">
-              <button type="submit" className={buttonVariants('outline', 'sm')}>
-                تسجيل الخروج
-              </button>
-            </form>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <StatCard label="القضايا المفتوحة" value={openMattersCount} />
-            <StatCard label="فواتير غير مكتملة" value={unpaidInvoicesCount} />
-            <StatCard label="المستندات الأخيرة" value={documents.length} />
-          </div>
-
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-brand-border p-4 dark:border-slate-700">
-              <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">آخر القضايا</h2>
-              {matters.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">لا توجد قضايا مرتبطة بحسابك حتى الآن.</p>
-              ) : (
-                <ul className="mt-3 space-y-3">
-                  {matters.map((matter) => (
-                    <li key={matter.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-                      <p className="font-medium text-slate-800 dark:text-slate-100">{matter.title}</p>
-                      <p className="mt-1 text-slate-500 dark:text-slate-400">
-                        الحالة: {MATTER_STATUS_LABELS[matter.status] || matter.status}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        آخر تحديث: {formatDateTime(matter.updated_at)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-brand-border p-4 dark:border-slate-700">
-              <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">آخر الفواتير</h2>
-              {invoices.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">لا توجد فواتير ظاهرة لك حاليًا.</p>
-              ) : (
-                <ul className="mt-3 space-y-3">
-                  {invoices.map((invoice) => (
-                    <li key={invoice.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-                      <p className="font-medium text-slate-800 dark:text-slate-100">فاتورة #{invoice.number}</p>
-                      <p className="mt-1 text-slate-500 dark:text-slate-400">
-                        الحالة: {INVOICE_STATUS_LABELS[invoice.status] || invoice.status}
-                      </p>
-                      <p className="text-slate-500 dark:text-slate-400">
-                        الإجمالي: {Number(invoice.total || 0).toFixed(2)} {invoice.currency || 'SAR'}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        تاريخ الإصدار: {formatDate(invoice.issued_at)}
-                        {invoice.due_at ? ` • الاستحقاق: ${formatDate(invoice.due_at)}` : ''}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
+        <ClientPortalDashboard data={dashboardData} />
       </Container>
     </Section>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
-      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-brand-navy dark:text-slate-100">{value}</p>
-    </div>
-  );
+type RawMatterRow = {
+  id: string;
+  title: string;
+  status: string;
+  summary: string | null;
+  case_type: string | null;
+  updated_at: string;
+};
+
+type RawMatterEventRow = {
+  id: string;
+  matter_id: string;
+  type: string;
+  note: string | null;
+  event_date: string | null;
+  created_at: string;
+  creator: { full_name: string | null } | { full_name: string | null }[] | null;
+};
+
+type RawInvoiceRow = {
+  id: string;
+  number: string;
+  status: string;
+  total: string | number;
+  currency: string | null;
+  issued_at: string | null;
+  due_at: string | null;
+  matter: { id: string; title: string } | { id: string; title: string }[] | null;
+};
+
+type RawDocumentRow = {
+  id: string;
+  title: string;
+  matter_id: string | null;
+  created_at: string;
+  matter: { id: string; title: string } | { id: string; title: string }[] | null;
+};
+
+type RawDocumentVersionRow = {
+  document_id: string;
+  version_no: number;
+  storage_path: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string | null;
+  created_at: string;
+};
+
+type RawPaymentRow = {
+  invoice_id: string;
+  amount: string | number;
+};
+
+function pickRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return (value[0] as T | undefined) ?? null;
+  return value;
 }
 
-function formatDate(rawDate: string | null) {
-  if (!rawDate) return '—';
-  const date = new Date(rawDate);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('ar-SA');
+function toNumber(value: string | number | null | undefined) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function formatDateTime(rawDate: string | null) {
-  if (!rawDate) return '—';
-  const date = new Date(rawDate);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('ar-SA', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+function round2(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }

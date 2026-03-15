@@ -6,8 +6,9 @@ import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
 import { archiveMatter, createMatter, deleteMatter, getMatterById, restoreMatter, updateMatter } from '@/lib/matters';
 import { createMatterEvent, createMatterEventSchema } from '@/lib/matterEvents';
+import { sendClientPortalMatterEventEmail } from '@/lib/client-portal-notifications';
 import { logAudit } from '@/lib/audit';
-import { logError, logInfo } from '@/lib/logger';
+import { logError, logInfo, logWarn } from '@/lib/logger';
 
 const matterSchema = z.object({
   title: z.string().trim().min(2, 'العنوان مطلوب ويجب أن لا يقل عن حرفين.').max(200, 'العنوان طويل جدًا.'),
@@ -164,6 +165,34 @@ export async function createMatterEventAction(matterId: string, formData: FormDa
       note: emptyToNull(parsed.data.note),
       event_date: emptyToNull(parsed.data.event_date),
     });
+
+    const matter = await getMatterById(matterId).catch(() => null);
+    if (matter?.client) {
+      const emailStatus = await sendClientPortalMatterEventEmail({
+        clientId: matter.client.id,
+        clientName: matter.client.name,
+        email: matter.client.email,
+        matterTitle: matter.title,
+        eventType: created.type,
+        eventDate: created.event_date,
+        note: created.note,
+      });
+
+      if (emailStatus === 'sent') {
+        logInfo('client_portal_matter_event_email_sent', {
+          matterId,
+          clientId: matter.client.id,
+          eventType: created.type,
+        });
+      } else if (emailStatus !== 'failed') {
+        logWarn('client_portal_matter_event_email_skipped', {
+          matterId,
+          clientId: matter.client.id,
+          reason: emailStatus,
+        });
+      }
+    }
+
     logInfo('matter_event_created', { matterId, type: created.type });
     redirect(`/app/matters/${matterId}?tab=timeline&success=${encodeURIComponent('تمت إضافة الحدث.')}`);
   } catch (error) {

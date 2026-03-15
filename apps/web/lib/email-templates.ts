@@ -447,6 +447,95 @@ export const CLIENT_PORTAL_OTP_EMAIL_HTML = (params: {
     `,
   });
 
+export const CLIENT_PORTAL_MATTER_EVENT_EMAIL_SUBJECT = 'تحديث جديد على قضيتك في بوابة العميل | مسار المحامي';
+
+const CLIENT_PORTAL_EVENT_TYPE_LABELS: Record<string, string> = {
+  hearing: 'جلسة',
+  call: 'اتصال',
+  note: 'ملاحظة',
+  email: 'بريد إلكتروني',
+  meeting: 'اجتماع',
+  other: 'تحديث',
+};
+
+export const CLIENT_PORTAL_MATTER_EVENT_EMAIL_TEXT = (params: {
+  clientName: string;
+  matterTitle: string;
+  eventType: string;
+  eventDateLabel?: string | null;
+  note?: string | null;
+  portalUrl: string;
+}) => [
+  `مرحباً ${params.clientName}،`,
+  '',
+  'تمت إضافة تحديث جديد على خط سير قضيتك من قبل فريق المكتب.',
+  `القضية: ${params.matterTitle}`,
+  `نوع التحديث: ${CLIENT_PORTAL_EVENT_TYPE_LABELS[params.eventType] || params.eventType}`,
+  params.eventDateLabel ? `تاريخ الحدث: ${params.eventDateLabel}` : '',
+  params.note?.trim() ? `ملاحظات: ${params.note.trim()}` : '',
+  '',
+  `يمكنك الاطلاع على التفاصيل من خلال بوابة العميل: ${params.portalUrl}`,
+  '',
+  'مع التحية،',
+  EMAIL_BRAND_NAME,
+].filter(Boolean).join('\n');
+
+export const CLIENT_PORTAL_MATTER_EVENT_EMAIL_HTML = (params: {
+  clientName: string;
+  matterTitle: string;
+  eventType: string;
+  eventDateLabel?: string | null;
+  note?: string | null;
+  portalUrl: string;
+}) =>
+  renderEmailShell({
+    subject: CLIENT_PORTAL_MATTER_EVENT_EMAIL_SUBJECT,
+    preheader: `تمت إضافة ${CLIENT_PORTAL_EVENT_TYPE_LABELS[params.eventType] || 'تحديث'} جديد على قضيتك.`,
+    eyebrow: 'تحديث قضية',
+    title: 'تحديث جديد على خط سير القضية',
+    intro: 'أضاف المكتب حدثًا جديدًا على قضيتك. يمكنك متابعة التفاصيل مباشرة من البوابة.',
+    bodyHtml: `
+      <p>مرحباً <strong>${escapeHtml(params.clientName)}</strong>،</p>
+      <p>نحيطك علماً بأنه تمت إضافة تحديث جديد على خط سير قضيتك من قبل فريق المكتب.</p>
+
+      <div class="panel panel-success">
+        <h2 class="panel-title">تفاصيل التحديث</h2>
+        <table role="presentation" class="meta-table">
+          <tr>
+            <td>القضية</td>
+            <td>${escapeHtml(params.matterTitle)}</td>
+          </tr>
+          <tr>
+            <td>نوع التحديث</td>
+            <td>${escapeHtml(CLIENT_PORTAL_EVENT_TYPE_LABELS[params.eventType] || params.eventType)}</td>
+          </tr>
+          ${params.eventDateLabel ? `
+          <tr>
+            <td>تاريخ الحدث</td>
+            <td>${escapeHtml(params.eventDateLabel)}</td>
+          </tr>
+          ` : ''}
+        </table>
+      </div>
+
+      ${params.note?.trim() ? `
+      <div class="panel panel-muted">
+        <h2 class="panel-title">ملاحظة المكتب</h2>
+        <p style="margin:0; white-space:pre-line;">${escapeHtml(params.note.trim())}</p>
+      </div>
+      ` : ''}
+
+      <div class="panel">
+        <h2 class="panel-title">المتابعة عبر البوابة</h2>
+        <p>يمكنك متابعة حالة القضية وخطها الزمني والمستندات من خلال الرابط التالي:</p>
+        <div class="cta">
+          <a class="btn" href="${escapeHtml(params.portalUrl)}">فتح بوابة العميل</a>
+        </div>
+        <div class="link-box">${escapeHtml(params.portalUrl)}</div>
+      </div>
+    `,
+  });
+
 export const TASK_REMINDER_EMAIL_SUBJECT = (taskTitle: string) => `تنبيه مهمة | ${taskTitle}`;
 
 export const TASK_REMINDER_EMAIL_TEXT = (params: {

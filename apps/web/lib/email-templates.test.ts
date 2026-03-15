@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  CLIENT_PORTAL_MATTER_EVENT_EMAIL_HTML,
+  CLIENT_PORTAL_MATTER_EVENT_EMAIL_SUBJECT,
+  CLIENT_PORTAL_MATTER_EVENT_EMAIL_TEXT,
   CLIENT_PORTAL_OTP_EMAIL_HTML,
   CLIENT_PORTAL_OTP_EMAIL_SUBJECT,
   CLIENT_PORTAL_OTP_EMAIL_TEXT,
@@ -51,6 +54,33 @@ test('client portal otp email highlights the code and validity window', () => {
   assert.match(html, /فتح بوابة العميل/);
   assert.match(text, /482913/);
   assert.match(text, /صلاحية الرمز: 5 دقائق/);
+});
+
+test('client portal matter event email includes case timeline update details', () => {
+  const portalUrl = 'https://masar.example.com/client-portal';
+  const html = CLIENT_PORTAL_MATTER_EVENT_EMAIL_HTML({
+    clientName: 'أحمد خالد',
+    matterTitle: 'قضية مطالبة تجارية',
+    eventType: 'hearing',
+    eventDateLabel: '15 مارس 2026، 11:00 ص',
+    note: 'تم تحديد جلسة للنظر في الطلب.',
+    portalUrl,
+  });
+  const text = CLIENT_PORTAL_MATTER_EVENT_EMAIL_TEXT({
+    clientName: 'أحمد خالد',
+    matterTitle: 'قضية مطالبة تجارية',
+    eventType: 'hearing',
+    eventDateLabel: '15 مارس 2026، 11:00 ص',
+    note: 'تم تحديد جلسة للنظر في الطلب.',
+    portalUrl,
+  });
+
+  assert.match(CLIENT_PORTAL_MATTER_EVENT_EMAIL_SUBJECT, /تحديث جديد/);
+  assert.match(html, /قضية مطالبة تجارية/);
+  assert.match(html, /جلسة/);
+  assert.match(html, /تم تحديد جلسة للنظر في الطلب/);
+  assert.match(text, /نوع التحديث: جلسة/);
+  assert.match(text, /https:\/\/masar\.example\.com\/client-portal/);
 });
 
 test('task reminder email includes status, due date, and office note', () => {

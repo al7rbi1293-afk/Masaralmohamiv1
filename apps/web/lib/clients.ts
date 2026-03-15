@@ -143,7 +143,7 @@ export type CreateClientPayload = {
   name: string;
   identity_no?: string | null;
   commercial_no?: string | null;
-  email?: string | null;
+  email: string;
   phone?: string | null;
   notes?: string | null;
   agency_number?: string | null;
@@ -156,6 +156,10 @@ export type CreateClientPayload = {
 export async function createClient(payload: CreateClientPayload): Promise<Client> {
   const orgId = await requireOrgIdForUser();
   const supabase = createSupabaseServerRlsClient();
+  const normalizedEmail = String(payload.email ?? '').trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error('البريد الإلكتروني مطلوب.');
+  }
 
   const { data, error } = await supabase
     .from('clients')
@@ -166,7 +170,7 @@ export async function createClient(payload: CreateClientPayload): Promise<Client
       name: payload.name,
       identity_no: payload.identity_no ?? null,
       commercial_no: payload.commercial_no ?? null,
-      email: payload.email ?? null,
+      email: normalizedEmail,
       phone: payload.phone ?? null,
       notes: payload.notes ?? null,
       agency_number: payload.agency_number ?? null,
@@ -199,7 +203,13 @@ export async function updateClient(id: string, payload: UpdateClientPayload): Pr
   if (payload.name !== undefined) update.name = payload.name;
   if (payload.identity_no !== undefined) update.identity_no = payload.identity_no;
   if (payload.commercial_no !== undefined) update.commercial_no = payload.commercial_no;
-  if (payload.email !== undefined) update.email = payload.email;
+  if (payload.email !== undefined) {
+    const normalizedEmail = String(payload.email ?? '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('البريد الإلكتروني مطلوب.');
+    }
+    update.email = normalizedEmail;
+  }
   if (payload.phone !== undefined) update.phone = payload.phone;
   if (payload.notes !== undefined) update.notes = payload.notes;
   if (payload.agency_number !== undefined) update.agency_number = payload.agency_number;

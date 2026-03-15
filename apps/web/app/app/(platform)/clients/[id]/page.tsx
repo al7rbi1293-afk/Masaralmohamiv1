@@ -116,10 +116,14 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
         </label>
 
         <label className="block space-y-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">البريد (اختياري)</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            البريد الإلكتروني <span className="text-red-600">*</span>
+          </span>
           <input
+            required
             name="email"
             type="email"
+            autoComplete="email"
             defaultValue={client.email ?? ''}
             className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
           />

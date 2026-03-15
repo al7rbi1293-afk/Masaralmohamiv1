@@ -4,6 +4,11 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { z } from 'zod';
+import { sendEmail } from '@/lib/email';
+import {
+  CLIENT_PORTAL_WELCOME_EMAIL_HTML,
+  CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
+} from '@/lib/email-templates';
 import {
   createClient,
   deleteClient,
@@ -15,6 +20,7 @@ import {
   validateClientAgencyFile,
 } from '@/lib/clients';
 import { logAudit } from '@/lib/audit';
+import { getPublicSiteUrl, isSmtpConfigured } from '@/lib/env';
 import { logError, logInfo } from '@/lib/logger';
 import { toUserMessage, emptyToNull, isValidUuid } from '@/lib/shared-utils';
 
@@ -26,12 +32,11 @@ const clientSchema = z.object({
   email: z
     .string()
     .trim()
+    .toLowerCase()
+    .min(1, 'البريد الإلكتروني مطلوب.')
+    .email('البريد الإلكتروني غير صحيح.')
     .max(255, 'البريد الإلكتروني طويل جدًا.')
-    .optional()
-    .or(z.literal(''))
-    .refine((value) => !value || z.string().email().safeParse(value).success, {
-      message: 'البريد الإلكتروني غير صحيح.',
-    }),
+    .transform((value) => value.toLowerCase()),
   phone: z.string().trim().max(60, 'رقم الجوال طويل جدًا.').optional().or(z.literal('')),
   notes: z.string().trim().max(4000, 'الملاحظات طويلة جدًا.').optional().or(z.literal('')),
   agency_number: z.string().trim().max(200, 'رقم الوكالة طويل جدًا.').optional().or(z.literal('')),
@@ -73,9 +78,34 @@ export async function createClientAction(formData: FormData) {
       entityId: created.id,
       meta: { type: created.type },
     });
+
+    let successMessage = 'تم إنشاء العميل.';
+    if (isSmtpConfigured()) {
+      try {
+        const portalUrl = `${getPublicSiteUrl()}/client-portal/signin`;
+        await sendEmail({
+          to: String(created.email || '').trim().toLowerCase(),
+          subject: CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
+          html: CLIENT_PORTAL_WELCOME_EMAIL_HTML({
+            clientName: created.name,
+            portalUrl,
+          }),
+        });
+        successMessage = 'تم إنشاء العميل وإرسال بريد بوابة العميل بنجاح.';
+      } catch (emailError) {
+        logError('client_portal_welcome_email_failed', {
+          clientId: created.id,
+          message: emailError instanceof Error ? emailError.message : String(emailError ?? ''),
+        });
+        successMessage = 'تم إنشاء العميل، لكن تعذر إرسال بريد بوابة العميل.';
+      }
+    } else {
+      successMessage = 'تم إنشاء العميل. لم يتم إرسال بريد الدعوة لأن إعداد SMTP غير مكتمل.';
+    }
+
     logInfo('client_created', { clientId: created.id });
     revalidatePath('/app/clients');
-    redirect(`/app/clients/${created.id}?success=${encodeURIComponent('تم إنشاء العميل.')}`);
+    redirect(`/app/clients/${created.id}?success=${encodeURIComponent(successMessage)}`);
   } catch (error) {
     if (isRedirectError(error)) throw error;
     if (!clientCreated && uploadedAgency?.storage_path) {
@@ -260,7 +290,7 @@ function normalize(data: z.infer<typeof clientSchema>) {
     name: data.name.trim(),
     identity_no: emptyToNull(data.identity_no),
     commercial_no: emptyToNull(data.commercial_no),
-    email: emptyToNull(data.email),
+    email: data.email.trim().toLowerCase(),
     phone: emptyToNull(data.phone),
     notes: emptyToNull(data.notes),
     agency_number: emptyToNull(data.agency_number),

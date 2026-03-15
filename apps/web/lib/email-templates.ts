@@ -232,6 +232,56 @@ export const NEW_SIGNUP_ALERT_HTML = (params: {
 </html>
 `;
 
+export const CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT = 'تم تسجيلك في بوابة العميل | مسار المحامي';
+
+export const CLIENT_PORTAL_WELCOME_EMAIL_HTML = (params: {
+  clientName: string;
+  portalUrl: string;
+}) => `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>${CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT}</title>
+    <style>
+        body { margin: 0; background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; direction: rtl; }
+        .wrapper { max-width: 640px; margin: 0 auto; padding: 28px 16px; }
+        .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; }
+        .hero { background: linear-gradient(135deg, #0f172a 0%, #102a43 55%, #0f766e 100%); color: #ffffff; padding: 26px 24px; }
+        .hero h1 { margin: 0; font-size: 24px; line-height: 1.5; }
+        .hero p { margin: 10px 0 0; font-size: 14px; line-height: 1.9; color: rgba(255,255,255,0.92); }
+        .content { padding: 24px; }
+        .content p { margin: 0 0 14px; font-size: 15px; line-height: 1.9; color: #334155; }
+        .cta { margin: 20px 0; text-align: center; }
+        .btn { display: inline-block; background: #10b981; color: #ffffff !important; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-weight: 700; }
+        .link-box { margin: 14px 0 0; padding: 12px; border: 1px solid #dbeafe; background: #f8fafc; border-radius: 10px; font-size: 13px; direction: ltr; word-break: break-all; text-align: left; }
+        .footer { padding: 0 24px 22px; font-size: 12px; color: #64748b; }
+    </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="hero">
+        <h1>تم تسجيلك في بوابة العميل</h1>
+        <p>يمكنك الآن متابعة القضايا والمستندات والفواتير الخاصة بك عبر بوابة العميل.</p>
+      </div>
+      <div class="content">
+        <p>مرحباً ${params.clientName}،</p>
+        <p>تمت إضافتك بنجاح في بوابة العميل الخاصة بمكتب المحامي. للدخول استخدم بريدك الإلكتروني ثم أدخل رمز التحقق الذي يصلك على نفس البريد.</p>
+        <div class="cta">
+          <a class="btn" href="${params.portalUrl}">الدخول إلى بوابة العميل</a>
+        </div>
+        <div class="link-box">${params.portalUrl}</div>
+      </div>
+      <div class="footer">
+        <p>إذا احتجت أي مساعدة، تواصل مع مكتب المحامي مباشرة.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
 export const PARTNER_WELCOME_EMAIL_SUBJECT = 'تم تفعيل حسابك في شركاء النجاح | مسار المحامي';
 
 export const PARTNER_WELCOME_EMAIL_HTML = (params: {

@@ -113,7 +113,7 @@ export async function listClients(params: ListClientsParams = {}): Promise<Pagin
   }
 
   return {
-    data: (data as unknown as Client[] | null) ?? [],
+    data: normalizeClients((data as unknown as Client[] | null) ?? []),
     page,
     limit,
     total: count ?? 0,
@@ -135,7 +135,7 @@ export async function getClientById(id: string): Promise<Client | null> {
     throw error;
   }
 
-  return (data as unknown as Client | null) ?? null;
+  return normalizeClient((data as unknown as Client | null) ?? null);
 }
 
 export type CreateClientPayload = {
@@ -188,7 +188,7 @@ export async function createClient(payload: CreateClientPayload): Promise<Client
     throw error ?? new Error('تعذر إنشاء العميل.');
   }
 
-  return data as unknown as Client;
+  return normalizeClient(data as unknown as Client) as Client;
 }
 
 export type UpdateClientPayload = Partial<CreateClientPayload> & {
@@ -236,7 +236,7 @@ export async function updateClient(id: string, payload: UpdateClientPayload): Pr
     throw new Error('not_found');
   }
 
-  return data as unknown as Client;
+  return normalizeClient(data as unknown as Client) as Client;
 }
 
 export async function setClientStatus(id: string, status: ClientStatus): Promise<void> {
@@ -313,8 +313,10 @@ export async function uploadClientAgencyAttachment(
     throw new Error('تعذر رفع مرفق الوكالة.');
   }
 
+  const originalFileName = normalizeClientAgencyFileName(file.name);
+
   return {
-    file_name: file.name.trim(),
+    file_name: originalFileName,
     storage_path: storagePath,
     file_size: file.size,
     mime_type: file.type ? file.type.trim() : null,
@@ -532,10 +534,25 @@ async function getClientAgencyAttachmentMeta(
     return null;
   }
 
-  const fileName = String(row?.agency_file_name ?? '').trim() || null;
+  const fileName = normalizeClientAgencyFileName(row?.agency_file_name) || null;
   return {
     storagePath,
     fileName,
+  };
+}
+
+function normalizeClients(clients: Client[]): Client[] {
+  return clients.map((client) => normalizeClient(client) as Client);
+}
+
+function normalizeClient(client: Client | null): Client | null {
+  if (!client) {
+    return null;
+  }
+
+  return {
+    ...client,
+    agency_file_name: normalizeClientAgencyFileName(client.agency_file_name) || null,
   };
 }
 
@@ -630,4 +647,40 @@ function sanitizeDownloadFileName(value: string | null | undefined) {
     .replace(/[\\/]/g, '_')
     .replace(/\s+/g, ' ')
     .slice(0, 180);
+}
+
+function normalizeClientAgencyFileName(value: string | null | undefined) {
+  const sanitized = sanitizeDownloadFileName(value);
+  if (!sanitized) {
+    return '';
+  }
+
+  const decoded = decodeLatin1MojibakeUtf8(sanitized);
+  return sanitizeDownloadFileName(decoded) || sanitized;
+}
+
+function decodeLatin1MojibakeUtf8(value: string) {
+  if (!/[^\u0000-\u007F]/.test(value)) {
+    return value;
+  }
+
+  try {
+    const decoded = Buffer.from(value, 'latin1').toString('utf8');
+
+    if (!decoded || decoded.includes('\uFFFD')) {
+      return value;
+    }
+
+    if (Buffer.from(decoded, 'utf8').toString('latin1') !== value) {
+      return value;
+    }
+
+    if (/^[\u0000-\u00FF]*$/.test(decoded)) {
+      return value;
+    }
+
+    return decoded;
+  } catch {
+    return value;
+  }
 }

@@ -6,7 +6,13 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getClientById } from '@/lib/clients';
-import { archiveClientAction, deleteClientAction, restoreClientAction, updateClientAction } from '../actions';
+import {
+  archiveClientAction,
+  deleteClientAction,
+  resendClientPortalWelcomeEmailAction,
+  restoreClientAction,
+  updateClientAction,
+} from '../actions';
 
 type ClientDetailsPageProps = {
   params: { id: string };
@@ -208,6 +214,13 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
       </form>
 
       <div className="mt-4 flex flex-wrap gap-3">
+        {client.status === 'active' && client.email ? (
+          <form action={resendClientPortalWelcomeEmailAction.bind(null, client.id)}>
+            <FormSubmitButton pendingText="جارٍ الإرسال..." variant="secondary" size="md">
+              إعادة إرسال البريد الترحيبي
+            </FormSubmitButton>
+          </form>
+        ) : null}
         {client.status === 'active' ? (
           <ConfirmActionForm
             action={archiveClientAction.bind(null, client.id, `/app/clients/${client.id}`)}

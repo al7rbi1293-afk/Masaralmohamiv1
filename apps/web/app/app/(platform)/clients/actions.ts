@@ -216,6 +216,59 @@ export async function updateClientAction(id: string, formData: FormData) {
   }
 }
 
+export async function resendClientPortalWelcomeEmailAction(id: string) {
+  const redirectTo = `/app/clients/${id}`;
+
+  if (!isValidUuid(id)) {
+    redirect(withToast('/app/clients', 'error', 'معرف العميل غير صالح.'));
+  }
+
+  try {
+    const client = await getClientById(id);
+    if (!client) {
+      redirect(withToast('/app/clients', 'error', 'العميل غير موجود.'));
+    }
+
+    if (client.status !== 'active') {
+      redirect(withToast(redirectTo, 'error', 'لا يمكن إرسال البريد الترحيبي لعميل مؤرشف.'));
+    }
+
+    const email = String(client.email ?? '').trim().toLowerCase();
+    if (!email) {
+      redirect(withToast(redirectTo, 'error', 'أضف البريد الإلكتروني للعميل أولاً ثم أعد المحاولة.'));
+    }
+
+    const welcomeEmailStatus = await sendClientPortalWelcomeEmail({
+      clientId: client.id,
+      clientName: client.name,
+      email,
+    });
+
+    if (welcomeEmailStatus === 'smtp_not_configured') {
+      redirect(withToast(redirectTo, 'error', 'تعذر الإرسال لأن إعداد SMTP غير مكتمل.'));
+    }
+
+    if (welcomeEmailStatus !== 'sent') {
+      redirect(withToast(redirectTo, 'error', 'تعذر إعادة إرسال البريد الترحيبي حالياً. حاول مرة أخرى.'));
+    }
+
+    await logAudit({
+      action: 'client.portal_welcome_email_resent',
+      entityType: 'client',
+      entityId: client.id,
+      meta: { channel: 'email' },
+    });
+    logInfo('client_portal_welcome_email_resent', { clientId: client.id });
+    revalidatePath(redirectTo);
+    redirect(withToast(redirectTo, 'success', 'تمت إعادة إرسال البريد الترحيبي بنجاح.'));
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message = toUserMessage(error);
+    logError('client_portal_welcome_email_resend_failed', { clientId: id, message });
+    redirect(withToast(redirectTo, 'error', message));
+  }
+}
+
 export async function archiveClientAction(id: string, redirectTo = '/app/clients') {
   if (!isValidUuid(id)) {
     redirect(withToast(redirectTo, 'error', 'معرف العميل غير صالح.'));

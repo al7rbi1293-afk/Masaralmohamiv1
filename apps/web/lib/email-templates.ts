@@ -619,6 +619,76 @@ export const TASK_REMINDER_EMAIL_HTML = (params: {
     `,
   });
 
+export const CLIENT_QUESTION_EMAIL_SUBJECT = 'سؤال جديد من العميل | مسار المحامي';
+
+export const CLIENT_QUESTION_EMAIL_HTML = (params: {
+  clientName: string;
+  matterTitle: string;
+  question: string;
+  platformUrl: string;
+}) =>
+  renderEmailShell({
+    subject: CLIENT_QUESTION_EMAIL_SUBJECT,
+    preheader: `أرسل العميل ${params.clientName} استفساراً جديداً بخصوص القضية ${params.matterTitle}.`,
+    eyebrow: 'استفسار جديد',
+    title: 'سؤال جديد من العميل',
+    intro: 'تم استلام استفسار جديد بخصوص إحدى القضايا عبر بوابة العميل.',
+    bodyHtml: `
+      <div class="panel">
+        <h2 class="panel-title">تفاصيل الاستفسار</h2>
+        <table role="presentation" class="meta-table">
+          <tr>
+            <td>العميل</td>
+            <td>${escapeHtml(params.clientName)}</td>
+          </tr>
+          <tr>
+            <td>القضية</td>
+            <td>${escapeHtml(params.matterTitle)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="panel panel-muted">
+        <h2 class="panel-title">نص السؤال</h2>
+        <p style="margin:0; white-space:pre-line;">${escapeHtml(params.question)}</p>
+      </div>
+
+      <div class="cta">
+        <a class="btn" href="${escapeHtml(params.platformUrl)}">الرد على الاستفسار</a>
+      </div>
+    `,
+  });
+
+export const LAWYER_REPLY_EMAIL_SUBJECT = 'رد جديد على استفسارك | مسار المحامي';
+
+export const LAWYER_REPLY_EMAIL_HTML = (params: {
+  matterTitle: string;
+  reply: string;
+  portalUrl: string;
+}) =>
+  renderEmailShell({
+    subject: LAWYER_REPLY_EMAIL_SUBJECT,
+    preheader: `تم الرد على استفسارك بخصوص القضية ${params.matterTitle}.`,
+    eyebrow: 'رد جديد',
+    title: 'رد جديد من المحامي',
+    intro: 'قام المحامي بالرد على استفسارك الأخير عبر بوابة العميل.',
+    bodyHtml: `
+      <div class="panel">
+        <h2 class="panel-title">القضية</h2>
+        <p style="margin:0;">${escapeHtml(params.matterTitle)}</p>
+      </div>
+
+      <div class="panel panel-success">
+        <h2 class="panel-title">إجابة المحامي</h2>
+        <p style="margin:0; white-space:pre-line;">${escapeHtml(params.reply)}</p>
+      </div>
+
+      <div class="cta">
+        <a class="btn" href="${escapeHtml(params.portalUrl)}">فتح بوابة العميل</a>
+      </div>
+    `,
+  });
+
 export const PARTNER_WELCOME_EMAIL_SUBJECT = 'تم تفعيل حسابك في شركاء النجاح | مسار المحامي';
 
 export const PARTNER_WELCOME_EMAIL_HTML = (params: {

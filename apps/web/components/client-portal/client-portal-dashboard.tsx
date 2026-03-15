@@ -15,6 +15,14 @@ export type ClientPortalMatter = {
   case_type: string | null;
   updated_at: string;
   events: ClientPortalMatterEvent[];
+  communications: ClientPortalMatterCommunication[];
+};
+
+export type ClientPortalMatterCommunication = {
+  id: string;
+  sender: 'CLIENT' | 'LAWYER';
+  message: string;
+  created_at: string;
 };
 
 export type ClientPortalMatterEvent = {
@@ -110,6 +118,12 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
 
   const [downloadingPath, setDownloadingPath] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState('');
+
+  const [questionMatterId, setQuestionMatterId] = useState<string | null>(null);
+  const [questionText, setQuestionText] = useState('');
+  const [submittingQuestion, setSubmittingQuestion] = useState(false);
+  const [questionError, setQuestionError] = useState('');
+  const [questionSuccess, setQuestionSuccess] = useState('');
 
   const openMattersCount = data.matters.filter((matter) => matter.status !== 'closed' && matter.status !== 'archived').length;
   const unpaidInvoicesCount = data.invoices.filter(
@@ -223,6 +237,41 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
       setDownloadError('تعذر تجهيز رابط التنزيل.');
     } finally {
       setDownloadingPath(null);
+    }
+  }
+
+  async function handleQuestionSubmit(matterId: string, event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setQuestionError('');
+    setQuestionSuccess('');
+
+    const text = questionText.trim();
+    if (!text) {
+      setQuestionError('يرجى كتابة نص الاستفسار.');
+      return;
+    }
+
+    setSubmittingQuestion(true);
+    try {
+      const response = await fetch('/api/client-portal/communications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matter_id: matterId, message: text }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setQuestionError(payload.error || 'تعذر إرسال استفسارك. يرجى المحاولة لاحقاً.');
+      } else {
+        setQuestionText('');
+        setQuestionSuccess('تم إرسال استفسارك بنجاح. سيتم إبلاغ المحامي وسيرد عليك في أقرب وقت.');
+        setTimeout(() => setQuestionSuccess(''), 5000);
+        router.refresh();
+      }
+    } catch {
+      setQuestionError('تعذر إرسال استفسارك. يرجى المحاولة لاحقاً.');
+    } finally {
+      setSubmittingQuestion(false);
     }
   }
 
@@ -402,6 +451,71 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
                               ) : null}
                             </div>
                             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{event.note || 'بدون ملاحظات.'}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Communications Section */}
+                  <div className="mt-4 rounded-md border border-brand-border p-3 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-300">الأسئلة والاستفسارات</p>
+                      <button
+                        type="button"
+                        onClick={() => setQuestionMatterId(questionMatterId === matter.id ? null : matter.id)}
+                        className={buttonVariants('outline', 'sm')}
+                      >
+                        {questionMatterId === matter.id ? 'إلغاء' : 'طرح استفسار'}
+                      </button>
+                    </div>
+
+                    {questionMatterId === matter.id && (
+                      <form onSubmit={(e) => handleQuestionSubmit(matter.id, e)} className="mt-3 space-y-3">
+                        <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                          نأمل أن يكون الاستفسار واضحاً ومباشراً قدر الإمكان لمساعدة المحامي في الرد بشكل دقيق.
+                        </div>
+                        {questionError && <p className="text-xs text-red-600 dark:text-red-400">{questionError}</p>}
+                        {questionSuccess && <p className="text-xs text-emerald-600 dark:text-emerald-400">{questionSuccess}</p>}
+                        <textarea
+                          placeholder="اكتب استفسارك هنا..."
+                          value={questionText}
+                          onChange={(e) => setQuestionText(e.target.value)}
+                          className="min-h-[100px] w-full resize-y rounded-lg border border-brand-border p-3 outline-none focus:border-brand-emerald focus:ring-1 focus:ring-brand-emerald dark:border-slate-700 dark:bg-slate-900"
+                          required
+                        />
+                        <button
+                          type="submit"
+                          disabled={submittingQuestion}
+                          className={buttonVariants('primary', 'sm')}
+                        >
+                          {submittingQuestion ? 'جاري الإرسال...' : 'إرسال الاستفسار'}
+                        </button>
+                      </form>
+                    )}
+
+                    {!matter.communications?.length ? (
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">لا توجد استفسارات سابقة.</p>
+                    ) : (
+                      <ul className="mt-3 space-y-3">
+                        {matter.communications.map((comm) => (
+                          <li
+                            key={comm.id}
+                            className={`rounded-lg p-3 ${
+                              comm.sender === 'CLIENT'
+                                ? 'bg-slate-50 dark:bg-slate-800'
+                                : 'bg-emerald-50 dark:bg-emerald-900/20'
+                            }`}
+                          >
+                            <div className="mb-1 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                {comm.sender === 'CLIENT' ? data.client.name : 'المحامي'}
+                              </span>
+                              <span>{formatDateTime(comm.created_at)}</span>
+                            </div>
+                            <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">
+                              {comm.message}
+                            </p>
                           </li>
                         ))}
                       </ul>

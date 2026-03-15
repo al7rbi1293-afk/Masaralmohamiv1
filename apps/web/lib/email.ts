@@ -7,6 +7,10 @@ import {
   INVOICE_EMAIL_HTML,
   NEW_SIGNUP_ALERT_SUBJECT,
   NEW_SIGNUP_ALERT_HTML,
+  CLIENT_QUESTION_EMAIL_SUBJECT,
+  CLIENT_QUESTION_EMAIL_HTML,
+  LAWYER_REPLY_EMAIL_SUBJECT,
+  LAWYER_REPLY_EMAIL_HTML,
 } from './email-templates';
 
 export type SendEmailParams = {
@@ -163,6 +167,45 @@ export async function sendNewSignupAlertEmail(params: {
     });
   } catch (error) {
     console.error('Failed to send signup alert email:', error);
+  }
+}
+
+export async function sendClientQuestionEmail(params: {
+  to: string;
+  clientName: string;
+  matterTitle: string;
+  question: string;
+  platformUrl: string;
+}) {
+  if (!isSmtpConfigured()) return;
+  
+  try {
+    await sendEmail({
+      to: params.to,
+      subject: CLIENT_QUESTION_EMAIL_SUBJECT,
+      html: CLIENT_QUESTION_EMAIL_HTML(params),
+    });
+  } catch (error) {
+    console.error('Failed to send client question email:', error);
+  }
+}
+
+export async function sendLawyerReplyEmail(params: {
+  to: string;
+  matterTitle: string;
+  reply: string;
+  portalUrl: string;
+}) {
+  if (!isSmtpConfigured()) return;
+  
+  try {
+    await sendEmail({
+      to: params.to,
+      subject: LAWYER_REPLY_EMAIL_SUBJECT,
+      html: LAWYER_REPLY_EMAIL_HTML(params),
+    });
+  } catch (error) {
+    console.error('Failed to send lawyer reply email:', error);
   }
 }
 

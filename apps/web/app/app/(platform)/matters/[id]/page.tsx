@@ -9,6 +9,7 @@ import { DocumentShareButton } from '@/components/documents/document-share-butto
 import { DocumentDownloadButton } from '@/components/documents/document-download-button';
 import { MatterMembersClient } from '@/components/matters/matter-members-client';
 import { MatterTasksClient } from '@/components/tasks/matter-tasks-client';
+import { MatterCommunicationsClient } from '@/components/matters/matter-communications-client';
 import { listDocuments } from '@/lib/documents';
 import { listMatterEvents, type MatterEventType } from '@/lib/matterEvents';
 import { listOrgMembers } from '@/lib/matter-members';
@@ -118,7 +119,9 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
         ? 'documents'
         : searchParams?.tab === 'tasks'
           ? 'tasks'
-          : 'summary';
+          : searchParams?.tab === 'communications'
+            ? 'communications'
+            : 'summary';
 
   return (
     <Card className="space-y-5 p-6">
@@ -175,6 +178,12 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
           المهام
         </Link>
         <Link
+          href={`/app/matters/${matter.id}?tab=communications`}
+          className={`${buttonVariants(tab === 'communications' ? 'primary' : 'outline', 'sm')}`}
+        >
+          أسئلة الموكل
+        </Link>
+        <Link
           href={`/app/matters/${matter.id}/copilot`}
           className={`${buttonVariants('outline', 'sm')}`}
         >
@@ -207,6 +216,12 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
           matterId={matter.id}
           clientId={matter.client_id ?? ''}
           searchParams={searchParams}
+        />
+      ) : tab === 'communications' ? (
+        <MatterCommunicationsSection
+          matterId={matter.id}
+          clientId={matter.client_id ?? ''}
+          orgId={matter.org_id}
         />
       ) : (
         <MatterTasksSection
@@ -966,5 +981,64 @@ async function MatterTasksSection({
       tasks={tasks}
       currentUserId={currentUserId}
     />
+  );
+}
+
+async function MatterCommunicationsSection({
+  matterId,
+  clientId,
+  orgId,
+}: {
+  matterId: string;
+  clientId: string;
+  orgId: string;
+}) {
+  const supabase = createSupabaseServerRlsClient();
+  const { data: communicationsRaw, error } = await supabase
+    .from('matter_communications')
+    .select('id, sender, message, created_at, user:app_users(full_name)')
+    .eq('org_id', orgId)
+    .eq('matter_id', matterId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+        تعذر تحميل أسئلة الموكل.
+      </div>
+    );
+  }
+
+  const communications = (communicationsRaw || []).map((comm) => ({
+    id: comm.id,
+    sender: comm.sender as 'CLIENT' | 'LAWYER',
+    message: comm.message,
+    created_at: comm.created_at,
+    user_name: (Array.isArray(comm.user) ? (comm.user[0] as any)?.full_name : (comm.user as any)?.full_name) || null,
+  }));
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-brand-navy dark:text-slate-100">أسئلة واستفسارات الموكل</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            يمكنك قراءة أسئلة الموكل والرد عليها مباشرة.
+          </p>
+        </div>
+      </div>
+
+      {!communications.length ? (
+        <div className="rounded-lg border border-brand-border p-6 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+          لم يقم الموكل بطرح أي أسئلة حتى الآن.
+        </div>
+      ) : (
+        <MatterCommunicationsClient
+          matterId={matterId}
+          clientId={clientId}
+          communications={communications}
+        />
+      )}
+    </section>
   );
 }

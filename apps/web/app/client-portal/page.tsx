@@ -10,6 +10,7 @@ import {
   type ClientPortalInvoice,
   type ClientPortalMatter,
   type ClientPortalMatterEvent,
+  type ClientPortalMatterCommunication,
 } from '@/components/client-portal/client-portal-dashboard';
 import { getActiveClientPortalAccess } from '@/lib/client-portal/access';
 
@@ -76,15 +77,28 @@ export default async function ClientPortalHomePage() {
 
   const matterIds = matters.map((matter) => matter.id);
   const matterEventsByMatter = new Map<string, ClientPortalMatterEvent[]>();
+  const communicationsByMatter = new Map<string, ClientPortalMatterCommunication[]>();
 
   if (matterIds.length) {
-    const { data: eventsRows } = await db
-      .from('matter_events')
-      .select('id, matter_id, type, note, event_date, created_at, creator:app_users(full_name)')
-      .eq('org_id', session.orgId)
-      .in('matter_id', matterIds)
-      .order('created_at', { ascending: false })
-      .limit(300);
+    const [eventsRowsRes, commsRowsRes] = await Promise.all([
+      db
+        .from('matter_events')
+        .select('id, matter_id, type, note, event_date, created_at, creator:app_users(full_name)')
+        .eq('org_id', session.orgId)
+        .in('matter_id', matterIds)
+        .order('created_at', { ascending: false })
+        .limit(300),
+      db
+        .from('matter_communications')
+        .select('id, matter_id, sender, message, created_at')
+        .eq('org_id', session.orgId)
+        .in('matter_id', matterIds)
+        .order('created_at', { ascending: false })
+        .limit(300),
+    ]);
+
+    const eventsRows = eventsRowsRes.data;
+    const commsRows = commsRowsRes.data;
 
     const events = (eventsRows as RawMatterEventRow[] | null) ?? [];
     for (const event of events) {
@@ -106,11 +120,28 @@ export default async function ClientPortalHomePage() {
       });
       matterEventsByMatter.set(matterId, current);
     }
+
+    const comms = (commsRows as RawMatterCommunicationRow[] | null) ?? [];
+    for (const comm of comms) {
+      const matterId = String(comm.matter_id ?? '').trim();
+      if (!matterId) continue;
+
+      const current = communicationsByMatter.get(matterId) ?? [];
+      
+      current.push({
+        id: String(comm.id),
+        sender: String(comm.sender) as 'CLIENT' | 'LAWYER',
+        message: String(comm.message ?? ''),
+        created_at: String(comm.created_at ?? new Date().toISOString()),
+      });
+      communicationsByMatter.set(matterId, current);
+    }
   }
 
   const matterData = matters.map((matter) => ({
     ...matter,
     events: matterEventsByMatter.get(matter.id) ?? [],
+    communications: communicationsByMatter.get(matter.id) ?? [],
   })) satisfies ClientPortalMatter[];
 
   const rawInvoices = ((invoicesRes.data as RawInvoiceRow[] | null) ?? []).map((invoice) => ({
@@ -231,6 +262,14 @@ type RawMatterEventRow = {
   event_date: string | null;
   created_at: string;
   creator: { full_name: string | null } | { full_name: string | null }[] | null;
+};
+
+type RawMatterCommunicationRow = {
+  id: string;
+  matter_id: string;
+  sender: string;
+  message: string;
+  created_at: string;
 };
 
 type RawInvoiceRow = {

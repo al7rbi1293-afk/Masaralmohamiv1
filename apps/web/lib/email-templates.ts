@@ -85,16 +85,70 @@ export const INVOICE_EMAIL_HTML = (name: string, planName: string, amount: strin
     <meta charset="UTF-8">
     <title>فاتورة الاشتراك - مسار المحامي</title>
 </head>
-<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; text-align: right; direction: rtl;">
-    <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <h2 style="color: #0f172a; margin-bottom: 15px;">شكراً لثقتك، ${name} 👋</h2>
-        <p>تم استلام دفعتك بنجاح وتفعيل اشتراكك في باقة <strong>${planName}</strong>.</p>
-        <p>مرفق في هذا البريد فاتورة الاشتراك الرسمية بقيمة <strong>${amount}</strong>.</p>
-    </div>
+<body style="margin:0; padding:24px 0; background:#f1f5f9; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color:#0f172a; direction:rtl;">
+    <div style="max-width:680px; margin:0 auto; padding:0 16px;">
+        <div style="background:linear-gradient(135deg, #0f172a 0%, #102a43 55%, #0f766e 100%); border-radius:24px 24px 0 0; padding:28px 28px 22px; color:#ffffff;">
+            <div style="font-size:13px; letter-spacing:0.4px; opacity:0.9; margin-bottom:10px;">مسار المحامي</div>
+            <h1 style="margin:0; font-size:28px; line-height:1.5; font-weight:700;">فاتورة اشتراككم جاهزة</h1>
+            <p style="margin:10px 0 0; font-size:15px; line-height:1.9; color:rgba(255,255,255,0.92);">
+                تم استلام الدفعة بنجاح وتأكيد تفعيل الاشتراك على المنصة، ومرفق مع هذه الرسالة ملف الفاتورة بصيغة PDF.
+            </p>
+        </div>
 
-    <div style="margin-top: 30px; text-align: center; font-size: 14px; color: #64748b;">
-        <p>نسعد بخدمتك دائماً.</p>
-        <p>فريق مسار المحامي</p>
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-top:none; border-radius:0 0 24px 24px; padding:28px; box-shadow:0 20px 45px rgba(15, 23, 42, 0.08);">
+            <p style="margin:0 0 18px; font-size:16px; line-height:1.9;">الأستاذ/ة <strong>${name}</strong>،</p>
+            <p style="margin:0 0 22px; font-size:15px; line-height:1.95; color:#334155;">
+                نشكركم على ثقتكم في <strong>مسار المحامي</strong>. تم تفعيل اشتراككم بنجاح على باقة
+                <strong>${planName}</strong>، ويمكنكم الآن الاستفادة من خدمات المنصة بشكل كامل.
+            </p>
+
+            <div style="border:1px solid #dbeafe; background:linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%); border-radius:20px; padding:20px 22px; margin:0 0 24px;">
+                <div style="font-size:13px; color:#0369a1; margin-bottom:14px; font-weight:700;">ملخص الفاتورة</div>
+                <table role="presentation" style="width:100%; border-collapse:collapse; font-size:14px;">
+                    <tr>
+                        <td style="padding:8px 0; color:#64748b;">الخدمة</td>
+                        <td style="padding:8px 0; color:#0f172a; font-weight:600; text-align:left;">اشتراك منصة مسار المحامي</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 0; color:#64748b; border-top:1px solid #e2e8f0;">الباقة</td>
+                        <td style="padding:8px 0; color:#0f172a; font-weight:600; text-align:left; border-top:1px solid #e2e8f0;">${planName}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 0; color:#64748b; border-top:1px solid #e2e8f0;">إجمالي المبلغ</td>
+                        <td style="padding:8px 0; color:#0f172a; font-weight:700; text-align:left; border-top:1px solid #e2e8f0;">${amount}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 0; color:#64748b; border-top:1px solid #e2e8f0;">حالة الاشتراك</td>
+                        <td style="padding:8px 0; text-align:left; border-top:1px solid #e2e8f0;">
+                            <span style="display:inline-block; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700;">
+                                مفعل
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="border-right:4px solid #10b981; background:#f8fafc; border-radius:16px; padding:16px 18px; margin:0 0 24px;">
+                <p style="margin:0; font-size:14px; line-height:1.9; color:#475569;">
+                    مرفق في هذه الرسالة <strong>ملف الفاتورة الرسمية PDF</strong>، ويمكن الاحتفاظ به لأغراض المراجعة المالية أو الأرشفة الداخلية.
+                </p>
+            </div>
+
+            <p style="margin:0 0 12px; font-size:15px; line-height:1.9; color:#334155;">
+                إذا احتجتم إلى أي مساعدة بخصوص الاشتراك أو الفاتورة، يسعد فريقنا بخدمتكم عبر البريد:
+                <a href="mailto:masar.almohami@outlook.sa" style="color:#0f766e; text-decoration:none; font-weight:600;">masar.almohami@outlook.sa</a>
+            </p>
+            <p style="margin:0; font-size:15px; line-height:1.9; color:#334155;">
+                مع خالص التقدير،
+                <br />
+                <strong>فريق مسار المحامي</strong>
+            </p>
+        </div>
+
+        <div style="text-align:center; color:#64748b; font-size:12px; line-height:1.8; padding:18px 10px 0;">
+            <p style="margin:0;">هذه الرسالة صادرة آلياً بعد تفعيل الاشتراك وسداد الفاتورة.</p>
+            <p style="margin:4px 0 0;">مسار المحامي - إدارة قانونية أكثر وضوحاً وتنظيماً.</p>
+        </div>
     </div>
 </body>
 </html>

@@ -7,6 +7,7 @@ import { BillingItemsEditor } from '@/components/billing/items-editor';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { createQuoteAction } from '../../actions';
 
 type QuoteNewPageProps = {
@@ -16,9 +17,10 @@ type QuoteNewPageProps = {
 export default async function QuoteNewPage({ searchParams }: QuoteNewPageProps) {
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
 
-  const [clientsResult, mattersResult] = await Promise.all([
+  const [clientsResult, mattersResult, orgResult] = await Promise.all([
     listClients({ status: 'active', page: 1, limit: 100 }),
     listMatters({ status: 'all', page: 1, limit: 100 }),
+    createSupabaseServerRlsClient().from('organizations').select('tax_number').single().then((res) => res),
   ]);
 
   if (!clientsResult.data.length) {
@@ -118,7 +120,14 @@ export default async function QuoteNewPage({ searchParams }: QuoteNewPageProps) 
 
         <section className="space-y-3">
           <h3 className="font-semibold text-brand-navy dark:text-slate-100">بنود العرض</h3>
-          <BillingItemsEditor name="items_json" />
+          <BillingItemsEditor
+            name="items_json"
+            taxName="tax"
+            taxEnabledName="tax_enabled"
+            taxNumberName="tax_number"
+            defaultTaxEnabled={!!orgResult.data?.tax_number}
+            defaultTaxNumber={orgResult.data?.tax_number ?? ''}
+          />
         </section>
 
         <div className="flex flex-wrap gap-3">

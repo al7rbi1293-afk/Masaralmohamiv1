@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 
-type PortalTabKey = 'overview' | 'matters' | 'documents' | 'invoices';
+type PortalTabKey = 'overview' | 'matters' | 'documents' | 'invoices' | 'quotes';
 
 export type ClientPortalMatter = {
   id: string;
@@ -47,6 +47,16 @@ export type ClientPortalInvoice = {
   matter_title: string | null;
 };
 
+export type ClientPortalQuote = {
+  id: string;
+  number: string;
+  status: string;
+  total: number;
+  currency: string | null;
+  created_at: string;
+  matter_title: string | null;
+};
+
 export type ClientPortalDocumentVersion = {
   version_no: number;
   storage_path: string;
@@ -73,6 +83,7 @@ export type ClientPortalDashboardData = {
   };
   matters: ClientPortalMatter[];
   invoices: ClientPortalInvoice[];
+  quotes: ClientPortalQuote[];
   documents: ClientPortalDocument[];
 };
 
@@ -89,6 +100,13 @@ const INVOICE_STATUS_LABELS: Record<string, string> = {
   partial: 'مدفوعة جزئيًا',
   paid: 'مدفوعة',
   void: 'ملغاة',
+};
+
+const QUOTE_STATUS_LABELS: Record<string, string> = {
+  draft: 'مسودة',
+  sent: 'مرسلة',
+  accepted: 'مقبولة',
+  rejected: 'مرفوضة',
 };
 
 const MATTER_EVENT_TYPE_LABELS: Record<string, string> = {
@@ -152,6 +170,10 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
   const filteredInvoices = useMemo(() => {
     return data.invoices.filter((invoice) => invoiceStatus === 'all' || invoice.status === invoiceStatus);
   }, [data.invoices, invoiceStatus]);
+
+  const filteredQuotes = useMemo(() => {
+    return data.quotes.filter((quote) => invoiceStatus === 'all' || quote.status === invoiceStatus);
+  }, [data.quotes, invoiceStatus]);
 
   const matterOptions = useMemo(
     () => data.matters.map((matter) => ({ id: matter.id, label: matter.title })),
@@ -306,6 +328,7 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
           { key: 'matters' as const, label: 'القضايا' },
           { key: 'documents' as const, label: 'المستندات' },
           { key: 'invoices' as const, label: 'الفواتير' },
+          { key: 'quotes' as const, label: 'عروض الأسعار' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -724,6 +747,68 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
           )}
         </section>
       ) : null}
+
+      {activeTab === 'quotes' ? (
+        <section className="mt-6 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-[220px_auto]">
+            <select
+              value={invoiceStatus}
+              onChange={(event) => setInvoiceStatus(event.target.value)}
+              className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+            >
+              <option value="all">كل الحالات</option>
+              {Object.entries(QUOTE_STATUS_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {!filteredQuotes.length ? (
+            <EmptyText text="لا توجد عروض أسعار مطابقة." />
+          ) : (
+            <div className="space-y-3">
+              {filteredQuotes.map((quote) => (
+                <article key={quote.id} className="rounded-lg border border-brand-border p-4 dark:border-slate-700">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-brand-navy dark:text-slate-100">عرض سعر #{quote.number}</h3>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                        {quote.matter_title ? `القضية: ${quote.matter_title}` : 'غير مرتبط بقضية'}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        تاريخ: {formatDate(quote.created_at)}
+                      </p>
+                    </div>
+                    <Badge variant={toQuoteBadgeVariant(quote.status)}>
+                      {QUOTE_STATUS_LABELS[quote.status] || quote.status}
+                    </Badge>
+                  </div>
+
+                  <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <AmountBox
+                      label="الإجمالي"
+                      value={`${formatMoney(quote.total)} ${quote.currency || 'SAR'}`}
+                    />
+                  </dl>
+
+                  <div className="mt-3">
+                    <a
+                      href={`/api/client-portal/quotes/${quote.id}/pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={buttonVariants('outline', 'sm')}
+                    >
+                      تحميل PDF
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -770,6 +855,13 @@ function toInvoiceBadgeVariant(status: string): 'default' | 'success' | 'warning
   if (status === 'paid') return 'success';
   if (status === 'void') return 'danger';
   if (status === 'unpaid' || status === 'partial') return 'warning';
+  return 'default';
+}
+
+function toQuoteBadgeVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {
+  if (status === 'accepted') return 'success';
+  if (status === 'rejected') return 'danger';
+  if (status === 'sent') return 'warning';
   return 'default';
 }
 

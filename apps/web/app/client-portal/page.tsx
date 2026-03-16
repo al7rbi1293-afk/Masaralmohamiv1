@@ -8,6 +8,7 @@ import {
   type ClientPortalDocument,
   type ClientPortalDocumentVersion,
   type ClientPortalInvoice,
+  type ClientPortalQuote,
   type ClientPortalMatter,
   type ClientPortalMatterEvent,
   type ClientPortalMatterCommunication,
@@ -31,7 +32,7 @@ export default async function ClientPortalHomePage() {
 
   const { db, session } = access;
 
-  const [clientRes, mattersRes, invoicesRes, documentsRes] = await Promise.all([
+  const [clientRes, mattersRes, invoicesRes, quotesRes, documentsRes] = await Promise.all([
     db
       .from('clients')
       .select('id, name, email, phone')
@@ -51,6 +52,13 @@ export default async function ClientPortalHomePage() {
       .eq('org_id', session.orgId)
       .eq('client_id', session.clientId)
       .order('issued_at', { ascending: false })
+      .limit(50),
+    db
+      .from('quotes')
+      .select('id, number, status, total, currency, created_at, matter:matters(id, title)')
+      .eq('org_id', session.orgId)
+      .eq('client_id', session.clientId)
+      .order('created_at', { ascending: false })
       .limit(50),
     db
       .from('documents')
@@ -184,6 +192,16 @@ export default async function ClientPortalHomePage() {
     };
   }) satisfies ClientPortalInvoice[];
 
+  const quotes = ((quotesRes.data as RawQuoteRow[] | null) ?? []).map((quote) => ({
+    id: String(quote.id),
+    number: String(quote.number ?? ''),
+    status: String(quote.status ?? ''),
+    total: toNumber(quote.total),
+    currency: quote.currency ? String(quote.currency) : 'SAR',
+    created_at: String(quote.created_at ?? new Date().toISOString()),
+    matter_title: pickRelation<{ id: string; title: string }>(quote.matter)?.title ?? null,
+  })) satisfies ClientPortalQuote[];
+
   const rawDocuments = ((documentsRes.data as RawDocumentRow[] | null) ?? []).map((document) => ({
     id: String(document.id),
     title: String(document.title ?? ''),
@@ -233,6 +251,7 @@ export default async function ClientPortalHomePage() {
     },
     matters: matterData,
     invoices,
+    quotes,
     documents,
   };
 
@@ -280,6 +299,16 @@ type RawInvoiceRow = {
   currency: string | null;
   issued_at: string | null;
   due_at: string | null;
+  matter: { id: string; title: string } | { id: string; title: string }[] | null;
+};
+
+type RawQuoteRow = {
+  id: string;
+  number: string;
+  status: string;
+  total: string | number;
+  currency: string | null;
+  created_at: string;
   matter: { id: string; title: string } | { id: string; title: string }[] | null;
 };
 

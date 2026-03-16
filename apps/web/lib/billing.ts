@@ -24,9 +24,13 @@ export type Quote = {
   matter_id: string | null;
   number: string;
   items: BillingItem[];
+  subtotal: string;
+  tax: string;
   total: string; // numeric -> string from PostgREST
   currency: string;
   status: QuoteStatus;
+  tax_enabled: boolean;
+  tax_number: string | null;
   created_by: string;
   created_at: string;
   client: { id: string; name: string } | null;
@@ -95,7 +99,7 @@ export type PaginatedResult<T> = {
 };
 
 const QUOTE_SELECT =
-  'id, org_id, client_id, matter_id, number, items, total, currency, status, created_by, created_at, client:clients(id, name), matter:matters(id, title)';
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, created_by, created_at, client:clients(id, name), matter:matters(id, title)';
 
 const INVOICE_SELECT =
   'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, is_archived, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
@@ -137,6 +141,24 @@ function normalizeRowMatter<T extends { matter: any }>(row: T) {
   const raw = row.matter;
   const matter = Array.isArray(raw) ? raw[0] ?? null : raw ?? null;
   return { ...row, matter };
+}
+
+function normalizeQuoteRow(row: QuoteRow): Quote {
+  const normalized = normalizeRowMatter(normalizeRowClient(row)) as QuoteRow & {
+    client: Quote['client'];
+    matter: Quote['matter'];
+  };
+  const rawTaxNumber = typeof normalized.tax_number === 'string' ? normalized.tax_number.trim() : '';
+  const taxEnabled =
+    typeof normalized.tax_enabled === 'boolean'
+      ? normalized.tax_enabled
+      : Number(normalized.tax) > 0;
+
+  return {
+    ...normalized,
+    tax_enabled: taxEnabled,
+    tax_number: taxEnabled && rawTaxNumber ? rawTaxNumber : null,
+  } as Quote;
 }
 
 function normalizeInvoiceRow(row: InvoiceRowLike): Invoice {
@@ -199,8 +221,7 @@ export async function getQuoteById(id: string): Promise<Quote | null> {
   if (error) throw error;
   if (!data) return null;
 
-  const row = normalizeRowMatter(normalizeRowClient(data as QuoteRow));
-  return row as unknown as Quote;
+  return normalizeQuoteRow(data as QuoteRow);
 }
 
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
@@ -252,7 +273,7 @@ export async function listQuotes(params: ListQuotesParams = {}): Promise<Paginat
   if (error) throw error;
 
   return {
-    data: ((data as QuoteRow[] | null) ?? []).map((row) => normalizeRowMatter(normalizeRowClient(row)) as unknown as Quote),
+    data: ((data as QuoteRow[] | null) ?? []).map(normalizeQuoteRow),
     page,
     limit,
     total: count ?? 0,
@@ -263,6 +284,9 @@ export type CreateQuotePayload = {
   client_id: string;
   matter_id?: string | null;
   items: BillingItem[];
+  tax?: number;
+  tax_enabled?: boolean;
+  tax_number?: string | null;
   status?: QuoteStatus;
 };
 
@@ -279,7 +303,17 @@ export async function createQuote(payload: CreateQuotePayload): Promise<Quote> {
   }
 
   const items = normalizeItems(parsedItems.data);
-  const total = sumItems(items);
+  const subtotal = sumItems(items);
+  const taxEnabled = Boolean(payload.tax_enabled);
+  const tax = taxEnabled ? round2(Math.max(0, payload.tax ?? 0)) : 0;
+
+  let taxNumber = taxEnabled ? normalizeTaxNumber(payload.tax_number) : null;
+  if (taxEnabled && !taxNumber) {
+    const { data: org } = await supabase.from('organizations').select('tax_number').eq('id', orgId).maybeSingle();
+    taxNumber = org?.tax_number || null;
+  }
+
+  const total = round2(subtotal + tax);
 
   const year = new Date().getFullYear();
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -299,7 +333,11 @@ export async function createQuote(payload: CreateQuotePayload): Promise<Quote> {
         matter_id: payload.matter_id ?? null,
         number,
         items,
+        subtotal,
+        tax,
         total,
+        tax_enabled: taxEnabled,
+        tax_number: taxNumber,
         currency: 'SAR',
         status: payload.status ?? 'draft',
         created_by: user.id,
@@ -308,8 +346,7 @@ export async function createQuote(payload: CreateQuotePayload): Promise<Quote> {
       .single();
 
     if (!error && data) {
-      const row = normalizeRowMatter(normalizeRowClient(data as QuoteRow));
-      return row as unknown as Quote;
+      return normalizeQuoteRow(data as QuoteRow);
     }
 
     if (error && isUniqueViolation(error)) {
@@ -326,6 +363,9 @@ export type UpdateQuotePayload = {
   client_id: string;
   matter_id?: string | null;
   items: BillingItem[];
+  tax?: number;
+  tax_enabled?: boolean;
+  tax_number?: string | null;
   status: QuoteStatus;
 };
 
@@ -339,7 +379,17 @@ export async function updateQuote(id: string, payload: UpdateQuotePayload): Prom
   }
 
   const items = normalizeItems(parsedItems.data);
-  const total = sumItems(items);
+  const subtotal = sumItems(items);
+  const taxEnabled = Boolean(payload.tax_enabled);
+  const tax = taxEnabled ? round2(Math.max(0, payload.tax ?? 0)) : 0;
+
+  let taxNumber = taxEnabled ? normalizeTaxNumber(payload.tax_number) : null;
+  if (taxEnabled && !taxNumber) {
+    const { data: org } = await supabase.from('organizations').select('tax_number').eq('id', orgId).maybeSingle();
+    taxNumber = org?.tax_number || null;
+  }
+
+  const total = round2(subtotal + tax);
 
   const { data, error } = await supabase
     .from('quotes')
@@ -347,7 +397,11 @@ export async function updateQuote(id: string, payload: UpdateQuotePayload): Prom
       client_id: payload.client_id,
       matter_id: payload.matter_id ?? null,
       items,
+      subtotal,
+      tax,
       total,
+      tax_enabled: taxEnabled,
+      tax_number: taxNumber,
       status: payload.status,
     })
     .eq('org_id', orgId)
@@ -358,8 +412,7 @@ export async function updateQuote(id: string, payload: UpdateQuotePayload): Prom
   if (error) throw error;
   if (!data) throw new Error('not_found');
 
-  const row = normalizeRowMatter(normalizeRowClient(data as QuoteRow));
-  return row as unknown as Quote;
+  return normalizeQuoteRow(data as QuoteRow);
 }
 
 export type ListInvoicesParams = {

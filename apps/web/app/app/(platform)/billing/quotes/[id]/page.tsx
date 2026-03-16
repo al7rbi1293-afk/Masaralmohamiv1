@@ -8,6 +8,7 @@ import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
 import { getQuoteById, type QuoteStatus } from '@/lib/billing';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { updateQuoteAction } from '../../actions';
 
 type QuoteDetailsPageProps = {
@@ -50,10 +51,18 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
 
-  const [clientsResult, mattersResult] = await Promise.all([
+  const [clientsResult, mattersResult, orgResult] = await Promise.all([
     listClients({ status: 'active', page: 1, limit: 100 }),
     listMatters({ status: 'all', page: 1, limit: 100 }),
+    createSupabaseServerRlsClient()
+      .from('organizations')
+      .select('name, address, cr_number, tax_number')
+      .eq('id', quote.org_id)
+      .maybeSingle()
+      .then((res) => res),
   ]);
+
+  const org = orgResult.data;
 
   const matters = mattersResult.data.filter((matter) => matter.status !== 'archived');
   const items = Array.isArray(quote.items) ? quote.items : [];
@@ -78,9 +87,19 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
             <Badge variant="default">{formatMoney(quote.total)} SAR</Badge>
           </div>
         </div>
-        <Link href="/app/billing/quotes" className={buttonVariants('outline', 'sm')}>
-          رجوع
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={`/app/api/quotes/${quote.id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants('outline', 'sm')}
+          >
+            تحميل PDF
+          </a>
+          <Link href="/app/billing/quotes" className={buttonVariants('outline', 'sm')}>
+            رجوع
+          </Link>
+        </div>
       </div>
 
       {success ? (
@@ -148,7 +167,15 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
 
         <section className="space-y-3">
           <h3 className="font-semibold text-brand-navy dark:text-slate-100">البنود</h3>
-          <BillingItemsEditor name="items_json" defaultItems={items.map((item) => ({ ...item }))} />
+          <BillingItemsEditor
+            name="items_json"
+            taxName="tax"
+            taxEnabledName="tax_enabled"
+            taxNumberName="tax_number"
+            defaultItems={items.map((item) => ({ ...item }))}
+            defaultTaxEnabled={quote.tax_enabled}
+            defaultTaxNumber={quote.tax_number ?? org?.tax_number ?? ''}
+          />
         </section>
 
         <div className="flex flex-wrap gap-3">
@@ -157,9 +184,24 @@ export default async function QuoteDetailsPage({ params, searchParams }: QuoteDe
           </FormSubmitButton>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          تاريخ الإنشاء: {new Date(quote.created_at).toLocaleString('ar-SA')}
-        </p>
+        <div className="grid gap-4 rounded-lg bg-slate-50 p-4 text-sm dark:bg-slate-900/50 sm:grid-cols-2">
+          <div>
+            <p className="font-semibold text-brand-navy dark:text-slate-100">{org?.name || 'المكتب'}</p>
+            <p className="mt-1 text-slate-600 dark:text-slate-300">{org?.address || 'لا يوجد عنوان مسجل'}</p>
+            {org?.cr_number && (
+              <p className="mt-1 text-slate-500 dark:text-slate-400">سجل تجاري: {org.cr_number}</p>
+            )}
+            {quote.tax_number && (
+              <p className="mt-1 text-slate-500 dark:text-slate-400">رقم ضريبي: {quote.tax_number}</p>
+            )}
+          </div>
+          <div className="text-end">
+            <p className="font-semibold text-brand-navy dark:text-slate-100">{quote.client?.name}</p>
+            <p className="mt-1 text-slate-500 dark:text-slate-400">
+              تاريخ الإنشاء: {new Date(quote.created_at).toLocaleString('ar-SA')}
+            </p>
+          </div>
+        </div>
       </form>
     </Card>
   );

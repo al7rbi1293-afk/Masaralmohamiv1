@@ -21,6 +21,9 @@ import { toUserMessage, emptyToNull } from '@/lib/shared-utils';
 const quoteFormSchema = z.object({
   client_id: z.string().uuid('يرجى اختيار العميل.'),
   matter_id: z.string().uuid().optional().or(z.literal('')),
+  tax: z.string().trim().optional().or(z.literal('')),
+  tax_enabled: z.string().trim().optional().or(z.literal('')),
+  tax_number: z.string().trim().optional().or(z.literal('')),
   status: z.enum(['draft', 'sent', 'accepted', 'rejected']),
   items_json: z.string().min(2, 'يرجى إضافة بند واحد على الأقل.'),
 });
@@ -36,11 +39,20 @@ export async function createQuoteAction(formData: FormData) {
     redirect(`/app/billing/quotes/new?error=${encodeURIComponent('بنود عرض السعر غير صحيحة.')}`);
   }
 
+  const tax = parseMoney(parsed.data.tax);
+  if (tax === null) {
+    redirect(`/app/billing/quotes/new?error=${encodeURIComponent('قيمة الضريبة غير صحيحة.')}`);
+  }
+
   try {
+    const taxEnabled = parsed.data.tax_enabled === '1';
     const created = await createQuote({
       client_id: parsed.data.client_id,
       matter_id: emptyToNull(parsed.data.matter_id),
       items,
+      tax: tax ?? 0,
+      tax_enabled: taxEnabled,
+      tax_number: taxEnabled ? (parsed.data.tax_number || null) : null,
       status: parsed.data.status,
     });
 
@@ -72,11 +84,20 @@ export async function updateQuoteAction(id: string, formData: FormData) {
     redirect(`/app/billing/quotes/${id}?error=${encodeURIComponent('بنود عرض السعر غير صحيحة.')}`);
   }
 
+  const tax = parseMoney(parsed.data.tax);
+  if (tax === null) {
+    redirect(`/app/billing/quotes/${id}?error=${encodeURIComponent('قيمة الضريبة غير صحيحة.')}`);
+  }
+
   try {
+    const taxEnabled = parsed.data.tax_enabled === '1';
     const updated = await updateQuote(id, {
       client_id: parsed.data.client_id,
       matter_id: emptyToNull(parsed.data.matter_id),
       items,
+      tax: tax ?? 0,
+      tax_enabled: taxEnabled,
+      tax_number: taxEnabled ? (parsed.data.tax_number || null) : null,
       status: parsed.data.status,
     });
 
@@ -282,6 +303,9 @@ function toQuoteObject(formData: FormData) {
   return {
     client_id: String(formData.get('client_id') ?? ''),
     matter_id: String(formData.get('matter_id') ?? ''),
+    tax: String(formData.get('tax') ?? ''),
+    tax_enabled: String(formData.get('tax_enabled') ?? ''),
+    tax_number: String(formData.get('tax_number') ?? ''),
     status: String(formData.get('status') ?? 'draft'),
     items_json: String(formData.get('items_json') ?? ''),
   };

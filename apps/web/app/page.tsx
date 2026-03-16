@@ -16,7 +16,7 @@ import { StartTrialForm } from '@/components/sections/start-trial-form';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
-import { SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
+import { PricingToggleCards } from '@/components/sections/pricing-toggle-cards';
 import { getPublicSiteUrl } from '@/lib/env';
 
 const siteUrl = getPublicSiteUrl();
@@ -298,56 +298,7 @@ export default function HomePage() {
       </Section>
 
       <Section title="لمن صُمم مسار المحامي؟">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {SUBSCRIPTION_PRICING_CARDS.map((item) => {
-            const CardContent = (
-              <article
-                className={`h-full rounded-xl2 border border-brand-border bg-white p-6 text-center shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-900 ${item.action !== 'contact' ? 'cursor-pointer hover:border-brand-emerald/50' : ''}`}
-              >
-                <Users className="mx-auto text-brand-emerald" size={20} />
-                <h3 className="mt-3 text-lg font-semibold text-brand-navy dark:text-slate-100">{item.title}</h3>
-
-                <div className="mt-4 flex items-end justify-center gap-1">
-                  <span className={`text-2xl font-bold ${item.action === 'contact' ? 'text-lg' : 'text-brand-navy dark:text-slate-100'}`}>
-                    {item.priceLabel}
-                  </span>
-                  {item.periodLabel && <span className="mb-1 text-sm text-slate-500">{item.periodLabel}</span>}
-                </div>
-
-                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {item.description}
-                </p>
-
-                {item.action === 'contact' && (
-                  <span
-                    dir="ltr"
-                    className="mt-4 block w-full max-w-full break-all text-center text-sm font-medium text-brand-emerald hover:underline"
-                  >
-                    masar.almohami@outlook.sa
-                  </span>
-                )}
-              </article>
-            );
-
-            if (item.action === 'contact') {
-              return (
-                <a key={item.title} href="mailto:masar.almohami@outlook.sa" className="block h-full">
-                  {CardContent}
-                </a>
-              );
-            }
-
-            return (
-              <Link
-                key={item.title}
-                href={`/app/settings/subscription/pricing?plan=${item.code}&period=monthly`}
-                className="block h-full"
-              >
-                {CardContent}
-              </Link>
-            );
-          })}
-        </div>
+        <PricingToggleCards />
       </Section>
 
       <Section className="bg-white dark:bg-slate-950">

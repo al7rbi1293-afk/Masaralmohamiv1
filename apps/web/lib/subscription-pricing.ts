@@ -2,6 +2,7 @@ export type PricingPlanCard = {
   code: string;
   title: string;
   priceMonthly: number | null;
+  priceAnnual: number | null;
   priceLabel: string;
   periodLabel: string;
   description: string;
@@ -12,8 +13,9 @@ export type PricingPlanCard = {
 export const SUBSCRIPTION_PRICING_CARDS: PricingPlanCard[] = [
   {
     code: 'SOLO',
-    title: 'محامي مستقل',
+    title: 'المحامي المستقل',
     priceMonthly: 250,
+    priceAnnual: 3000,
     priceLabel: '250 ريال',
     periodLabel: 'شهرياً',
     description: 'انطلاقة قوية لممارستك المستقلة. نظّم قضاياك وعملائك في مكان واحد بمهنية عالية.',
@@ -22,32 +24,35 @@ export const SUBSCRIPTION_PRICING_CARDS: PricingPlanCard[] = [
   },
   {
     code: 'SMALL_OFFICE',
-    title: 'مكتب صغير (1-5)',
+    title: 'مكتب صغير',
     priceMonthly: 500,
+    priceAnnual: 6000,
     priceLabel: '500 ريال',
     periodLabel: 'شهرياً',
     description: 'أسس مكتبك على قواعد صحيحة. تعاون مع فريقك وتابع المهام بدقة وسلاسة.',
-    seatsLabel: 'حد المقاعد: 5',
+    seatsLabel: 'حد المقاعد: من 2 إلى 5',
     action: 'subscribe',
   },
   {
     code: 'MEDIUM_OFFICE',
-    title: 'مكتب متوسط (6-25)',
+    title: 'مكتب متوسط',
     priceMonthly: 750,
+    priceAnnual: 9000,
     priceLabel: '750 ريال',
     periodLabel: 'شهرياً',
     description: 'تحكم كامل في النمو. صلاحيات متقدمة وتقارير أداء لضبط سير العمل.',
-    seatsLabel: 'حد المقاعد: 25',
+    seatsLabel: 'حد المقاعد: من 6 إلى 10',
     action: 'subscribe',
   },
   {
     code: 'ENTERPRISE',
-    title: 'مكتب كبير أو شركة محاماة',
+    title: 'مكتب كبير أو شركات',
     priceMonthly: null,
+    priceAnnual: null,
     priceLabel: 'تواصل معنا',
     periodLabel: '',
     description: 'حلول مخصصة للمؤسسات الكبرى. دعم خاص وتكاملات متقدمة.',
-    seatsLabel: 'حد المقاعد: حسب الاتفاق',
+    seatsLabel: 'حد المقاعد: 11 إلى 30',
     action: 'contact',
   },
 ];

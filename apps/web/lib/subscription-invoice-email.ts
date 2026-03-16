@@ -338,7 +338,8 @@ function estimateAmountFromPricing(params: {
 
   if (params.durationMonths >= 12 && params.durationMonths % 12 === 0) {
     const years = params.durationMonths / 12;
-    return round2(card.priceMonthly * 10 * years);
+    const yearlyPrice = card.priceAnnual ?? card.priceMonthly * 10;
+    return round2(yearlyPrice * years);
   }
 
   return round2(card.priceMonthly * params.durationMonths);

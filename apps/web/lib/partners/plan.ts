@@ -25,8 +25,8 @@ const PLAN_ALIAS_MAP: Record<string, string> = {
 const PLAN_SEATS: Record<string, number | null> = {
   SOLO: 1,
   SMALL_OFFICE: 5,
-  MEDIUM_OFFICE: 25,
-  ENTERPRISE: null,
+  MEDIUM_OFFICE: 10,
+  ENTERPRISE: 30,
 };
 
 export function resolveBillingPlan(params: {
@@ -41,8 +41,7 @@ export function resolveBillingPlan(params: {
     throw new Error('هذه الخطة غير متاحة للدفع الإلكتروني حالياً.');
   }
 
-  const monthlyAmount = card.priceMonthly;
-  const amount = params.period === 'yearly' ? monthlyAmount * 10 : monthlyAmount;
+  const amount = params.period === 'yearly' ? card.priceAnnual ?? 0 : card.priceMonthly;
 
   return {
     requestedCode,

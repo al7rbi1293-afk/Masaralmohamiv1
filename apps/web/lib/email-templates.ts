@@ -135,9 +135,9 @@ export const WELCOME_EMAIL_HTML = (name: string, verificationLink: string) => `
                 <h2>كيف يعمل الاشتراك والتجديد؟</h2>
                 <p>نقدم خطط مرنة تناسب حجم مكتبك:</p>
                 <ul>
-                    <li><strong>محامي مستقل:</strong> 250 ريال/شهرياً.</li>
+                    <li><strong>المحامي المستقل:</strong> 250 ريال/شهرياً.</li>
                     <li><strong>مكتب صغير (1-5 مستخدمين):</strong> 500 ريال/شهرياً.</li>
-                    <li><strong>مكتب متوسط (6-25 مستخدم):</strong> 750 ريال/شهرياً.</li>
+                    <li><strong>مكتب متوسط (6-10 مستخدمين):</strong> 750 ريال/شهرياً.</li>
                 </ul>
                 <p>يمكنك الاشتراك <strong>سنوياً</strong> للحصول على خصم خاص (شهرين مجاناً).</p>
             </div>

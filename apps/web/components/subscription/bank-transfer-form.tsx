@@ -31,8 +31,8 @@ export function BankTransferForm({
     // But here we rely on the passed 'price' being correct per unit.
     // Actually, let's just use the strict amount passed.
 
-    const finalAmount = period === 'yearly' ? price * 10 : price;
-    const label = period === 'yearly' ? 'سنوي (خصم شهرين)' : 'شهري';
+    const finalAmount = price;
+    const label = period === 'yearly' ? 'سنوي' : 'شهري';
 
     return (
         <div className="space-y-4">

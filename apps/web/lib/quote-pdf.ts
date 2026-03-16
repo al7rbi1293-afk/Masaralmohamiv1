@@ -180,7 +180,7 @@ export async function renderQuotePdfBuffer(payload: QuotePdfPayload) {
           React.createElement(
             Text,
             { style: styles.subtitle },
-            `عرض سعر ${safeNumber}`,
+            payload.taxNumber ? `عرض سعر ضريبي ${safeNumber}` : `عرض سعر ${safeNumber}`,
           ),
         ),
         payload.logoUrl

@@ -178,7 +178,7 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
           React.createElement(
             Text,
             { style: styles.subtitle },
-            `فاتورة ${safeNumber}`,
+            payload.taxNumber ? `فاتورة ضريبية ${safeNumber}` : `فاتورة ${safeNumber}`,
           ),
         ),
         payload.logoUrl

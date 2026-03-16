@@ -29,6 +29,7 @@ export type InvoicePdfPayload = {
   paidAmount: number;
   remaining: number;
   taxNumber?: string | null;
+  crNumber?: string | null;
   qrCode?: string | null;
 };
 
@@ -199,6 +200,9 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
           payload.taxNumber
             ? React.createElement(Text, { style: styles.infoText }, `الرقم الضريبي: ${payload.taxNumber}`)
             : null,
+          payload.crNumber
+            ? React.createElement(Text, { style: styles.infoText }, `الرقم السجل التجاري: ${payload.crNumber}`)
+            : null,
         ),
         React.createElement(
           View,
@@ -240,6 +244,14 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
             { style: styles.row },
             React.createElement(Text, { style: styles.label }, 'الرقم الضريبي'),
             React.createElement(Text, { style: styles.value }, payload.taxNumber),
+          )
+          : null,
+        payload.crNumber
+          ? React.createElement(
+            View,
+            { style: styles.row },
+            React.createElement(Text, { style: styles.label }, 'رقم السجل التجاري'),
+            React.createElement(Text, { style: styles.value }, payload.crNumber),
           )
           : null,
       ),

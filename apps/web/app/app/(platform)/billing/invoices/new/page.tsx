@@ -7,6 +7,7 @@ import { BillingItemsEditor } from '@/components/billing/items-editor';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { listClients } from '@/lib/clients';
 import { listMatters } from '@/lib/matters';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { createInvoiceAction } from '../../actions';
 
 type InvoiceNewPageProps = {
@@ -16,10 +17,13 @@ type InvoiceNewPageProps = {
 export default async function InvoiceNewPage({ searchParams }: InvoiceNewPageProps) {
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
 
-  const [clientsResult, mattersResult] = await Promise.all([
+  const [clientsResult, mattersResult, orgResult] = await Promise.all([
     listClients({ status: 'active', page: 1, limit: 100 }),
     listMatters({ status: 'all', page: 1, limit: 100 }),
+    createSupabaseServerRlsClient().from('organizations').select('tax_number').maybeSingle(),
   ]);
+
+  const org = (orgResult as any)?.data;
 
   if (!clientsResult.data.length) {
     return (
@@ -34,7 +38,7 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
     );
   }
 
-  const matters = mattersResult.data.filter((matter) => matter.status !== 'archived');
+  const matters = mattersResult.data.filter((matter: any) => matter.status !== 'archived');
 
   return (
     <Card className="p-6">
@@ -76,7 +80,7 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
               required
               className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
             >
-              {clientsResult.data.map((client) => (
+              {clientsResult.data.map((client: any) => (
                 <option key={client.id} value={client.id}>
                   {client.name}
                 </option>
@@ -92,7 +96,7 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
               className="h-11 w-full rounded-lg border border-brand-border bg-white px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
             >
               <option value="">بدون ربط</option>
-              {matters.map((matter) => (
+              {matters.map((matter: any) => (
                 <option key={matter.id} value={matter.id}>
                   {matter.title}
                 </option>
@@ -114,7 +118,14 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
 
         <section className="space-y-3">
           <h3 className="font-semibold text-brand-navy dark:text-slate-100">بنود الفاتورة</h3>
-          <BillingItemsEditor name="items_json" taxName="tax" taxEnabledName="tax_enabled" taxNumberName="tax_number" />
+          <BillingItemsEditor
+            name="items_json"
+            taxName="tax"
+            taxEnabledName="tax_enabled"
+            taxNumberName="tax_number"
+            defaultTaxEnabled={!!org?.tax_number}
+            defaultTaxNumber={org?.tax_number || ''}
+          />
         </section>
 
         <div className="flex flex-wrap gap-3">

@@ -34,7 +34,7 @@ export async function GET(request: Request, context: { params: { id: string } })
 
     const [paidAmount, orgResult] = await Promise.all([
       computeInvoicePaidAmount(invoice.id),
-      supabase.from('organizations').select('name, logo_url, address').eq('id', orgId).maybeSingle(),
+      supabase.from('organizations').select('name, logo_url, address, cr_number').eq('id', orgId).maybeSingle(),
     ]);
 
     const org = (orgResult as any)?.data;
@@ -69,6 +69,7 @@ export async function GET(request: Request, context: { params: { id: string } })
         paidAmount,
         remaining,
         taxNumber: (invoice as any).tax_number ? String((invoice as any).tax_number) : null,
+        crNumber: org?.cr_number ? String(org.cr_number) : null,
         qrCode: (invoice as any).tax_enabled && (invoice as any).tax_number ? generateZatcaQrCode({
           sellerName: org?.name ?? 'إدارة المكتب',
           vatNumber: String((invoice as any).tax_number),

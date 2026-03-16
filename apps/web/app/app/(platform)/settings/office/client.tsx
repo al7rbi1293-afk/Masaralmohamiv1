@@ -11,6 +11,7 @@ type OfficeIdentityFormProps = {
     currentLogoUrl: string;
     currentLogoFallbackUrl: string;
     currentTaxNumber: string;
+    currentCrNumber: string;
     currentAddress: string;
     csrfToken: string;
 };
@@ -20,6 +21,7 @@ export function OfficeIdentityForm({
     currentLogoUrl,
     currentLogoFallbackUrl,
     currentTaxNumber,
+    currentCrNumber,
     currentAddress,
     csrfToken,
 }: OfficeIdentityFormProps) {
@@ -98,6 +100,22 @@ export function OfficeIdentityForm({
                             id="tax_number"
                             defaultValue={currentTaxNumber}
                             placeholder="مثال: 300000000000003"
+                            className="block w-full rounded-lg border-brand-border bg-white px-3 py-2.5 text-brand-navy shadow-sm focus:border-brand-emerald focus:ring-brand-emerald dark:border-slate-700 dark:bg-slate-950 dark:text-white sm:text-sm"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label htmlFor="cr_number" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        رقم السجل التجاري <span className="text-xs font-normal text-slate-500">(اختياري)</span>
+                    </label>
+                    <div className="mt-1">
+                        <input
+                            type="text"
+                            name="cr_number"
+                            id="cr_number"
+                            defaultValue={currentCrNumber}
+                            placeholder="مثال: 1010000000"
                             className="block w-full rounded-lg border-brand-border bg-white px-3 py-2.5 text-brand-navy shadow-sm focus:border-brand-emerald focus:ring-brand-emerald dark:border-slate-700 dark:bg-slate-950 dark:text-white sm:text-sm"
                         />
                     </div>

@@ -12,6 +12,7 @@ export async function updateOfficeIdentityAction(formData: FormData) {
     }
     const name = String(formData.get('name') || '').trim();
     const taxNumber = String(formData.get('tax_number') || '').trim();
+    const crNumber = String(formData.get('cr_number') || '').trim();
     const address = String(formData.get('address') || '').trim();
 
     if (!name) {
@@ -25,6 +26,7 @@ export async function updateOfficeIdentityAction(formData: FormData) {
         const updateData: any = { 
             name, 
             tax_number: taxNumber || null,
+            cr_number: crNumber || null,
             address: address || null
         };
 

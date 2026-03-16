@@ -93,7 +93,14 @@ const nextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
-    remotePatterns: supabaseRemotePattern ? [supabaseRemotePattern] : [],
+    remotePatterns: [
+      ...(supabaseRemotePattern ? [supabaseRemotePattern] : []),
+      {
+        protocol: 'https',
+        hostname: 'api.qrserver.com',
+        pathname: '/v1/create-qr-code/**',
+      },
+    ],
   },
   async headers() {
     return [

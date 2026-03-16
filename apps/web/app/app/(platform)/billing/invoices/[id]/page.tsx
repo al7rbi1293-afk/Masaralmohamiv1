@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -64,7 +65,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
     listMatters({ status: 'all', page: 1, limit: 100 }),
     listPayments(invoice.id),
     computeInvoicePaidAmount(invoice.id),
-    createSupabaseServerRlsClient().from('organizations').select('name, address').eq('id', invoice.org_id).maybeSingle().then((res) => res),
+    createSupabaseServerRlsClient().from('organizations').select('name, address, cr_number, tax_number').eq('id', invoice.org_id).maybeSingle().then((res) => res),
   ]);
 
   const org = (orgResult as any)?.data;
@@ -198,6 +199,11 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
                 الرقم الضريبي للمكتب: <span dir="ltr">{invoice.tax_number}</span>
               </p>
             ) : null}
+            {org?.cr_number ? (
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                رقم السجل التجاري: <span dir="ltr">{org.cr_number}</span>
+              </p>
+            ) : null}
 
             {org?.address ? (
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 text-pretty">
@@ -214,7 +220,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
             {invoice.tax_enabled && invoice.tax_number && (
               <div className="mt-4 flex justify-center lg:justify-start">
                 <div className="rounded-lg border border-brand-border bg-white p-2 dark:border-slate-700">
-                  <img
+                  <Image
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
                       (() => {
                         const { generateZatcaQrCode } = require('@/lib/zatca');
@@ -231,6 +237,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
                     width={100}
                     height={100}
                     className="block"
+                    unoptimized={false}
                   />
                   <p className="mt-1 text-center text-[10px] text-slate-400">Barcode ZATCA</p>
                 </div>
@@ -314,7 +321,7 @@ export default async function InvoiceDetailsPage({ params, searchParams }: Invoi
                 taxNumberName="tax_number"
                 defaultItems={items.map((item) => ({ ...item }))}
                 defaultTaxEnabled={invoice.tax_enabled}
-                defaultTaxNumber={invoice.tax_number ?? ''}
+                defaultTaxNumber={invoice.tax_number ?? org?.tax_number ?? ''}
               />
             </section>
 

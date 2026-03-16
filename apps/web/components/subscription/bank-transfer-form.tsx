@@ -45,18 +45,22 @@ export function BankTransferForm({
                     </div>
                     <div className="flex justify-between">
                         <dt>اسم المستفيد:</dt>
-                        <dd className="font-medium text-slate-900 dark:text-slate-100">عبدالعزيز فهد عطية الحازمي</dd>
+                        <dd className="font-medium text-slate-900 dark:text-slate-100">عبدالعزيز فهد عطية الحازمي المساعده الادارية</dd>
+                    </div>
+                    <div className="flex justify-between">
+                        <dt>الرقم الوطني الموحد:</dt>
+                        <dd className="font-medium text-slate-900 dark:text-slate-100">FL-665098602</dd>
                     </div>
                     <div className="flex justify-between">
                         <dt>الآيبان:</dt>
                         <dd className="font-mono font-medium text-slate-900 dark:text-slate-100" dir="ltr">
-                            SA05 8000 0598 6080 1002 7488
+                            SA66 8000 0598 6080 1662 7919
                         </dd>
                     </div>
                     <div className="flex justify-between">
                         <dt>رقم الحساب:</dt>
                         <dd className="font-mono font-medium text-slate-900 dark:text-slate-100">
-                            598000010006080027488
+                            598000010006086627919
                         </dd>
                     </div>
                     <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700">

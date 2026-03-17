@@ -388,7 +388,7 @@ export async function listPartners(params?: {
 
 export async function updatePartner(params: {
   partnerId: string;
-  action: 'regenerate_code' | 'deactivate' | 'reactivate';
+  action: 'regenerate_code' | 'deactivate' | 'reactivate' | 'delete';
   adminUserId: string;
 }) {
   const db = createSupabaseServerClient();
@@ -401,6 +401,41 @@ export async function updatePartner(params: {
 
   if (existingError) throw new Error(existingError.message);
   if (!existing) throw new Error('الشريك غير موجود.');
+
+  if (params.action === 'delete') {
+    // 1. Delete all related records first (manual cascade)
+    await Promise.all([
+      db.from('partner_clicks').delete().eq('partner_id', params.partnerId),
+      db.from('partner_leads').delete().eq('partner_id', params.partnerId),
+      db.from('partner_commissions').delete().eq('partner_id', params.partnerId),
+      db.from('partner_payouts').delete().eq('partner_id', params.partnerId),
+    ]);
+
+    // 2. Delete the partner record
+    const { error: deleteError } = await db
+      .from('partners')
+      .delete()
+      .eq('id', params.partnerId);
+
+    if (deleteError) {
+      throw new Error(deleteError.message || 'تعذر حذف سجل الشريك.');
+    }
+
+    // 3. Log the action
+    await addPartnerAuditLog({
+      actorUserId: params.adminUserId,
+      action: 'partner_deleted',
+      targetType: 'partner',
+      targetId: params.partnerId,
+      details: {
+        email: existing.email,
+        full_name: existing.full_name,
+        partner_code: existing.partner_code,
+      },
+    });
+
+    return existing; // Return the snapshot of what was deleted
+  }
 
   if (params.action === 'regenerate_code') {
     const uniqueIdentity = await createUniquePartnerIdentity();

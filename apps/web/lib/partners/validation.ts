@@ -62,7 +62,7 @@ export const adminApplicationActionSchema = z.object({
 
 export const adminPartnerActionSchema = z.object({
   id: z.string().uuid('المعرّف غير صالح.'),
-  action: z.enum(['regenerate_code', 'deactivate', 'reactivate']),
+  action: z.enum(['regenerate_code', 'deactivate', 'reactivate', 'delete']),
 });
 
 export const adminCommissionActionSchema = z.object({

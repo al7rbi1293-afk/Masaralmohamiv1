@@ -186,9 +186,14 @@ export default function PartnersTab() {
     }
   }
 
-  async function applyPartnerAction(id: string, action: 'regenerate_code' | 'deactivate' | 'reactivate') {
+  async function applyPartnerAction(id: string, action: 'regenerate_code' | 'deactivate' | 'reactivate' | 'delete') {
     if (action === 'regenerate_code') {
       const proceed = window.confirm('سيتم إنشاء كود إحالة جديد، هل تريد المتابعة؟');
+      if (!proceed) return;
+    }
+
+    if (action === 'delete') {
+      const proceed = window.confirm('تحذير: سيتم حذف هذا الشريك وكافة سجلاته (الزيارات، العملاء، العمولات، والدفعات) نهائياً. لن يتأثر حساب المستخدم أو المكتب الخاص به. هل أنت متأكد؟');
       if (!proceed) return;
     }
 
@@ -473,6 +478,13 @@ export default function PartnersTab() {
                           reactivate
                         </button>
                       )}
+                      <button
+                        disabled={actionBusy === partner.id}
+                        onClick={() => applyPartnerAction(partner.id, 'delete')}
+                        className="rounded bg-red-700 px-2 py-1 text-xs text-white disabled:opacity-50"
+                      >
+                        حذف
+                      </button>
                     </div>
                   </td>
                 </tr>

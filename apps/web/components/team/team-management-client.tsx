@@ -191,7 +191,7 @@ export function TeamManagementClient({
       const response = await fetch('/app/api/team/change-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, role }),
+        body: JSON.stringify({ userId, role }),
       });
       const json = (await response.json().catch(() => ({}))) as any;
       if (!response.ok) {
@@ -217,7 +217,7 @@ export function TeamManagementClient({
       const response = await fetch('/app/api/team/remove-member', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({ userId }),
       });
       const json = (await response.json().catch(() => ({}))) as any;
       if (!response.ok) {

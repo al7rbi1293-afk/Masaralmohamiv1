@@ -20,11 +20,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const userId = (body as any)?.user_id;
+    await removeMember(body, request);
 
-    await removeMember({ userId }, request);
-
-    logInfo('team_member_removed', { userId });
+    logInfo('team_member_removed', { userId: body?.userId });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     if (error instanceof TeamHttpError) {

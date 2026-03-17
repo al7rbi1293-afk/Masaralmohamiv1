@@ -20,12 +20,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const userId = (body as any)?.user_id;
-    const role = (body as any)?.role;
+    await changeMemberRole(body, request);
 
-    await changeMemberRole({ userId, role }, request);
-
-    logInfo('team_role_changed', { userId, role });
+    logInfo('team_role_changed', { userId: body?.userId, role: body?.role });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     if (error instanceof TeamHttpError) {

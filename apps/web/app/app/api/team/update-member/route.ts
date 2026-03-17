@@ -22,22 +22,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const userId = (body as any)?.user_id;
-    const fullName = (body as any)?.full_name;
-    const email = (body as any)?.email;
-    const phone = (body as any)?.phone;
+    await updateMemberProfile(body, request);
 
-    await updateMemberProfile(
-      {
-        userId,
-        fullName,
-        email,
-        phone,
-      },
-      request,
-    );
-
-    logInfo('team_member_updated', { userId });
+    logInfo('team_member_updated', { userId: body?.userId });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     if (error instanceof TeamHttpError) {

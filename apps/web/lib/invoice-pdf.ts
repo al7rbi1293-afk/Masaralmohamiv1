@@ -238,22 +238,6 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
             React.createElement(Text, { style: styles.value }, formatDate(payload.due_at)),
           )
           : null,
-        payload.taxNumber
-          ? React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'الرقم الضريبي'),
-            React.createElement(Text, { style: styles.value }, payload.taxNumber),
-          )
-          : null,
-        payload.crNumber
-          ? React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'رقم السجل التجاري'),
-            React.createElement(Text, { style: styles.value }, payload.crNumber),
-          )
-          : null,
       ),
       React.createElement(
         View,

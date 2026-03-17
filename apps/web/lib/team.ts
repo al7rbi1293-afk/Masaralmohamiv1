@@ -15,7 +15,9 @@ export type TeamMember = {
   email: string | null;
   full_name: string;
   phone: string | null;
+  license_number: string | null;
   role: TeamRole;
+  permissions: any;
   created_at: string;
   is_current_user: boolean;
 };
@@ -87,6 +89,7 @@ export async function addMemberDirect(
       email,
       password_hash: passwordHash,
       full_name: parsed.data.fullName,
+      license_number: parsed.data.licenseNumber || null,
       email_verified: true,
       status: 'active',
     })
@@ -114,6 +117,7 @@ export async function addMemberDirect(
       org_id: orgId,
       user_id: newUserId,
       role: parsed.data.role,
+      permissions: parsed.data.permissions || {},
     });
 
   if (membershipError) {
@@ -144,7 +148,9 @@ const addMemberSchema = z.object({
   fullName: z.string().trim().min(2, 'يجب أن يكون الاسم الكامل من حرفين على الأقل').max(100),
   email: z.string().trim().email('يرجى إدخال بريد إلكتروني صحيح.').max(255),
   password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل').max(100),
+  licenseNumber: z.string().trim().optional().nullable(),
   role: roleSchema.default('lawyer'),
+  permissions: z.record(z.boolean()).optional(),
 });
 
 const revokeInvitationSchema = z.object({
@@ -161,6 +167,8 @@ const updateMemberSchema = z.object({
   fullName: z.string().trim().min(2, 'يجب أن يكون الاسم الكامل من حرفين على الأقل').max(100),
   email: z.string().trim().email('يرجى إدخال بريد إلكتروني صحيح.').max(255),
   phone: z.string().trim().max(40, 'رقم الجوال طويل جدًا.').optional().nullable(),
+  licenseNumber: z.string().trim().optional().nullable(),
+  permissions: z.record(z.boolean()).optional(),
 });
 
 const removeMemberSchema = z.object({
@@ -219,7 +227,7 @@ export async function listMembers(): Promise<TeamMember[]> {
 
   const { data: memberships, error: membershipsError } = await supabase
     .from('memberships')
-    .select('user_id, role, created_at')
+    .select('user_id, role, permissions, created_at')
     .eq('org_id', orgId)
     .order('created_at', { ascending: true });
 
@@ -235,7 +243,7 @@ export async function listMembers(): Promise<TeamMember[]> {
       ? supabase.from('profiles').select('user_id, full_name, phone').in('user_id', memberIds)
       : Promise.resolve({ data: [], error: null } as any),
     memberIds.length
-      ? supabase.from('app_users').select('id, email, full_name, phone').in('id', memberIds)
+      ? supabase.from('app_users').select('id, email, full_name, phone, license_number').in('id', memberIds)
       : Promise.resolve({ data: [], error: null } as any),
   ]);
 
@@ -248,9 +256,11 @@ export async function listMembers(): Promise<TeamMember[]> {
   }
 
   const emailById = new Map<string, string>();
+  const licenseById = new Map<string, string | null>();
   for (const row of (appUsersResult.data as any[] | null) ?? []) {
     if (row?.id && row?.email) {
       emailById.set(String(row.id), String(row.email));
+      licenseById.set(String(row.id), row.license_number ? String(row.license_number) : null);
     }
   }
 
@@ -285,7 +295,9 @@ export async function listMembers(): Promise<TeamMember[]> {
       email: emailById.get(id) ?? null,
       full_name: nameById.get(id) ?? '',
       phone: phoneById.get(id) ?? null,
+      license_number: licenseById.get(id) ?? null,
       role: row.role as TeamRole,
+      permissions: row.permissions ?? {},
       created_at: String(row.created_at),
       is_current_user: id === userId,
     };
@@ -528,7 +540,7 @@ export async function updateMemberProfile(input: unknown, req?: Request): Promis
 
   const { data: currentUserData, error: currentUserDataError } = await supabase
     .from('app_users')
-    .select('id, email, full_name, phone')
+    .select('id, email, full_name, phone, license_number')
     .eq('id', parsed.data.userId)
     .maybeSingle();
 
@@ -565,6 +577,21 @@ export async function updateMemberProfile(input: unknown, req?: Request): Promis
   if (String(currentUserData.phone ?? '').trim() !== (phone ?? '')) {
     changed.push('phone');
   }
+  if (String(currentUserData.license_number ?? '').trim() !== (parsed.data.licenseNumber ?? '')) {
+    changed.push('license_number');
+  }
+
+  // Always update permissions independently of 'changed' length if present
+  if (parsed.data.permissions) {
+     const { error: permError } = await supabase
+       .from('memberships')
+       .update({ permissions: parsed.data.permissions })
+       .eq('org_id', orgId)
+       .eq('user_id', parsed.data.userId);
+     if (permError) {
+        throw new TeamHttpError(400, 'تعذر تحديث الصلاحيات.');
+     }
+  }
 
   if (changed.length === 0) {
     return;
@@ -576,6 +603,7 @@ export async function updateMemberProfile(input: unknown, req?: Request): Promis
       full_name: fullName,
       email,
       phone,
+      license_number: parsed.data.licenseNumber || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', parsed.data.userId);

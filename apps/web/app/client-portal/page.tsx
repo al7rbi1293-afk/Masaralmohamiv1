@@ -35,7 +35,7 @@ export default async function ClientPortalHomePage() {
   const [clientRes, mattersRes, invoicesRes, quotesRes, documentsRes] = await Promise.all([
     db
       .from('clients')
-      .select('id, name, email, phone')
+      .select('id, name, email, phone, national_id, cr_number, assigned_lawyer:app_users!clients_assigned_lawyer_fkey(full_name, license_number)')
       .eq('id', session.clientId)
       .eq('org_id', session.orgId)
       .maybeSingle(),
@@ -69,7 +69,14 @@ export default async function ClientPortalHomePage() {
       .limit(50),
   ]);
 
-  const client = clientRes.data as { name?: string; email?: string | null; phone?: string | null } | null;
+  const client = clientRes.data as { 
+    name?: string; 
+    email?: string | null; 
+    phone?: string | null; 
+    national_id?: string | null; 
+    cr_number?: string | null; 
+    assigned_lawyer?: { full_name: string | null; license_number: string | null } | null 
+  } | null;
   if (!client) {
     redirect('/client-portal/signin');
   }
@@ -248,6 +255,12 @@ export default async function ClientPortalHomePage() {
       name: String(client.name ?? 'عميلنا'),
       email: client.email ? String(client.email) : session.email,
       phone: client.phone ? String(client.phone) : null,
+      national_id: client.national_id ? String(client.national_id) : null,
+      cr_number: client.cr_number ? String(client.cr_number) : null,
+      assigned_lawyer: client.assigned_lawyer && client.assigned_lawyer.full_name ? {
+        name: String(client.assigned_lawyer.full_name),
+        license_number: client.assigned_lawyer.license_number ? String(client.assigned_lawyer.license_number) : null,
+      } : null,
     },
     matters: matterData,
     invoices,

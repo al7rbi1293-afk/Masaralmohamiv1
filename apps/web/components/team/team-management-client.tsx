@@ -11,7 +11,9 @@ export type TeamMemberItem = {
   email: string | null;
   full_name: string;
   phone: string | null;
+  license_number: string | null;
   role: 'owner' | 'lawyer' | 'assistant';
+  permissions: Record<string, boolean>;
   created_at: string;
   is_current_user: boolean;
 };
@@ -57,7 +59,14 @@ export function TeamManagementClient({
   const [addFullName, setAddFullName] = useState('');
   const [addEmail, setAddEmail] = useState('');
   const [addPassword, setAddPassword] = useState('');
+  const [addLicenseNumber, setAddLicenseNumber] = useState('');
   const [addRole, setAddRole] = useState<TeamMemberItem['role']>('lawyer');
+  const [addPermissions, setAddPermissions] = useState<Record<string, boolean>>({
+    matters: true,
+    clients: true,
+    billing: false,
+    settings: false,
+  });
   const [addBusy, setAddBusy] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -65,6 +74,8 @@ export function TeamManagementClient({
   const [editFullName, setEditFullName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editLicenseNumber, setEditLicenseNumber] = useState('');
+  const [editPermissions, setEditPermissions] = useState<Record<string, boolean>>({});
   const [editBusy, setEditBusy] = useState(false);
 
   const [busyKey, setBusyKey] = useState('');
@@ -82,7 +93,9 @@ export function TeamManagementClient({
       setAddFullName('');
       setAddEmail('');
       setAddPassword('');
+      setAddLicenseNumber('');
       setAddRole('lawyer');
+      setAddPermissions({ matters: true, clients: true, billing: false, settings: false });
       setAddBusy(false);
       setError('');
       setMessage('');
@@ -95,6 +108,8 @@ export function TeamManagementClient({
       setEditFullName('');
       setEditEmail('');
       setEditPhone('');
+      setEditLicenseNumber('');
+      setEditPermissions({});
       setEditBusy(false);
     }
   }, [editOpen]);
@@ -123,6 +138,7 @@ export function TeamManagementClient({
     const email = addEmail.trim().toLowerCase();
     const fullName = addFullName.trim();
     const password = addPassword;
+    const licenseNumber = addLicenseNumber.trim() || undefined;
 
     if (!email || !fullName || !password) {
       setAddBusy(false);
@@ -138,7 +154,9 @@ export function TeamManagementClient({
           fullName,
           email,
           password,
+          licenseNumber,
           role: addRole,
+          permissions: addPermissions,
         }),
       });
       let errorMsg = 'تعذر إضافة العضو.';
@@ -231,6 +249,8 @@ export function TeamManagementClient({
     setEditFullName(member.full_name ?? '');
     setEditEmail(member.email ?? '');
     setEditPhone(member.phone ?? '');
+    setEditLicenseNumber(member.license_number ?? '');
+    setEditPermissions(member.permissions ?? {});
     setEditOpen(true);
     setError('');
     setMessage('');
@@ -240,6 +260,7 @@ export function TeamManagementClient({
     const fullName = editFullName.trim();
     const email = editEmail.trim().toLowerCase();
     const phone = editPhone.trim();
+    const licenseNumber = editLicenseNumber.trim() || undefined;
 
     if (!editUserId || !fullName || !email) {
       setError('يرجى تعبئة الاسم والبريد الإلكتروني.');
@@ -255,10 +276,12 @@ export function TeamManagementClient({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: editUserId,
-          full_name: fullName,
+          userId: editUserId,
+          fullName,
           email,
           phone: phone || null,
+          licenseNumber: licenseNumber || null,
+          permissions: editPermissions,
         }),
       });
       const json = (await response.json().catch(() => ({}))) as any;
@@ -429,7 +452,7 @@ export function TeamManagementClient({
               <div>
                 <h3 className="text-lg font-bold text-brand-navy dark:text-slate-100">تعديل بيانات العضو</h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  يمكنك تعديل الاسم والبريد والجوال لهذا العضو.
+                  يمكنك تعديل معلومات وصلاحيات هذا العضو.
                 </p>
               </div>
               <button
@@ -482,6 +505,42 @@ export function TeamManagementClient({
                   className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
                 />
               </label>
+
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">رقم الترخيص (إن وجد)</span>
+                <input
+                  value={editLicenseNumber}
+                  onChange={(e) => setEditLicenseNumber(e.target.value)}
+                  type="text"
+                  dir="ltr"
+                  placeholder="مثال: 4123456"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
+              
+              <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">الصلاحيات المخصصة</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    { id: 'matters', label: 'القضايا' },
+                    { id: 'clients', label: 'العملاء' },
+                    { id: 'billing', label: 'الفوترة' },
+                    { id: 'settings', label: 'الإعدادات' },
+                  ].map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!editPermissions[perm.id]}
+                        onChange={(e) =>
+                          setEditPermissions((prev) => ({ ...prev, [perm.id]: e.target.checked }))
+                        }
+                        className="rounded border-slate-300 text-brand-emerald focus:ring-brand-emerald dark:border-slate-700"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300">{perm.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button type="button" variant="primary" size="md" onClick={saveMemberDetails} disabled={editBusy}>
@@ -576,6 +635,42 @@ export function TeamManagementClient({
                     <option value="owner">مالك</option>
                   </select>
                 </label>
+              </div>
+
+              <label className="block space-y-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">رقم الترخيص (إن وجد)</span>
+                <input
+                  value={addLicenseNumber}
+                  onChange={(e) => setAddLicenseNumber(e.target.value)}
+                  type="text"
+                  dir="ltr"
+                  placeholder="مثال: 4123456"
+                  className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </label>
+
+              <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">الصلاحيات الافتراضية</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    { id: 'matters', label: 'القضايا' },
+                    { id: 'clients', label: 'العملاء' },
+                    { id: 'billing', label: 'الفوترة' },
+                    { id: 'settings', label: 'الإعدادات' },
+                  ].map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!addPermissions[perm.id]}
+                        onChange={(e) =>
+                          setAddPermissions((prev) => ({ ...prev, [perm.id]: e.target.checked }))
+                        }
+                        className="rounded border-slate-300 text-brand-emerald focus:ring-brand-emerald dark:border-slate-700"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300">{perm.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="mt-2 flex flex-wrap gap-2">

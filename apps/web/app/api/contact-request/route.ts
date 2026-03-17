@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logError, logInfo, logWarn } from '@/lib/logger';
-import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
 import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/auth-custom';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { sendEmail } from '@/lib/email';
+import { getSignupAlertEmails } from '@/lib/env';
 
 const contactRequestSchema = z.object({
   full_name: z.string().trim().max(120, 'الاسم طويل جدًا.').optional(),
@@ -180,6 +181,44 @@ export async function POST(request: NextRequest) {
     orgId,
     userId: currentUser?.id ?? null,
   });
+
+  const notifyAdmin = async () => {
+    if (!SIGNUP_ALERT_EMAILS) return;
+    const adminEmails = SIGNUP_ALERT_EMAILS.split(',').map((e) => e.trim()).filter(Boolean);
+    if (!adminEmails.length) return;
+
+    try {
+      await sendEmail({
+        to: adminEmails[0],
+        cc: adminEmails.slice(1),
+        subject: `طلب تفعيل / تواصل جديد (مسار المحامي) - ${parsed.data.full_name || 'بدون اسم'}`,
+        html: `
+          <div dir="rtl" style="font-family: sans-serif; line-height: 1.6;">
+            <h2 style="color: #0284c7;">تفاصيل الطلب</h2>
+            <p><strong>الاسم:</strong> ${parsed.data.full_name || 'غير محدد'}</p>
+            <p><strong>البريد:</strong> ${parsed.data.email}</p>
+            <p><strong>الجوال:</strong> ${parsed.data.phone || 'غير محدد'}</p>
+            <p><strong>اسم المكتب/الشركة:</strong> ${parsed.data.firm_name || 'غير محدد'}</p>
+            <p><strong>المصدر:</strong> ${parsed.data.source}</p>
+            <br/>
+            <p><strong>الرسالة:</strong></p>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; white-space: pre-wrap;">
+              ${parsed.data.message || 'لا توجد رسالة.'}
+            </div>
+          </div>
+        `,
+      });
+      logInfo('contact_request_admin_notified', { requestId, emails: adminEmails });
+    } catch (notifyError) {
+      logWarn('contact_request_admin_notify_failed', {
+        requestId,
+        error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+      });
+    }
+  };
+
+  // Dispatch background notification
+  void notifyAdmin();
 
   return jsonResponse(
     {

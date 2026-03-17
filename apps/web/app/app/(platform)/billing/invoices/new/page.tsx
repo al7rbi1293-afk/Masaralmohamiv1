@@ -20,7 +20,7 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
   const [clientsResult, mattersResult, orgResult] = await Promise.all([
     listClients({ status: 'active', page: 1, limit: 100 }),
     listMatters({ status: 'all', page: 1, limit: 100 }),
-    createSupabaseServerRlsClient().from('organizations').select('tax_number').maybeSingle(),
+    createSupabaseServerRlsClient().from('organizations').select('tax_number, tax_enabled').maybeSingle(),
   ]);
 
   const org = (orgResult as any)?.data;
@@ -123,7 +123,7 @@ export default async function InvoiceNewPage({ searchParams }: InvoiceNewPagePro
             taxName="tax"
             taxEnabledName="tax_enabled"
             taxNumberName="tax_number"
-            defaultTaxEnabled={!!org?.tax_number}
+            defaultTaxEnabled={org?.tax_enabled ?? !!org?.tax_number}
             defaultTaxNumber={org?.tax_number || ''}
           />
         </section>

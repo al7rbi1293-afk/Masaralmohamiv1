@@ -119,8 +119,8 @@ export async function sendSubscriptionInvoiceEmail(
       remaining: 0,
       issued_at: issuedAt,
       due_at: null,
-      clientName: recipient.fullName ?? recipient.email,
-      orgName,
+      clientName: orgName || recipient.fullName || recipient.email,
+      orgName: 'مسار المحامي لتقنية المعلومات',
       logoUrl: null,
       items: [{ desc: lineDescription, qty: 1, unit_price: amount }],
     });

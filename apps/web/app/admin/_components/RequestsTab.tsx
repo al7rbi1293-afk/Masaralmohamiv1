@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { getPricingPlanCardByCode } from '@/lib/subscription-pricing';
 
 type SubRequest = {
     id: string;
@@ -105,15 +106,11 @@ export default function AdminRequestsPage() {
     };
 
     const planLabel = (p: string) => {
-        const map: Record<string, string> = {
-            'SOLO': 'محامي مستقل (1 مستخدم)',
-            'TEAM': 'مكتب صغير (5 مستخدمين)',
-            'SMALL_OFFICE': 'مكتب صغير (5 مستخدمين)',
-            'BUSINESS': 'مكتب متوسط (25 مستخدم)',
-            'MEDIUM_OFFICE': 'مكتب متوسط (25 مستخدم)',
-            'ENTERPRISE': 'مكتب كبير (مفتوح)'
-        };
-        return map[p] || p;
+        const card = getPricingPlanCardByCode(p);
+        if (card) {
+            return `${card.title} (${card.seatsLabel.replace('حد المقاعد: ', '')})`;
+        }
+        return p;
     };
 
     const tabs = useMemo(

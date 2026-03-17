@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { buttonVariants } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
+import { SignInForm } from '@/components/auth/sign-in-form';
 import { isUserAppAdmin } from '@/lib/admin';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getCurrentOrgIdForUser } from '@/lib/org';
@@ -140,33 +141,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </p>
           ) : null}
 
-          <form action="/api/signin" method="post" className="mt-6 space-y-4">
-            <input type="hidden" name="next" value={nextPath ?? ''} />
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">البريد الإلكتروني</span>
-              <input
-                required
-                name="email"
-                type="email"
-                defaultValue={prefilledEmail}
-                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
-
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">كلمة المرور</span>
-              <input
-                required
-                name="password"
-                type="password"
-                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              />
-            </label>
-
-            <button type="submit" className={buttonVariants('primary', 'md')}>
-              تسجيل الدخول
-            </button>
-          </form>
+          <SignInForm nextPath={nextPath ?? ''} prefilledEmail={prefilledEmail} />
 
           <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
             <Link href="/forgot-password" className="block text-brand-emerald hover:underline">

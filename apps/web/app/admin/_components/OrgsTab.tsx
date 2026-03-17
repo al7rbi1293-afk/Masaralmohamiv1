@@ -9,6 +9,7 @@ import {
     SlideOverTitle,
     SlideOverDescription,
 } from '@/components/ui/slide-over';
+import { getPricingPlanCardByCode } from '@/lib/subscription-pricing';
 
 type Org = {
     id: string;
@@ -274,11 +275,9 @@ export default function AdminOrgsPage() {
                                         )}
                                     </td>
                                     <td className="py-3 font-medium text-brand-navy dark:text-brand-light">
-                                        {org.subscription?.plan === 'SOLO' ? 'محامي مستقل (1)' :
-                                            org.subscription?.plan === 'TEAM' ? 'مكتب صغير (5)' :
-                                                org.subscription?.plan === 'BUSINESS' ? 'مكتب متوسط (25)' :
-                                                    org.subscription?.plan === 'ENTERPRISE' ? 'مكتب كبير' :
-                                                        org.subscription?.plan ?? 'تجريبي'}
+                                        {org.subscription?.plan
+                                            ? `${getPricingPlanCardByCode(org.subscription.plan)?.title ?? org.subscription.plan} (${getPricingPlanCardByCode(org.subscription.plan)?.seatsLabel?.replace('حد المقاعد: ', '') ?? ''})`
+                                            : 'تجريبي'}
                                     </td>
                                     <td className="py-3">{org.subscription?.status ?? '—'}</td>
                                     <td className="py-3">
@@ -577,11 +576,9 @@ export default function AdminOrgsPage() {
                                         <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">الخطة الحالية</p>
                                             <p className="font-medium text-slate-900 dark:text-slate-100">
-                                                {selectedOrg.subscription?.plan === 'SOLO' ? 'محامي مستقل (1 مستخدم)' :
-                                                    selectedOrg.subscription?.plan === 'TEAM' ? 'مكتب صغير (5 مستخدمين)' :
-                                                        selectedOrg.subscription?.plan === 'BUSINESS' ? 'مكتب متوسط (25 مستخدم)' :
-                                                            selectedOrg.subscription?.plan === 'ENTERPRISE' ? 'مكتب كبير (عدد مفتوح)' :
-                                                                selectedOrg.subscription?.plan ?? 'تجريبي'}
+                                                {selectedOrg.subscription?.plan
+                                                    ? `${getPricingPlanCardByCode(selectedOrg.subscription.plan)?.title ?? selectedOrg.subscription.plan} (${getPricingPlanCardByCode(selectedOrg.subscription.plan)?.seatsLabel?.replace('حد المقاعد: ', '') ?? ''})`
+                                                    : 'تجريبي'}
                                             </p>
                                         </div>
                                         <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
@@ -659,9 +656,9 @@ export default function AdminOrgsPage() {
                                                 >
                                                     <option value="">-- اختر الباقة لتفعيلها فوراً --</option>
                                                     <option value="SOLO">محامي مستقل (1 مستخدم)</option>
-                                                    <option value="TEAM">مكتب صغير (5 مستخدمين)</option>
-                                                    <option value="BUSINESS">مكتب متوسط (25 مستخدم)</option>
-                                                    <option value="ENTERPRISE">مكتب كبير (عدد لا محدود)</option>
+                                                    <option value="SMALL_OFFICE">مكتب صغير (من 2 إلى 5مستخدمين)</option>
+                                                    <option value="MEDIUM_OFFICE">مكتب متوسط (من 6 إلى 10 مستخدمين)</option>
+                                                    <option value="ENTERPRISE">مكتب كبير (11 إلى 30)</option>
                                                 </select>
                                             </div>
 

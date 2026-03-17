@@ -27,11 +27,9 @@ export const metadata: Metadata = {
 export default async function ClientPortalHomePage() {
   const access = await getActiveClientPortalAccess();
   if (!access) {
-    // No valid session or portal user is inactive.
-    // Redirect to the logout API route which clears the cookie and
-    // then redirects to /client-portal/signin. We can't call
-    // cookies().delete() in a Server Component.
-    redirect('/api/client-portal/auth/logout');
+    // No valid session or portal user is inactive → show sign-in.
+    // The signin page handles stale cookies without looping.
+    redirect('/client-portal/signin');
   }
 
   const { db, session } = access;
@@ -82,9 +80,31 @@ export default async function ClientPortalHomePage() {
     assigned_lawyer?: { full_name: string | null; license_number: string | null } | null 
   } | null;
   if (!client) {
-    // Client record missing from DB – redirect via logout to clear the
-    // stale session cookie and prevent a redirect loop.
-    redirect('/api/client-portal/auth/logout');
+    // Client record missing from DB. The user IS authenticated (portal_user
+    // is active), but the linked client record doesn't exist. Show an error
+    // instead of redirecting to signin (which would loop back here).
+    return (
+      <Section className="py-12 sm:py-16">
+        <Container className="max-w-xl">
+          <div className="rounded-xl2 border border-brand-border bg-white p-6 shadow-panel dark:border-slate-700 dark:bg-slate-900 text-center">
+            <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">
+              تعذر تحميل بيانات العميل
+            </h1>
+            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+              الحساب مفعل ولكن لم يتم العثور على سجل العميل المرتبط. يرجى التواصل مع المكتب لحل المشكلة.
+            </p>
+            <form action="/api/client-portal/auth/logout" method="POST" className="mt-6">
+              <button
+                type="submit"
+                className="rounded-lg bg-brand-emerald px-6 py-2 text-sm font-medium text-white hover:opacity-90 transition"
+              >
+                تسجيل الخروج
+              </button>
+            </form>
+          </div>
+        </Container>
+      </Section>
+    );
   }
 
   const matters = ((mattersRes.data as RawMatterRow[] | null) ?? []).map((matter) => ({

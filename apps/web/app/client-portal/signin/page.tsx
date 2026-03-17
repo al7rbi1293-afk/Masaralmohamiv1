@@ -1,8 +1,13 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
-import { getCurrentClientPortalSession } from '@/lib/client-portal/session';
+import { getActiveClientPortalAccess } from '@/lib/client-portal/access';
+import {
+  getCurrentClientPortalSession,
+  CLIENT_PORTAL_SESSION_COOKIE_NAME,
+} from '@/lib/client-portal/session';
 import { ClientPortalSignInForm } from './sign-in-form';
 
 export const metadata: Metadata = {
@@ -15,9 +20,18 @@ export const metadata: Metadata = {
 };
 
 export default async function ClientPortalSignInPage() {
-  const currentSession = await getCurrentClientPortalSession();
-  if (currentSession) {
-    redirect('/client-portal');
+  // Check if the user has a valid session AND active portal access.
+  // Only redirect to /client-portal when both conditions are met.
+  // This prevents the infinite redirect loop that occurs when a session JWT
+  // exists but the portal user record is inactive/missing in the database.
+  const session = await getCurrentClientPortalSession();
+  if (session) {
+    const access = await getActiveClientPortalAccess();
+    if (access) {
+      redirect('/client-portal');
+    }
+    // Session JWT exists but portal user is inactive/missing – clear stale cookie
+    cookies().delete(CLIENT_PORTAL_SESSION_COOKIE_NAME);
   }
 
   return (

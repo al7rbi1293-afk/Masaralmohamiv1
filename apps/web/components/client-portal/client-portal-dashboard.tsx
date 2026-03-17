@@ -80,12 +80,8 @@ export type ClientPortalDashboardData = {
     name: string;
     email: string | null;
     phone: string | null;
-    national_id: string | null;
-    cr_number: string | null;
-    assigned_lawyer: {
-      name: string;
-      license_number: string | null;
-    } | null;
+    identity_no: string | null;
+    commercial_no: string | null;
   };
   matters: ClientPortalMatter[];
   invoices: ClientPortalInvoice[];
@@ -310,18 +306,11 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
           <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">مرحبًا {data.client.name}</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">هذه لوحة المتابعة التفاعلية الخاصة بك.</p>
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600 dark:text-slate-400">
-            {data.client.national_id ? (
-              <p>رقم الهوية: <span className="font-semibold text-slate-800 dark:text-slate-200">{data.client.national_id}</span></p>
+            {data.client.identity_no ? (
+              <p>رقم الهوية: <span className="font-semibold text-slate-800 dark:text-slate-200">{data.client.identity_no}</span></p>
             ) : null}
-            {data.client.cr_number ? (
-              <p>السجل التجاري: <span className="font-semibold text-slate-800 dark:text-slate-200">{data.client.cr_number}</span></p>
-            ) : null}
-            {data.client.assigned_lawyer ? (
-              <p className="flex items-center gap-1">المحامي الموكل: <span className="font-semibold text-slate-800 dark:text-slate-200">{data.client.assigned_lawyer.name}</span>
-                {data.client.assigned_lawyer.license_number ? (
-                  <span className="text-xs text-slate-500">(ترخيص: {data.client.assigned_lawyer.license_number})</span>
-                ) : null}
-              </p>
+            {data.client.commercial_no ? (
+              <p>السجل التجاري: <span className="font-semibold text-slate-800 dark:text-slate-200">{data.client.commercial_no}</span></p>
             ) : null}
           </div>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400" dir="ltr">

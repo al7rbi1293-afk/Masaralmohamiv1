@@ -5,6 +5,12 @@ import { SESSION_COOKIE_NAME, verifySessionToken } from '@/lib/auth-custom';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 import { getSignupAlertEmails } from '@/lib/env';
+import {
+  checkRateLimit,
+  getRequestIp,
+  RATE_LIMIT_MESSAGE_AR,
+  type RateLimitResult,
+} from '@/lib/rateLimit';
 
 const contactRequestSchema = z.object({
   full_name: z.string().trim().max(120, 'الاسم طويل جدًا.').optional(),
@@ -183,14 +189,12 @@ export async function POST(request: NextRequest) {
   });
 
   const notifyAdmin = async () => {
-    if (!SIGNUP_ALERT_EMAILS) return;
-    const adminEmails = SIGNUP_ALERT_EMAILS.split(',').map((e) => e.trim()).filter(Boolean);
+    const adminEmails = getSignupAlertEmails();
     if (!adminEmails.length) return;
 
     try {
       await sendEmail({
-        to: adminEmails[0],
-        cc: adminEmails.slice(1),
+        to: adminEmails.join(', '),
         subject: `طلب تفعيل / تواصل جديد (مسار المحامي) - ${parsed.data.full_name || 'بدون اسم'}`,
         html: `
           <div dir="rtl" style="font-family: sans-serif; line-height: 1.6;">

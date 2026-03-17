@@ -176,7 +176,7 @@ export function SignInForm({ nextPath, prefilledEmail }: { nextPath: string; pre
             />
           </label>
 
-          <button type="submit" disabled={loading} className={buttonVariants('primary', 'md', 'w-full')}>
+          <button type="submit" disabled={loading} className={`${buttonVariants('primary', 'md')} w-full`}>
             {loading ? 'الرجاء الانتظار...' : 'متابعة الدخول'}
           </button>
         </form>
@@ -207,7 +207,7 @@ export function SignInForm({ nextPath, prefilledEmail }: { nextPath: string; pre
           </label>
 
           <div className="flex flex-col gap-2 pt-2">
-            <button type="submit" disabled={loading || otp.length < 5} className={buttonVariants('primary', 'md', 'w-full disabled:opacity-50 disabled:cursor-not-allowed')}>
+            <button type="submit" disabled={loading || otp.length < 5} className={`${buttonVariants('primary', 'md')} w-full disabled:opacity-50 disabled:cursor-not-allowed`}>
               {loading ? 'الرجاء الانتظار...' : 'التحقق والدخول'}
             </button>
             
@@ -216,7 +216,7 @@ export function SignInForm({ nextPath, prefilledEmail }: { nextPath: string; pre
                 type="button" 
                 onClick={requestResendOtp}
                 disabled={loading}
-                className={buttonVariants('outline', 'md', 'flex-1')}
+                className={`${buttonVariants('outline', 'md')} flex-1`}
               >
                 إعادة الإرسال
               </button>
@@ -230,7 +230,7 @@ export function SignInForm({ nextPath, prefilledEmail }: { nextPath: string; pre
                   setError('');
                 }}
                 disabled={loading}
-                className={buttonVariants('ghost', 'md', 'flex-1 text-slate-500')}
+                className={`${buttonVariants('ghost', 'md')} flex-1 text-slate-500`}
               >
                 تغيير الحساب
               </button>

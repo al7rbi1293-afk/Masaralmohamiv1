@@ -17,10 +17,12 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = createSupabaseServerClient();
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const { data: user, error: userError } = await supabaseAdmin
       .from('app_users')
-      .select('id, full_name, is_active')
-      .eq('email', email)
+      .select('id, full_name, status')
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
     if (userError || !user) {
@@ -30,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!user.is_active) {
+    if (user.status === 'suspended') {
       return NextResponse.json(
         { error: 'عذراً، هذا الحساب غير مفعل.' },
         { status: 403 }

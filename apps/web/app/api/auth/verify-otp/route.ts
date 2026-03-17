@@ -14,10 +14,12 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = createSupabaseServerClient();
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+
     const { data: user, error: userError } = await supabaseAdmin
       .from('app_users')
       .select('id, full_name, status, otp_code, otp_expires_at')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
     if (userError || !user) {

@@ -26,10 +26,12 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = createSupabaseServerClient();
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const { data: user, error: userError } = await supabaseAdmin
       .from('app_users')
       .select('id, full_name, password_hash, status, email_verified')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
     if (userError || !user) {

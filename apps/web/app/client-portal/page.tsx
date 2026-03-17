@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { Section } from '@/components/ui/section';
@@ -14,6 +15,7 @@ import {
   type ClientPortalMatterCommunication,
 } from '@/components/client-portal/client-portal-dashboard';
 import { getActiveClientPortalAccess } from '@/lib/client-portal/access';
+import { CLIENT_PORTAL_SESSION_COOKIE_NAME } from '@/lib/client-portal/session';
 
 export const metadata: Metadata = {
   title: 'بوابة العميل',
@@ -27,6 +29,9 @@ export const metadata: Metadata = {
 export default async function ClientPortalHomePage() {
   const access = await getActiveClientPortalAccess();
   if (!access) {
+    // No valid session or portal user is inactive – redirect to sign-in.
+    // Clear any stale cookie first to prevent redirect loops.
+    cookies().delete(CLIENT_PORTAL_SESSION_COOKIE_NAME);
     redirect('/client-portal/signin');
   }
 
@@ -78,6 +83,9 @@ export default async function ClientPortalHomePage() {
     assigned_lawyer?: { full_name: string | null; license_number: string | null } | null 
   } | null;
   if (!client) {
+    // Client record missing from DB – clear cookie to prevent redirect loop
+    // between this page and /client-portal/signin.
+    cookies().delete(CLIENT_PORTAL_SESSION_COOKIE_NAME);
     redirect('/client-portal/signin');
   }
 

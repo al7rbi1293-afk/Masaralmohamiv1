@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     const { data: user, error: userError } = await supabaseAdmin
       .from('app_users')
-      .select('id, full_name, is_active, password_hash, status, email_verified')
+      .select('id, full_name, password_hash, status, email_verified')
       .eq('email', email)
       .maybeSingle();
 
@@ -48,13 +48,6 @@ export async function POST(request: Request) {
     if (!user.email_verified) {
       return NextResponse.json(
         { error: 'الحساب موجود ولكنه غير مفعل. يرجى مراجعة بريدك الإلكتروني لتفعيل الحساب.' },
-        { status: 403 }
-      );
-    }
-
-    if (!user.is_active) {
-      return NextResponse.json(
-        { error: 'عذراً، هذا الحساب غير مفعل.' },
         { status: 403 }
       );
     }

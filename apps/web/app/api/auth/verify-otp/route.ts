@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     const { data: user, error: userError } = await supabaseAdmin
       .from('app_users')
-      .select('id, full_name, is_active, otp_code, otp_expires_at')
+      .select('id, full_name, status, otp_code, otp_expires_at')
       .eq('email', email)
       .maybeSingle();
 
@@ -27,9 +27,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!user.is_active) {
+    if (user.status === 'suspended') {
       return NextResponse.json(
-        { error: 'عذراً، هذا الحساب غير مفعل.' },
+        { error: 'تم تعليق الحساب. تواصل مع الإدارة.' },
         { status: 403 }
       );
     }

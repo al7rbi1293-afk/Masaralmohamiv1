@@ -33,6 +33,33 @@ export type InvoicePdfPayload = {
   qrCode?: string | null;
 };
 
+// ── Colors ──────────────────────────────────
+const COLORS = {
+  navy: '#0f172a',
+  navyLight: '#1e293b',
+  emerald: '#10b981',
+  emeraldDark: '#065f46',
+  emeraldBg: '#ecfdf5',
+  amberDark: '#92400e',
+  amberBg: '#fffbeb',
+  redDark: '#991b1b',
+  redBg: '#fef2f2',
+  grayBg: '#f8fafc',
+  grayBorder: '#e2e8f0',
+  grayText: '#64748b',
+  darkText: '#0f172a',
+  bodyText: '#334155',
+  white: '#ffffff',
+  rowAlt: '#f1f5f9',
+};
+
+const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
+  unpaid: { bg: COLORS.redBg, text: COLORS.redDark, label: 'غير مسددة' },
+  partial: { bg: COLORS.amberBg, text: COLORS.amberDark, label: 'مسددة جزئياً' },
+  paid: { bg: COLORS.emeraldBg, text: COLORS.emeraldDark, label: 'مدفوعة' },
+  void: { bg: COLORS.grayBg, text: COLORS.grayText, label: 'ملغاة' },
+};
+
 export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
   const { Document, Font, Image, Page, StyleSheet, Text, View, pdf } = await import('@react-pdf/renderer');
 
@@ -57,292 +84,508 @@ export async function renderInvoicePdfBuffer(payload: InvoicePdfPayload) {
     }
   }
 
-  const styles = StyleSheet.create({
+  const s = StyleSheet.create({
+    // ── Page ──
     page: {
-      padding: 32,
-      fontSize: 12,
+      padding: 0,
+      fontSize: 11,
       fontFamily: 'IBM Plex Sans Arabic',
-      color: '#111827',
+      color: COLORS.darkText,
       direction: 'rtl',
     },
-    header: {
-      marginBottom: 14,
+
+    // ── Header Banner ──
+    headerBanner: {
+      backgroundColor: COLORS.navy,
+      paddingHorizontal: 32,
+      paddingTop: 28,
+      paddingBottom: 24,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
-    headerText: {},
-    logo: {
-      width: 64,
-      height: 64,
-      objectFit: 'contain' as any,
-      borderRadius: 6,
+    headerLeft: {},
+    orgName: {
+      fontSize: 20,
+      fontWeight: 700,
+      color: COLORS.white,
     },
+    invoiceType: {
+      fontSize: 11,
+      color: COLORS.emerald,
+      marginTop: 4,
+      fontWeight: 700,
+    },
+    invoiceNumber: {
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.75)',
+      marginTop: 2,
+    },
+    logo: {
+      width: 60,
+      height: 60,
+      objectFit: 'contain' as any,
+      borderRadius: 8,
+    },
+
+    // ── Accent bar ──
+    accentBar: {
+      height: 4,
+      backgroundColor: COLORS.emerald,
+    },
+
+    // ── Content wrapper ──
+    content: {
+      paddingHorizontal: 32,
+      paddingTop: 20,
+      paddingBottom: 24,
+    },
+
+    // ── Info Cards Row ──
     infoRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 30,
+      gap: 16,
+      marginBottom: 20,
     },
-    infoBlock: {
-      width: '45%',
+    infoCard: {
+      width: '48%',
+      backgroundColor: COLORS.grayBg,
+      border: `1px solid ${COLORS.grayBorder}`,
+      borderRadius: 10,
+      padding: 14,
     },
-    infoTitle: {
-      fontSize: 10,
-      color: '#64748B',
-      marginBottom: 4,
-      fontFamily: 'IBM Plex Sans Arabic', // Changed from Outfit to match existing font
+    infoLabel: {
+      fontSize: 9,
+      color: COLORS.emeraldDark,
+      fontWeight: 700,
+      marginBottom: 6,
+      textTransform: 'uppercase' as any,
     },
     infoText: {
+      fontSize: 10,
+      color: COLORS.navyLight,
+      lineHeight: 1.6,
+    },
+    infoBold: {
       fontSize: 11,
-      color: '#1E293B',
-      fontFamily: 'IBM Plex Sans Arabic', // Changed from Outfit to match existing font
-      lineHeight: 1.4,
-    },
-    title: {
-      fontSize: 18,
+      color: COLORS.darkText,
       fontWeight: 700,
+      marginBottom: 2,
     },
-    subtitle: {
-      fontSize: 12,
-      marginTop: 4,
-      color: '#334155',
-    },
-    section: {
-      marginTop: 12,
-      padding: 12,
-      border: '1px solid #E5E7EB',
-      borderRadius: 8,
-    },
-    row: {
+
+    // ── Dates & Status Strip ──
+    detailStrip: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: 10,
-      marginTop: 6,
+      alignItems: 'center',
+      backgroundColor: COLORS.grayBg,
+      border: `1px solid ${COLORS.grayBorder}`,
+      borderRadius: 10,
+      padding: 12,
+      paddingHorizontal: 16,
+      marginBottom: 20,
     },
-    label: {
-      color: '#64748B',
+    detailItem: {
+      alignItems: 'center' as any,
     },
-    value: {
+    detailLabel: {
+      fontSize: 8,
+      color: COLORS.grayText,
+      marginBottom: 2,
+    },
+    detailValue: {
+      fontSize: 11,
       fontWeight: 700,
+      color: COLORS.darkText,
+    },
+    statusBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 999,
+      fontSize: 10,
+      fontWeight: 700,
+    },
+
+    // ── Table ──
+    tableWrapper: {
+      border: `1px solid ${COLORS.grayBorder}`,
+      borderRadius: 10,
+      overflow: 'hidden' as any,
+      marginBottom: 18,
     },
     tableHeader: {
       flexDirection: 'row',
-      borderBottom: '1px solid #E5E7EB',
-      paddingBottom: 6,
-      marginBottom: 6,
+      backgroundColor: COLORS.navy,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    thText: {
+      color: COLORS.white,
       fontWeight: 700,
+      fontSize: 10,
     },
     tableRow: {
       flexDirection: 'row',
-      borderBottom: '1px solid #F1F5F9',
-      paddingVertical: 6,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      borderBottom: `1px solid ${COLORS.grayBorder}`,
     },
-    cellDesc: { width: '46%' },
-    cellQty: { width: '12%', textAlign: 'right' },
-    cellUnit: { width: '20%', textAlign: 'right' },
-    cellTotal: { width: '22%', textAlign: 'right' },
-    totals: {
-      marginTop: 10,
-      paddingTop: 10,
-      borderTop: '1px solid #E5E7EB',
+    tableRowAlt: {
+      backgroundColor: COLORS.rowAlt,
     },
-    note: {
-      marginTop: 14,
+    tdText: {
       fontSize: 10,
-      color: '#64748B',
+      color: COLORS.bodyText,
     },
-    qrCode: {
-      marginTop: 20,
-      width: 80,
-      height: 80,
-      alignSelf: 'flex-start',
+    cellDesc: { width: '44%' },
+    cellQty: { width: '14%', textAlign: 'center' },
+    cellUnit: { width: '21%', textAlign: 'right' },
+    cellTotal: { width: '21%', textAlign: 'right' },
+
+    // ── Totals ──
+    totalsWrapper: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      marginBottom: 20,
+    },
+    totalsCard: {
+      width: '52%',
+      border: `1px solid ${COLORS.grayBorder}`,
+      borderRadius: 10,
+      overflow: 'hidden' as any,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderBottom: `1px solid ${COLORS.grayBorder}`,
+    },
+    totalLabel: {
+      fontSize: 10,
+      color: COLORS.grayText,
+    },
+    totalValue: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: COLORS.darkText,
+    },
+    grandTotalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: COLORS.navy,
+    },
+    grandTotalLabel: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: COLORS.white,
+    },
+    grandTotalValue: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: COLORS.emerald,
+    },
+    remainingPositive: {
+      color: COLORS.redDark,
+    },
+
+    // ── QR Section ──
+    qrSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
+      padding: 14,
+      backgroundColor: COLORS.grayBg,
+      border: `1px solid ${COLORS.grayBorder}`,
+      borderRadius: 10,
+    },
+    qrImage: {
+      width: 72,
+      height: 72,
+    },
+    qrText: {
+      fontSize: 9,
+      color: COLORS.grayText,
+      lineHeight: 1.6,
+    },
+    qrTitle: {
+      fontSize: 10,
+      fontWeight: 700,
+      color: COLORS.darkText,
+      marginBottom: 4,
+    },
+
+    // ── Footer ──
+    footer: {
+      marginTop: 'auto' as any,
+      borderTop: `1px solid ${COLORS.grayBorder}`,
+      paddingTop: 14,
+      paddingHorizontal: 32,
+      paddingBottom: 20,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    footerText: {
+      fontSize: 8,
+      color: COLORS.grayText,
+      lineHeight: 1.8,
+    },
+    footerBrand: {
+      fontSize: 9,
+      color: COLORS.emeraldDark,
+      fontWeight: 700,
     },
   });
 
   const items = normalizeItems(payload.items);
   const safeNumber = String(payload.number ?? '').trim() || 'invoice';
+  const currentStatus = statusStyles[payload.status] ?? statusStyles.unpaid;
+  const isTaxInvoice = Boolean(payload.taxNumber);
 
-  const PdfDocument = React.createElement(
+  const el = React.createElement;
+
+  const PdfDocument = el(
     Document,
     {},
-    React.createElement(
+    el(
       Page,
-      { size: 'A4', style: styles.page },
-      React.createElement(
+      { size: 'A4', style: s.page },
+
+      // ── Header Banner ──
+      el(
         View,
-        { style: styles.header },
-        React.createElement(
+        { style: s.headerBanner },
+        el(
           View,
-          { style: styles.headerText },
-          React.createElement(Text, { style: styles.title }, payload.orgName ?? 'مسار المحامي'),
-          React.createElement(
+          { style: s.headerLeft },
+          el(Text, { style: s.orgName }, payload.orgName ?? 'مسار المحامي'),
+          el(
             Text,
-            { style: styles.subtitle },
-            payload.taxNumber ? `فاتورة ضريبية ${safeNumber}` : `فاتورة ${safeNumber}`,
+            { style: s.invoiceType },
+            isTaxInvoice ? 'فاتورة ضريبية' : 'فاتورة',
           ),
+          el(Text, { style: s.invoiceNumber }, `رقم: ${safeNumber}`),
         ),
         payload.logoUrl
-          ? React.createElement(Image, { style: styles.logo, src: payload.logoUrl })
+          ? el(Image, { style: s.logo, src: payload.logoUrl })
           : null,
       ),
 
-      React.createElement(
-        View,
-        { style: styles.infoRow },
-        React.createElement(
-          View,
-          { style: styles.infoBlock },
-          React.createElement(Text, { style: styles.infoTitle }, 'من:'),
-          React.createElement(Text, { style: styles.infoText }, payload.orgName || 'إدارة المكتب'),
-          payload.orgAddress
-            ? React.createElement(Text, { style: styles.infoText }, payload.orgAddress)
-            : null,
-          payload.taxNumber
-            ? React.createElement(Text, { style: styles.infoText }, `الرقم الضريبي: ${payload.taxNumber}`)
-            : null,
-          payload.crNumber
-            ? React.createElement(Text, { style: styles.infoText }, `الرقم السجل التجاري: ${payload.crNumber}`)
-            : null,
-        ),
-        React.createElement(
-          View,
-          { style: styles.infoBlock },
-          React.createElement(Text, { style: styles.infoTitle }, 'إلى:'),
-          React.createElement(Text, { style: styles.infoText }, payload.clientName || 'العميل'),
-          payload.clientAddress
-            ? React.createElement(Text, { style: styles.infoText }, payload.clientAddress)
-            : null,
-        ),
-      ),
+      // ── Accent Bar ──
+      el(View, { style: s.accentBar }),
 
-      React.createElement(
+      // ── Content ──
+      el(
         View,
-        { style: styles.section },
-        React.createElement(
+        { style: s.content },
+
+        // ── From / To Info Cards ──
+        el(
           View,
-          { style: styles.row },
-          React.createElement(Text, { style: styles.label }, 'العميل'),
-          React.createElement(Text, { style: styles.value }, payload.clientName ?? '—'),
-        ),
-        React.createElement(
-          View,
-          { style: styles.row },
-          React.createElement(Text, { style: styles.label }, 'تاريخ الإصدار'),
-          React.createElement(Text, { style: styles.value }, formatDate(payload.issued_at)),
-        ),
-        payload.due_at
-          ? React.createElement(
+          { style: s.infoRow },
+          // From
+          el(
             View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'تاريخ الاستحقاق'),
-            React.createElement(Text, { style: styles.value }, formatDate(payload.due_at)),
+            { style: s.infoCard },
+            el(Text, { style: s.infoLabel }, 'من'),
+            el(Text, { style: s.infoBold }, payload.orgName || 'إدارة المكتب'),
+            payload.orgAddress
+              ? el(Text, { style: s.infoText }, payload.orgAddress)
+              : null,
+            payload.taxNumber
+              ? el(Text, { style: s.infoText }, `الرقم الضريبي: ${payload.taxNumber}`)
+              : null,
+            payload.crNumber
+              ? el(Text, { style: s.infoText }, `السجل التجاري: ${payload.crNumber}`)
+              : null,
+          ),
+          // To
+          el(
+            View,
+            { style: s.infoCard },
+            el(Text, { style: s.infoLabel }, 'إلى'),
+            el(Text, { style: s.infoBold }, payload.clientName || 'العميل'),
+            payload.clientAddress
+              ? el(Text, { style: s.infoText }, payload.clientAddress)
+              : null,
+          ),
+        ),
+
+        // ── Dates & Status Strip ──
+        el(
+          View,
+          { style: s.detailStrip },
+          el(
+            View,
+            { style: s.detailItem },
+            el(Text, { style: s.detailLabel }, 'تاريخ الإصدار'),
+            el(Text, { style: s.detailValue }, formatDate(payload.issued_at)),
+          ),
+          payload.due_at
+            ? el(
+              View,
+              { style: s.detailItem },
+              el(Text, { style: s.detailLabel }, 'تاريخ الاستحقاق'),
+              el(Text, { style: s.detailValue }, formatDate(payload.due_at)),
+            )
+            : null,
+          el(
+            View,
+            { style: s.detailItem },
+            el(Text, { style: s.detailLabel }, 'الحالة'),
+            el(
+              Text,
+              {
+                style: {
+                  ...s.statusBadge,
+                  backgroundColor: currentStatus.bg,
+                  color: currentStatus.text,
+                },
+              },
+              currentStatus.label,
+            ),
+          ),
+        ),
+
+        // ── Items Table ──
+        el(
+          View,
+          { style: s.tableWrapper },
+          // Header
+          el(
+            View,
+            { style: s.tableHeader },
+            el(Text, { style: { ...s.thText, ...s.cellDesc } }, 'الوصف'),
+            el(Text, { style: { ...s.thText, ...s.cellQty } }, 'الكمية'),
+            el(Text, { style: { ...s.thText, ...s.cellUnit } }, 'سعر الوحدة'),
+            el(Text, { style: { ...s.thText, ...s.cellTotal } }, 'الإجمالي'),
+          ),
+          // Rows
+          ...items.map((item, index) => {
+            const lineTotal = round2(item.qty * item.unit_price);
+            const isAlt = index % 2 === 1;
+            return el(
+              View,
+              {
+                key: String(index),
+                style: isAlt ? { ...s.tableRow, ...s.tableRowAlt } : s.tableRow,
+              },
+              el(Text, { style: { ...s.tdText, ...s.cellDesc } }, item.desc),
+              el(Text, { style: { ...s.tdText, ...s.cellQty } }, String(item.qty)),
+              el(
+                Text,
+                { style: { ...s.tdText, ...s.cellUnit } },
+                `${formatMoney(item.unit_price)} ${payload.currency}`,
+              ),
+              el(
+                Text,
+                { style: { ...s.tdText, ...s.cellTotal, fontWeight: 700 } },
+                `${formatMoney(lineTotal)} ${payload.currency}`,
+              ),
+            );
+          }),
+        ),
+
+        // ── Totals Card ──
+        el(
+          View,
+          { style: s.totalsWrapper },
+          el(
+            View,
+            { style: s.totalsCard },
+            // Subtotal
+            el(
+              View,
+              { style: s.totalRow },
+              el(Text, { style: s.totalLabel }, 'المجموع الفرعي'),
+              el(Text, { style: s.totalValue }, `${formatMoney(payload.subtotal)} ${payload.currency}`),
+            ),
+            // Tax
+            el(
+              View,
+              { style: s.totalRow },
+              el(Text, { style: s.totalLabel }, 'الضريبة (VAT)'),
+              el(Text, { style: s.totalValue }, `${formatMoney(payload.tax)} ${payload.currency}`),
+            ),
+            // Grand Total
+            el(
+              View,
+              { style: s.grandTotalRow },
+              el(Text, { style: s.grandTotalLabel }, 'الإجمالي المستحق'),
+              el(Text, { style: s.grandTotalValue }, `${formatMoney(payload.total)} ${payload.currency}`),
+            ),
+            // Paid
+            el(
+              View,
+              { style: s.totalRow },
+              el(Text, { style: s.totalLabel }, 'المدفوع'),
+              el(
+                Text,
+                { style: { ...s.totalValue, color: COLORS.emeraldDark } },
+                `${formatMoney(payload.paidAmount)} ${payload.currency}`,
+              ),
+            ),
+            // Remaining
+            el(
+              View,
+              { style: { ...s.totalRow, borderBottom: 'none' } },
+              el(Text, { style: s.totalLabel }, 'المتبقي'),
+              el(
+                Text,
+                {
+                  style: {
+                    ...s.totalValue,
+                    ...(payload.remaining > 0 ? s.remainingPositive : {}),
+                  },
+                },
+                `${formatMoney(payload.remaining)} ${payload.currency}`,
+              ),
+            ),
+          ),
+        ),
+
+        // ── QR Code Section ──
+        payload.qrCode
+          ? el(
+            View,
+            { style: s.qrSection },
+            el(Image, {
+              style: s.qrImage,
+              src: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(payload.qrCode)}`,
+            }),
+            el(
+              View,
+              {},
+              el(Text, { style: s.qrTitle }, 'رمز التحقق من الفاتورة'),
+              el(Text, { style: s.qrText }, 'امسح الرمز ضوئياً للتحقق من صحة الفاتورة'),
+              isTaxInvoice
+                ? el(Text, { style: s.qrText }, 'أو تحقق عبر هيئة الزكاة والضريبة والجمارك')
+                : null,
+            ),
           )
           : null,
       ),
-      React.createElement(
+
+      // ── Footer ──
+      el(
         View,
-        { style: styles.section },
-        React.createElement(
+        { style: s.footer },
+        el(
           View,
-          { style: styles.tableHeader },
-          React.createElement(Text, { style: styles.cellDesc }, 'الوصف'),
-          React.createElement(Text, { style: styles.cellQty }, 'الكمية'),
-          React.createElement(Text, { style: styles.cellUnit }, 'سعر الوحدة'),
-          React.createElement(Text, { style: styles.cellTotal }, 'الإجمالي'),
+          {},
+          el(Text, { style: s.footerBrand }, payload.orgName ?? 'مسار المحامي'),
+          el(Text, { style: s.footerText }, 'هذه الفاتورة صادرة إلكترونياً ولا تحتاج إلى توقيع أو ختم.'),
         ),
-        ...items.map((item, index) => {
-          const lineTotal = round2(item.qty * item.unit_price);
-          return React.createElement(
-            View,
-            { key: String(index), style: styles.tableRow },
-            React.createElement(Text, { style: styles.cellDesc }, item.desc),
-            React.createElement(Text, { style: styles.cellQty }, String(item.qty)),
-            React.createElement(
-              Text,
-              { style: styles.cellUnit },
-              `${formatMoney(item.unit_price)} ${payload.currency}`,
-            ),
-            React.createElement(
-              Text,
-              { style: styles.cellTotal },
-              `${formatMoney(lineTotal)} ${payload.currency}`,
-            ),
-          );
-        }),
-        React.createElement(
+        el(
           View,
-          { style: styles.totals },
-          React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'المجموع الفرعي'),
-            React.createElement(
-              Text,
-              { style: styles.value },
-              `${formatMoney(payload.subtotal)} ${payload.currency}`,
-            ),
-          ),
-          React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'الضريبة'),
-            React.createElement(
-              Text,
-              { style: styles.value },
-              `${formatMoney(payload.tax)} ${payload.currency}`,
-            ),
-          ),
-          React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'الإجمالي'),
-            React.createElement(
-              Text,
-              { style: styles.value },
-              `${formatMoney(payload.total)} ${payload.currency}`,
-            ),
-          ),
-          React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'الحالة'),
-            React.createElement(Text, { style: styles.value }, translateStatus(payload.status)),
-          ),
-          React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'المدفوع'),
-            React.createElement(
-              Text,
-              { style: styles.value },
-              `${formatMoney(payload.paidAmount)} ${payload.currency}`,
-            ),
-          ),
-          React.createElement(
-            View,
-            { style: styles.row },
-            React.createElement(Text, { style: styles.label }, 'المتبقي'),
-            React.createElement(
-              Text,
-              { style: styles.value },
-              `${formatMoney(payload.remaining)} ${payload.currency}`,
-            ),
-          ),
+          { style: { alignItems: 'flex-end' as any } },
+          el(Text, { style: s.footerText }, `رقم الفاتورة: ${safeNumber}`),
+          el(Text, { style: s.footerText }, `تاريخ الإصدار: ${formatDate(payload.issued_at)}`),
         ),
-      ),
-      payload.qrCode
-        ? React.createElement(
-          View,
-          { style: styles.qrCode },
-          React.createElement(Image, {
-            src: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(payload.qrCode)}`,
-          }),
-        )
-        : null,
-      React.createElement(
-        Text,
-        { style: styles.note },
-        'هذه الفاتورة صادرة من مسار المحامي. قد تختلف الأرقام عن العرض حسب تحديث البنود والدفعات.',
       ),
     ),
   );
@@ -385,17 +628,6 @@ function formatDate(value: string) {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
   return `${yyyy}/${mm}/${dd}`;
-}
-
-const statusMap: Record<string, string> = {
-  unpaid: 'غير مسددة',
-  partial: 'مسددة جزئياً',
-  paid: 'مدفوعة',
-  void: 'ملغاة',
-};
-
-function translateStatus(status: string): string {
-  return statusMap[status] ?? status;
 }
 
 function formatMoney(value: string | number) {

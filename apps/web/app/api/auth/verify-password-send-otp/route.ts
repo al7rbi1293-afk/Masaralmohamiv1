@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
+import { LOGIN_OTP_EMAIL_HTML, LOGIN_OTP_EMAIL_SUBJECT } from '@/lib/email-templates';
 import { verifyPassword } from '@/lib/auth-custom';
 
 export async function POST(request: Request) {
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+    const ttlMinutes = 10;
+    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
 
     const { error: updateError } = await supabaseAdmin
       .from('app_users')
@@ -80,25 +82,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const html = `
-      <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h2 style="color: #0b2b4d;">رمز التحقق الثنائي</h2>
-        <p>مرحباً ${user.full_name || ''}،</p>
-        <p>كمستوى أمان إضافي، نرجو منك إدخال الرمز السري أدناه لإكمال تسجيل الدخول لـ حسابك في منصة مسار المحامي.</p>
-        <div style="background-color: #f4f6f8; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-          <h1 style="color: #00bf63; margin: 0; letter-spacing: 5px;">${otp}</h1>
-        </div>
-        <p>هذا الرمز صالح لمدة 10 دقائق فقط.</p>
-        <p>إذا لم تكن أنت من يحاول الدخول للبريد، يرجى تغيير كلمة المرور فورا.</p>
-        <br />
-        <p>مع تحيات،<br />فريق منصة مسار المحامي</p>
-      </div>
-    `;
+    const html = LOGIN_OTP_EMAIL_HTML({
+      name: user.full_name || '',
+      code: otp,
+      ttlMinutes,
+    });
 
     try {
       await sendEmail({
         to: email,
-        subject: 'رمز الدخول إلى مسار المحامي',
+        subject: LOGIN_OTP_EMAIL_SUBJECT,
         html,
       });
     } catch (emailError) {

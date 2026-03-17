@@ -689,6 +689,44 @@ export const LAWYER_REPLY_EMAIL_HTML = (params: {
     `,
   });
 
+export const LOGIN_OTP_EMAIL_SUBJECT = 'رمز التحقق لتسجيل الدخول | مسار المحامي';
+
+export const LOGIN_OTP_EMAIL_HTML = (params: {
+  name: string;
+  code: string;
+  ttlMinutes: number;
+}) =>
+  renderEmailShell({
+    subject: LOGIN_OTP_EMAIL_SUBJECT,
+    preheader: `رمز التحقق الخاص بك هو ${params.code} وصلاحيته ${params.ttlMinutes} دقائق.`,
+    eyebrow: 'تحقق ثنائي',
+    title: 'رمز الدخول إلى حسابك',
+    intro: 'تمت مطابقة كلمة المرور بنجاح. أدخل الرمز التالي في صفحة تسجيل الدخول لإتمام العملية.',
+    bodyHtml: `
+      <p>مرحباً <strong>${escapeHtml(params.name || 'عميلنا الكريم')}</strong>،</p>
+      <p>تلقّينا طلب تسجيل دخول إلى حسابك في مسار المحامي. كمستوى أمان إضافي، يُرجى إدخال رمز التحقق التالي لإكمال العملية:</p>
+
+      <div class="panel panel-success" style="text-align:center;">
+        <h2 class="panel-title" style="margin-bottom:16px;">رمز التحقق</h2>
+        <div class="code-box">${escapeHtml(params.code)}</div>
+        <p style="margin:16px 0 0; font-size:14px; color:#065f46;">هذا الرمز صالح لمدة <strong>${escapeHtml(String(params.ttlMinutes))} دقائق</strong>.</p>
+      </div>
+
+      <div class="panel panel-muted">
+        <h2 class="panel-title">ملاحظات هامّة</h2>
+        <ul class="list">
+          <li>أدخل الرمز كما هو تماماً في صفحة تسجيل الدخول.</li>
+          <li>يمكنك طلب رمز جديد إذا انتهت المهلة المحددة.</li>
+          <li>إذا لم تكن أنت من يحاول الدخول، يرجى تغيير كلمة المرور فوراً.</li>
+        </ul>
+      </div>
+
+      <div class="note">
+        لأمان حسابك: لا تشارك هذا الرمز مع أي شخص. فريق مسار المحامي لن يطلب منك الرمز أبداً.
+      </div>
+    `,
+  });
+
 export const PARTNER_WELCOME_EMAIL_SUBJECT = 'تم تفعيل حسابك في شركاء النجاح | مسار المحامي';
 
 export const PARTNER_WELCOME_EMAIL_HTML = (params: {

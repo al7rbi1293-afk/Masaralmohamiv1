@@ -7,7 +7,9 @@ import { createCommissionForTapPayment, reverseCommissionByPaymentId } from '@/l
 import { addPartnerAuditLog } from '@/lib/partners/service';
 import { toSubscriptionPlanCode } from '@/lib/partners/plan';
 import { updateLeadStatusForUser } from '@/lib/partners/referral';
+import { sendAdminCardSubscriptionActivatedAlert } from '@/lib/subscription-admin-alert-email';
 import { sendSubscriptionInvoiceEmail } from '@/lib/subscription-invoice-email';
+import { logWarn } from '@/lib/logger';
 
 type TapWebhookProcessResult = {
   eventId: string;
@@ -191,6 +193,27 @@ async function activateSubscriptionFromTapPayment(tapPayment: any) {
     sourceId: String(tapPayment.id || tapPayment.tap_charge_id || ''),
     sentByUserId: userId,
   });
+
+  try {
+    await sendAdminCardSubscriptionActivatedAlert({
+      provider: 'tap',
+      orgId,
+      requestedByUserId: userId,
+      planCode: normalizedPlan,
+      billingPeriod,
+      amount: Number(tapPayment.amount || 0),
+      currency: String(tapPayment.currency || 'SAR'),
+      chargeId: String(tapPayment.tap_charge_id || ''),
+      providerSubscriptionId: String(subscription.id || tapPayment.tap_agreement_id || tapPayment.tap_charge_id || ''),
+      paidAt: String(tapPayment.captured_at || new Date().toISOString()),
+    });
+  } catch (error) {
+    logWarn('tap_card_admin_alert_failed_non_blocking', {
+      orgId,
+      tapChargeId: tapPayment.tap_charge_id,
+      message: error instanceof Error ? error.message : 'unknown_error',
+    });
+  }
 
   return subscription;
 }

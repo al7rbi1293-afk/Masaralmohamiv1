@@ -245,6 +245,17 @@ export function getPartnerAlertEmails() {
   return [...new Set(parsed)];
 }
 
+export function getBillingAlertEmails() {
+  const fallback = getSignupAlertEmails();
+  const raw = process.env.BILLING_ALERT_EMAILS?.trim();
+  const parsed = (raw || fallback.join(','))
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [...new Set(parsed)];
+}
+
 export function getTapSecretKey() {
   const secret = process.env.TAP_SECRET_KEY?.trim();
   if (!secret) {

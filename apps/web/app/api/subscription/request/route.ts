@@ -3,6 +3,7 @@ import { normalizePlanCode } from '@/lib/billing/plans';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { sendAdminManualSubscriptionRequestAlert } from '@/lib/subscription-admin-alert-email';
 import { z } from 'zod';
 
 const RequestSchema = z.object({
@@ -56,6 +57,20 @@ export async function POST(request: NextRequest) {
 
     if (error) {
         return NextResponse.json({ message: error.message }, { status: 500 });
+    }
+
+    try {
+        await sendAdminManualSubscriptionRequestAlert({
+            subscriptionRequestId: String(data?.id || ''),
+            orgId,
+            requestedByUserId: user.id,
+            planCode: planRequested,
+            durationMonths: parsed.data.duration_months,
+            paymentMethod: parsed.data.payment_method || null,
+            paymentReference: parsed.data.payment_reference || null,
+        });
+    } catch {
+        // Keep legacy request creation non-blocking if internal email alerting fails.
     }
 
     return NextResponse.json({ success: true, id: data?.id }, { status: 201 });

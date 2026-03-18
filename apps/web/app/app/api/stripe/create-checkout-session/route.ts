@@ -92,11 +92,13 @@ export async function POST(request: NextRequest) {
         org_id: orgId,
         plan_code: planCode,
         user_id: user.id,
+        billing_period: 'monthly',
       },
       subscription_data: {
         metadata: {
           org_id: orgId,
           plan_code: planCode,
+          billing_period: 'monthly',
         },
       },
     });

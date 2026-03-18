@@ -1,9 +1,11 @@
 import 'server-only';
 
 import { normalizePlanCode } from '@/lib/billing/plans';
+import { logWarn } from '@/lib/logger';
 import { createSupabaseServerRlsClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { sendAdminBankTransferRequestAlert } from '@/lib/subscription-admin-alert-email';
 
 export type PaymentRequestStatus = 'pending' | 'approved' | 'rejected';
 export type PaymentMethod = 'bank_transfer' | 'credit_card' | 'apple_pay' | 'mada';
@@ -77,7 +79,29 @@ export async function createPaymentRequest(params: {
     }
 
     if (error) throw error;
-    return data as PaymentRequest;
+    const paymentRequest = data as PaymentRequest;
+
+    try {
+        await sendAdminBankTransferRequestAlert({
+            paymentRequestId: paymentRequest.id,
+            orgId,
+            requestedByUserId: user.id,
+            planCode: normalizedPlanCode,
+            billingPeriod: params.billing_period,
+            amount: params.amount,
+            currency: paymentRequest.currency,
+            bankReference: params.bank_reference ?? null,
+            createdAt: paymentRequest.created_at,
+        });
+    } catch (alertError) {
+        logWarn('bank_transfer_admin_alert_failed_non_blocking', {
+            paymentRequestId: paymentRequest.id,
+            orgId,
+            message: alertError instanceof Error ? alertError.message : 'unknown_error',
+        });
+    }
+
+    return paymentRequest;
 }
 
 function isUserIdForeignKeyError(message?: string) {

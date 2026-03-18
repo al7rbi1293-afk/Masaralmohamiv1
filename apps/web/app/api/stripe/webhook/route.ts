@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { getStripeWebhookSecret } from '@/lib/env';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { logError, logInfo } from '@/lib/logger';
+import { logError, logInfo, logWarn } from '@/lib/logger';
+import { sendAdminCardSubscriptionActivatedAlert } from '@/lib/subscription-admin-alert-email';
 
 export const runtime = 'nodejs';
 
@@ -85,6 +86,11 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as any;
         const orgId = String(session?.metadata?.org_id ?? '').trim();
         const planCode = String(session?.metadata?.plan_code ?? '').trim().toUpperCase();
+        const userId = String(session?.metadata?.user_id ?? '').trim() || null;
+        const billingPeriod =
+          String(session?.metadata?.billing_period ?? 'monthly').toLowerCase() === 'yearly'
+            ? 'yearly'
+            : 'monthly';
 
         const customerId =
           typeof session?.customer === 'string' ? (session.customer as string) : null;
@@ -117,6 +123,32 @@ export async function POST(request: NextRequest) {
           });
         } else {
           logInfo('stripe_checkout_completed', { orgId });
+          try {
+            await sendAdminCardSubscriptionActivatedAlert({
+              provider: 'stripe',
+              orgId,
+              requestedByUserId: userId,
+              planCode: planCode || 'SOLO',
+              billingPeriod,
+              amount:
+                typeof session?.amount_total === 'number'
+                  ? session.amount_total / 100
+                  : null,
+              currency: typeof session?.currency === 'string' ? session.currency : 'SAR',
+              checkoutSessionId: String(session?.id ?? ''),
+              providerSubscriptionId: subscriptionId,
+              paidAt:
+                typeof session?.created === 'number'
+                  ? new Date(session.created * 1000).toISOString()
+                  : new Date().toISOString(),
+            });
+          } catch (alertError) {
+            logWarn('stripe_card_admin_alert_failed_non_blocking', {
+              orgId,
+              checkoutSessionId: String(session?.id ?? ''),
+              message: alertError instanceof Error ? alertError.message : 'unknown_error',
+            });
+          }
         }
 
         break;
@@ -188,4 +220,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Webhook handler failed.' }, { status: 500 });
   }
 }
-

@@ -13,6 +13,8 @@ import {
   restoreClientAction,
   updateClientAction,
 } from '../actions';
+import { NajizClientPoAClient } from '@/components/najiz/najiz-client-poa-client';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 
 type ClientDetailsPageProps = {
   params: { id: string };
@@ -39,6 +41,11 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
 
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
+
+  const { limits: planLimits } = await getOrgPlanLimits(client.org_id).catch(() => ({
+    limits: { najiz_integration: false },
+  }));
+  const showNajiz = planLimits.najiz_integration;
 
   return (
     <Card className="p-6">
@@ -75,6 +82,10 @@ export default async function ClientDetailsPage({ params, searchParams }: Client
         <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
           {error}
         </p>
+      ) : null}
+
+      {showNajiz ? (
+        <NajizClientPoAClient clientId={client.id} poaNumber={client.agency_number} />
       ) : null}
 
       <form action={updateClientAction.bind(null, client.id)} encType="multipart/form-data" className="mt-6 grid gap-4 sm:grid-cols-2">

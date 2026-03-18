@@ -18,6 +18,8 @@ import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { listTasks, type TaskPriority, type TaskStatus } from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { archiveDocumentAction, deleteDocumentAction, restoreDocumentAction } from '../../documents/actions';
+import { NajizCaseDetailsClient } from '@/components/najiz/najiz-case-details-client';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 import {
   archiveMatterAction,
   createMatterEventAction,
@@ -268,6 +270,10 @@ async function MatterSummarySection({
     }).catch(() => null),
   ]);
 
+  // Check if Najiz integration is enabled for this org's plan
+  const { limits: planLimits } = await getOrgPlanLimits(matter.org_id).catch(() => ({ limits: { najiz_integration: false } }));
+  const showNajiz = planLimits.najiz_integration;
+
   let canManageMembers = false;
   let orgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
 
@@ -371,6 +377,8 @@ async function MatterSummarySection({
             </p>
           </div>
         </section>
+        
+        {showNajiz ? <NajizCaseDetailsClient matterId={matterId} caseNumber={matter.najiz_case_number} /> : null}
       </div>
 
       {

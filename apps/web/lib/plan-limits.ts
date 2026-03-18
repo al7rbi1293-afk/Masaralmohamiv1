@@ -15,6 +15,7 @@ type PlanLimits = {
     templates_enabled: boolean;
     email_integration: boolean;
     calendar_enabled: boolean;
+    najiz_integration: boolean;
 };
 
 export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
@@ -25,6 +26,7 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
         templates_enabled: true,
         email_integration: false,
         calendar_enabled: true,
+        najiz_integration: false,
     },
     SOLO: {
         max_users: 1,
@@ -33,6 +35,7 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
         templates_enabled: true,
         email_integration: true,
         calendar_enabled: true,
+        najiz_integration: false,
     },
     TEAM: {
         max_users: 5,
@@ -41,6 +44,7 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
         templates_enabled: true,
         email_integration: true,
         calendar_enabled: true,
+        najiz_integration: false,
     },
     BUSINESS: {
         max_users: 20,
@@ -49,6 +53,7 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
         templates_enabled: true,
         email_integration: true,
         calendar_enabled: true,
+        najiz_integration: true,
     },
     ENTERPRISE: {
         max_users: 999,
@@ -57,6 +62,7 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
         templates_enabled: true,
         email_integration: true,
         calendar_enabled: true,
+        najiz_integration: true,
     },
 };
 

@@ -7,6 +7,7 @@ import { listClients } from '@/lib/clients';
 import { listOrgMembers } from '@/lib/matter-members';
 import { getMatterById } from '@/lib/matters';
 import { updateMatterAction } from '../../actions';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 
 type MatterEditPageProps = {
   params: { id: string };
@@ -34,14 +35,17 @@ export default async function MatterEditPage({ params, searchParams }: MatterEdi
 
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
 
-  const [clientsResult, orgMembers] = await Promise.all([
+  const [clientsResult, orgMembers, planLimits] = await Promise.all([
     listClients({
       status: 'all',
       page: 1,
       limit: 50,
     }),
     listOrgMembers(matter.org_id).catch(() => [] as Awaited<ReturnType<typeof listOrgMembers>>),
+    getOrgPlanLimits(matter.org_id).catch(() => ({ limits: { najiz_integration: false } })),
   ]);
+
+  const showNajiz = (planLimits as any).limits.najiz_integration;
 
   const selectedClientExists = clientsResult.data.some((client) => client.id === matter.client_id);
   const assignableLawyers = orgMembers.filter((member) => member.role === 'owner' || member.role === 'lawyer');
@@ -161,16 +165,18 @@ export default async function MatterEditPage({ params, searchParams }: MatterEdi
             </select>
           </label>
 
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">رقم القضية في ناجز (اختياري)</span>
-            <input
-              type="text"
-              name="najiz_case_number"
-              defaultValue={matter.najiz_case_number ?? ''}
-              className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              placeholder="مثال: 4410123456"
-            />
-          </label>
+          {showNajiz ? (
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">رقم القضية في ناجز (اختياري)</span>
+              <input
+                type="text"
+                name="najiz_case_number"
+                defaultValue={matter.najiz_case_number ?? ''}
+                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                placeholder="مثال: 4410123456"
+              />
+            </label>
+          ) : null}
         </div>
 
         <label className="flex items-center gap-3 text-sm">

@@ -145,7 +145,7 @@ export async function checkMatterLimit(orgId: string): Promise<LimitCheckResult>
 /**
  * Check if a feature is enabled for the org's plan.
  */
-export async function checkFeature(orgId: string, feature: 'email_integration' | 'calendar_enabled' | 'templates_enabled'): Promise<LimitCheckResult> {
+export async function checkFeature(orgId: string, feature: 'email_integration' | 'calendar_enabled' | 'templates_enabled' | 'najiz_integration'): Promise<LimitCheckResult> {
     const { limits } = await getOrgPlanLimits(orgId);
 
     if (!limits[feature]) {
@@ -157,4 +157,14 @@ export async function checkFeature(orgId: string, feature: 'email_integration' |
         };
     }
     return { allowed: true };
+}
+
+/**
+ * Server-side helper to ensure the org has access to Najiz features.
+ */
+export async function requireNajizFeature(orgId: string): Promise<void> {
+    const { limits } = await getOrgPlanLimits(orgId);
+    if (!limits.najiz_integration) {
+        throw new Error('هذه الميزة متاحة فقط لمشتركي باقة الشركات.');
+    }
 }

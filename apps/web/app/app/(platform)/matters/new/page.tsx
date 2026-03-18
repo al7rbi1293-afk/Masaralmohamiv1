@@ -8,6 +8,7 @@ import { listOrgMembers } from '@/lib/matter-members';
 import { requireOrgIdForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createMatterAction } from '../actions';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 
 type MatterNewPageProps = {
   searchParams?: { error?: string; title?: string };
@@ -25,6 +26,9 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
     requireOrgIdForUser(),
     getCurrentAuthUser(),
   ]);
+
+  const { limits: planLimits } = await getOrgPlanLimits(orgId).catch(() => ({ limits: { najiz_integration: false } }));
+  const showNajiz = planLimits.najiz_integration;
   let orgMembers: Awaited<ReturnType<typeof listOrgMembers>> = [];
   try {
     orgMembers = await listOrgMembers(orgId);
@@ -152,15 +156,17 @@ export default async function MatterNewPage({ searchParams }: MatterNewPageProps
             </select>
           </label>
 
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-200">رقم القضية في ناجز (اختياري)</span>
-            <input
-              type="text"
-              name="najiz_case_number"
-              className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
-              placeholder="مثال: 4410123456"
-            />
-          </label>
+          {showNajiz ? (
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">رقم القضية في ناجز (اختياري)</span>
+              <input
+                type="text"
+                name="najiz_case_number"
+                className="h-11 w-full rounded-lg border border-brand-border px-3 outline-none ring-brand-emerald focus:ring-2 dark:border-slate-700 dark:bg-slate-950"
+                placeholder="مثال: 4410123456"
+              />
+            </label>
+          ) : null}
         </div>
 
         <label className="flex items-center gap-3 text-sm">

@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 
 type ExternalCaseRow = {
   id: string;
@@ -20,6 +21,44 @@ export default async function NajizExternalCasesPage() {
 
   try {
     orgId = await requireOrgIdForUser();
+    const { limits } = await getOrgPlanLimits(orgId);
+    if (!limits.najiz_integration) {
+      return (
+        <Card className="p-10 text-center space-y-6 flex flex-col items-center justify-center min-h-[400px]">
+          <div className="bg-brand-emerald/10 p-4 rounded-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-brand-emerald"
+            >
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div className="max-w-md space-y-2">
+            <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">باقة الشركات فقط</h1>
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+              هذه الميزة (الربط المباشر مع ناجز) متاحة حصرياً لمشتركي باقة الشركات. يرجى ترقية اشتراكك للاستفادة من مزايا المزامنة التلقائية للقضايا والجلسات.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link href="/app/settings/subscription" className={buttonVariants('primary', 'lg')}>
+              ترقية الآن
+            </Link>
+            <Link href="/app" className={buttonVariants('outline', 'lg')}>
+              العودة للمنصة
+            </Link>
+          </div>
+        </Card>
+      );
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'لا تملك صلاحية الوصول.';
     return (

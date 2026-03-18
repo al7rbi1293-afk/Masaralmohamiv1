@@ -6,6 +6,7 @@ import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { decryptJson, encryptJson } from '@/lib/crypto';
 import { testNajizOAuth } from '@/lib/integrations/najizClient';
 import { logError } from '@/lib/logger';
+import { requireNajizFeature } from '@/lib/plan-limits';
 
 export const runtime = 'nodejs';
 
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { orgId, userId } = await requireOwner();
+    await requireNajizFeature(orgId);
     const rls = createSupabaseServerRlsClient();
 
     const { data: existing, error: existingError } = await rls

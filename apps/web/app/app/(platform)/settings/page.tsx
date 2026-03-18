@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { getTrialStatusForCurrentUser } from '@/lib/trial';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 
 const supportEmail = 'masar.almohami@outlook.sa';
 
@@ -28,6 +29,8 @@ export default async function SettingsPage() {
   if (!user) {
     redirect('/signin');
   }
+
+  const { limits: planLimits } = await getOrgPlanLimits(trial.orgId ?? '').catch(() => ({ limits: { najiz_integration: false } }));
 
   const supabase = createSupabaseServerRlsClient();
   const { data: profileData } = await supabase
@@ -95,7 +98,7 @@ export default async function SettingsPage() {
             البريد
           </Link>
         ) : null}
-        {isOwner ? (
+        {isOwner && planLimits.najiz_integration ? (
           <Link href="/app/settings/integrations/najiz" className={buttonVariants('outline', 'md')}>
             التكاملات (Najiz)
           </Link>

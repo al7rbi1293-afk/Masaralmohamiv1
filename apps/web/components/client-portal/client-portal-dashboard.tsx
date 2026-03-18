@@ -72,6 +72,11 @@ export type ClientPortalDocument = {
   matter_id: string | null;
   matter_title: string | null;
   created_at: string;
+  is_external_sync: boolean;
+  source: 'najiz' | null;
+  source_document_type: string | null;
+  source_synced_at: string | null;
+  processing_status: string | null;
   latest_version: ClientPortalDocumentVersion | null;
 };
 
@@ -164,7 +169,8 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
   const filteredDocuments = useMemo(() => {
     const query = docQuery.trim().toLowerCase();
     return data.documents.filter((document) => {
-      const haystack = `${document.title} ${document.matter_title ?? ''} ${document.latest_version?.file_name ?? ''}`.toLowerCase();
+      const haystack =
+        `${document.title} ${document.matter_title ?? ''} ${document.latest_version?.file_name ?? ''} ${document.source_document_type ?? ''}`.toLowerCase();
       return !query || haystack.includes(query);
     });
   }, [data.documents, docQuery]);
@@ -657,6 +663,13 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           تاريخ الإنشاء: {formatDateTime(document.created_at)}
                         </p>
+                        {document.is_external_sync ? (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            المصدر: ناجز
+                            {document.source_document_type ? ` · النوع: ${document.source_document_type}` : ''}
+                            {document.source_synced_at ? ` · المزامنة: ${formatDateTime(document.source_synced_at)}` : ''}
+                          </p>
+                        ) : null}
                         {document.latest_version ? (
                           <p className="text-xs text-slate-500 dark:text-slate-400">
                             آخر نسخة: v{document.latest_version.version_no} · {document.latest_version.file_name} ·{' '}
@@ -666,6 +679,7 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
                       </div>
 
                       <div className="flex flex-wrap gap-2">
+                        {document.is_external_sync ? <Badge variant="default">Najiz</Badge> : null}
                         {document.latest_version ? (
                           <button
                             type="button"
@@ -676,7 +690,13 @@ export function ClientPortalDashboard({ data }: { data: ClientPortalDashboardDat
                             {downloadingPath === document.latest_version.storage_path ? '...' : 'تنزيل'}
                           </button>
                         ) : (
-                          <Badge variant="warning">بانتظار رفع نسخة</Badge>
+                          <Badge variant="warning">
+                            {document.processing_status === 'failed'
+                              ? 'تعذر تجهيز النسخة'
+                              : document.processing_status === 'downloading'
+                              ? 'جاري تجهيز النسخة'
+                              : 'بانتظار النسخة'}
+                          </Badge>
                         )}
                       </div>
                     </div>

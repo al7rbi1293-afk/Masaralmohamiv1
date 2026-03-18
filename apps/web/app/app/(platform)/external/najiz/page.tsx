@@ -43,9 +43,9 @@ export default async function NajizExternalCasesPage() {
             </svg>
           </div>
           <div className="max-w-md space-y-2">
-            <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">باقة الشركات فقط</h1>
+            <h1 className="text-2xl font-bold text-brand-navy dark:text-slate-100">نسخة الشركات فقط</h1>
             <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-              هذه الميزة (الربط المباشر مع ناجز) متاحة حصرياً لمشتركي باقة الشركات. يرجى ترقية اشتراكك للاستفادة من مزايا المزامنة التلقائية للقضايا والجلسات.
+              هذه الميزة جزء من نسخة الشركات المخصصة للتكاملات الحكومية، ولا تظهر على الباقات العادية 250 و500 و750. يمكنك الترقية إذا كنت ترغب في تفعيل ربط ناجز.
             </p>
           </div>
           <div className="flex gap-3">

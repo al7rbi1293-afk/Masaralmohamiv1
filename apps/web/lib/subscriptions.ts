@@ -1,5 +1,6 @@
 import 'server-only';
 
+import type { PaidPlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser, requireOwner } from '@/lib/org';
 
@@ -34,7 +35,7 @@ export type Subscription = {
 const SUBSCRIPTION_SELECT =
   'id, org_id, plan_code, status, seats, current_period_start, current_period_end, cancel_at_period_end, provider, provider_customer_id, provider_subscription_id, created_at';
 
-const DEFAULT_PLAN_CODE = 'SOLO';
+const DEFAULT_PLAN_CODE: PaidPlanCode = 'SOLO';
 
 export async function listPlans(): Promise<Plan[]> {
   const supabase = createSupabaseServerRlsClient();
@@ -105,4 +106,3 @@ export async function ensureSubscriptionRowExists(): Promise<Subscription> {
 
   return data as Subscription;
 }
-

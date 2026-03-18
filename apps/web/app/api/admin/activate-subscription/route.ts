@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { z } from 'zod';
+import { normalizePlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getAdminActivationSecret } from '@/lib/env';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
@@ -21,6 +22,11 @@ function safeEqual(a: string, b: string) {
   const bBuf = Buffer.from(b);
   if (aBuf.length !== bBuf.length) return false;
   return timingSafeEqual(aBuf, bBuf);
+}
+
+function isMissingRelationError(message?: string) {
+  const normalized = String(message ?? '').toLowerCase();
+  return normalized.includes('relation') && normalized.includes('does not exist');
 }
 
 export async function POST(request: NextRequest) {
@@ -56,7 +62,11 @@ export async function POST(request: NextRequest) {
   }
 
   const orgId = parsed.data.org_id;
-  const planCode = parsed.data.plan_code.toUpperCase();
+  const planCode = normalizePlanCode(parsed.data.plan_code, 'TRIAL');
+  if (planCode === 'TRIAL') {
+    return NextResponse.json({ error: 'الخطة غير صحيحة.' }, { status: 400 });
+  }
+
   const seats = parsed.data.seats;
   const periodDays = parsed.data.period_days;
 
@@ -88,6 +98,25 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'الخطة غير صحيحة.' }, { status: 400 });
       }
       throw upsertError;
+    }
+
+    const { error: legacyUpsertError } = await service
+      .from('org_subscriptions')
+      .upsert(
+        {
+          org_id: orgId,
+          status: 'active',
+          plan: planCode,
+          payment_status: 'paid',
+          current_period_start: now.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          updated_at: now.toISOString(),
+        },
+        { onConflict: 'org_id' },
+      );
+
+    if (legacyUpsertError && !isMissingRelationError(legacyUpsertError.message)) {
+      throw legacyUpsertError;
     }
 
     const { error: eventError } = await service.from('subscription_events').insert({

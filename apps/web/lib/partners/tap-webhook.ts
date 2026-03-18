@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { getDefaultSeatLimit, normalizePlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { parseTapChargePayload, resolvePeriodEnd } from '@/lib/partners/tap-utils';
 import { createCommissionForTapPayment, reverseCommissionByPaymentId } from '@/lib/partners/commission';
@@ -19,11 +20,7 @@ export function parseTapCharge(payload: Record<string, any>) {
 }
 
 function resolveSeats(planCode: string) {
-  const normalized = String(planCode || '').trim().toUpperCase();
-  if (normalized === 'SOLO') return 1;
-  if (normalized === 'SMALL_OFFICE') return 5;
-  if (normalized === 'MEDIUM_OFFICE') return 25;
-  return 1;
+  return getDefaultSeatLimit(normalizePlanCode(planCode, 'SOLO'));
 }
 
 async function upsertTapPaymentRecord(params: {

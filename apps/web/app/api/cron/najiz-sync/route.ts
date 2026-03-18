@@ -1,49 +1,48 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
-// import { syncCaseDetails, syncHearings } from '@/lib/integrations/najizService';
+import { processQueuedNajizSyncJobs } from '@/lib/integrations/domain/services/najiz-orchestration.service';
 
-// Note: In a real scenario with a background worker (like BullMQ or Vercel Cron),
-// this endpoint would fetch active matters and sync them using najizService.
+export const runtime = 'nodejs';
 
-export async function GET(req: Request) {
-  // Security check: ensure the request is from a trusted cron source
-  const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // In local development you might want to bypass this check,
-    // but for production it's important.
+export async function GET(request: Request) {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const authHeader = request.headers.get('authorization');
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }
 
   try {
-    const supabase = createSupabaseServerRlsClient();
-    
-    // 1. Fetch all matters with najiz_case_number that are not closed/archived
-    // Note: We bypass RLS here by using service role if needed, 
-    // but in Next.js API boundaries we must ensure we use the correct authenticated client.
-    const { data: matters, error } = await supabase
-      .from('matters')
-      .select('id, najiz_case_number, org_id')
-      .not('najiz_case_number', 'is', null)
-      .in('status', ['new', 'in_progress', 'on_hold']);
+    const limit = normalizeBatchSize(request);
+    const result = await processQueuedNajizSyncJobs({
+      limit,
+      lockOwner: 'cron:najiz-sync',
+    });
 
-    if (error) {
-      throw error;
-    }
-
-    // 2. Loop through each matter and trigger sync
-    // For a real implementation, this should push to a BullMQ queue to avoid timeout limits on Vercel
-    let syncedCount = 0;
-    for (const matter of (matters || [])) {
-      // await syncCaseDetails(matter.id, matter.najiz_case_number!);
-      // await syncHearings(matter.id, matter.najiz_case_number!);
-      syncedCount++;
-    }
-
-    return NextResponse.json({ ok: true, syncedCount, message: 'Background Najiz sync completed.' });
-  } catch (error: any) {
+    return NextResponse.json(
+      {
+        ok: true,
+        ...result,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Najiz cron failed';
     console.error('Najiz Cron Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+function normalizeBatchSize(request: Request) {
+  const value =
+    Number(request.headers.get('x-batch-size')) ||
+    Number(new URL(request.url).searchParams.get('limit')) ||
+    Number(process.env.NAJIZ_SYNC_BATCH_SIZE || 10);
+
+  if (!Number.isFinite(value)) {
+    return 10;
+  }
+
+  return Math.min(50, Math.max(1, Math.floor(value)));
 }

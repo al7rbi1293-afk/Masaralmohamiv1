@@ -244,15 +244,32 @@ export default async function ClientPortalHomePage() {
 
   const documentIds = rawDocuments.map((document) => document.id);
   const latestVersionByDocument = new Map<string, ClientPortalDocumentVersion>();
+  const externalDocumentMetaByDocument = new Map<
+    string,
+    Array<{
+      portal_visible: boolean;
+      document_type: string;
+      synced_at: string;
+      processed_at: string | null;
+      processing_status: string;
+    }>
+  >();
 
   if (documentIds.length) {
-    const { data: versionRows } = await db
-      .from('document_versions')
-      .select('document_id, version_no, storage_path, file_name, file_size, mime_type, created_at')
-      .eq('org_id', session.orgId)
-      .in('document_id', documentIds)
-      .order('version_no', { ascending: false })
-      .order('created_at', { ascending: false });
+    const [{ data: versionRows }, { data: externalDocumentRows }] = await Promise.all([
+      db
+        .from('document_versions')
+        .select('document_id, version_no, storage_path, file_name, file_size, mime_type, created_at')
+        .eq('org_id', session.orgId)
+        .in('document_id', documentIds)
+        .order('version_no', { ascending: false })
+        .order('created_at', { ascending: false }),
+      db
+        .from('external_documents')
+        .select('document_id, portal_visible, document_type, synced_at, processed_at, processing_status')
+        .eq('org_id', session.orgId)
+        .in('document_id', documentIds),
+    ]);
 
     const versions = (versionRows as RawDocumentVersionRow[] | null) ?? [];
     for (const version of versions) {
@@ -268,12 +285,47 @@ export default async function ClientPortalHomePage() {
         created_at: String(version.created_at ?? new Date().toISOString()),
       });
     }
+
+    const externalRows = (externalDocumentRows as RawExternalPortalDocumentRow[] | null) ?? [];
+    for (const row of externalRows) {
+      const documentId = String(row.document_id ?? '').trim();
+      if (!documentId) continue;
+
+      const bucket = externalDocumentMetaByDocument.get(documentId) ?? [];
+      bucket.push({
+        portal_visible: Boolean(row.portal_visible),
+        document_type: String(row.document_type ?? 'other'),
+        synced_at: String(row.synced_at ?? new Date().toISOString()),
+        processed_at: row.processed_at ? String(row.processed_at) : null,
+        processing_status: String(row.processing_status ?? 'pending'),
+      });
+      externalDocumentMetaByDocument.set(documentId, bucket);
+    }
   }
 
-  const documents = rawDocuments.map((document) => ({
-    ...document,
-    latest_version: latestVersionByDocument.get(document.id) ?? null,
-  })) satisfies ClientPortalDocument[];
+  const documents = rawDocuments
+    .filter((document) => {
+      const externalRows = externalDocumentMetaByDocument.get(document.id) ?? [];
+      if (!externalRows.length) {
+        return true;
+      }
+
+      return externalRows.some((row) => row.portal_visible);
+    })
+    .map((document) => {
+      const externalRows = externalDocumentMetaByDocument.get(document.id) ?? [];
+      const primaryExternal = externalRows.find((row) => row.portal_visible) ?? externalRows[0] ?? null;
+
+      return {
+        ...document,
+        latest_version: latestVersionByDocument.get(document.id) ?? null,
+        is_external_sync: externalRows.length > 0,
+        source: externalRows.length ? 'najiz' : null,
+        source_document_type: primaryExternal?.document_type ?? null,
+        source_synced_at: primaryExternal?.synced_at ?? null,
+        processing_status: primaryExternal?.processing_status ?? null,
+      };
+    }) satisfies ClientPortalDocument[];
 
   const dashboardData: ClientPortalDashboardData = {
     client: {
@@ -362,6 +414,15 @@ type RawDocumentVersionRow = {
   file_size: number;
   mime_type: string | null;
   created_at: string;
+};
+
+type RawExternalPortalDocumentRow = {
+  document_id: string | null;
+  portal_visible: boolean | null;
+  document_type: string | null;
+  synced_at: string | null;
+  processed_at: string | null;
+  processing_status: string | null;
 };
 
 type RawPaymentRow = {

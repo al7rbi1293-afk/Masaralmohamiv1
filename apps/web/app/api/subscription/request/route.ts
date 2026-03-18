@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizePlanCode } from '@/lib/billing/plans';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const RequestSchema = z.object({
-    plan_requested: z.enum(['SOLO', 'TEAM', 'BUSINESS', 'ENTERPRISE']),
+    plan_requested: z.string().trim().min(1),
     duration_months: z.number().int().min(1).max(36),
     payment_method: z.string().optional(),
     payment_reference: z.string().optional(),
@@ -32,6 +33,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'بيانات غير صالحة.', errors: parsed.error.flatten() }, { status: 400 });
     }
 
+    const planRequested = normalizePlanCode(parsed.data.plan_requested, 'TRIAL');
+    if (planRequested === 'TRIAL') {
+        return NextResponse.json({ message: 'الخطة المطلوبة غير صحيحة.' }, { status: 400 });
+    }
+
     const supabase = createSupabaseServerRlsClient();
 
     const { data, error } = await supabase
@@ -39,7 +45,7 @@ export async function POST(request: NextRequest) {
         .insert({
             org_id: orgId,
             requester_user_id: user.id,
-            plan_requested: parsed.data.plan_requested,
+            plan_requested: planRequested,
             duration_months: parsed.data.duration_months,
             payment_method: parsed.data.payment_method || null,
             payment_reference: parsed.data.payment_reference || null,

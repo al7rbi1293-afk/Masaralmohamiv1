@@ -1,5 +1,8 @@
+import type { PaidPlanCode } from '@/lib/billing/plans';
+import { normalizePlanCode } from '@/lib/billing/plans';
+
 export type PricingPlanCard = {
-  code: string;
+  code: PaidPlanCode;
   title: string;
   priceMonthly: number | null;
   priceAnnual: number | null;
@@ -46,36 +49,22 @@ export const SUBSCRIPTION_PRICING_CARDS: PricingPlanCard[] = [
   },
   {
     code: 'ENTERPRISE',
-    title: 'مكتب كبير أو شركات',
+    title: 'نسخة الشركات',
     priceMonthly: null,
     priceAnnual: null,
     priceLabel: 'تواصل معنا',
     periodLabel: '',
-    description: 'حلول مخصصة للمؤسسات الكبرى. دعم خاص وتكاملات متقدمة.',
+    description: 'نسخة منفصلة للمؤسسات وباقات الشركات مع تكاملات حكومية ورحلات عمل مخصصة.',
     seatsLabel: 'حد المقاعد: 11 إلى 30',
     action: 'contact',
   },
 ];
 
 export function getPricingPlanCardByCode(rawCode: string | null | undefined) {
-  const code = String(rawCode ?? '').trim().toUpperCase();
-
-  if (!code) {
+  const normalizedCode = normalizePlanCode(rawCode, 'TRIAL');
+  if (normalizedCode === 'TRIAL') {
     return null;
   }
-
-  const aliases: Record<string, string> = {
-    SOLO: 'SOLO',
-    TEAM: 'SMALL_OFFICE',
-    SMALL_OFFICE: 'SMALL_OFFICE',
-    BUSINESS: 'MEDIUM_OFFICE',
-    MEDIUM: 'MEDIUM_OFFICE',
-    MEDIUM_OFFICE: 'MEDIUM_OFFICE',
-    PRO: 'ENTERPRISE',
-    ENTERPRISE: 'ENTERPRISE',
-  };
-
-  const normalizedCode = aliases[code] ?? code;
 
   return SUBSCRIPTION_PRICING_CARDS.find((plan) => plan.code === normalizedCode) ?? null;
 }

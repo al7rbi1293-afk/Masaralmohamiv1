@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 import { requireOwner } from '@/lib/org';
 import { validatePoA } from '@/lib/integrations/najizService';
 
@@ -7,7 +8,12 @@ export async function POST(
   { params }: { params: { clientId: string } }
 ) {
   try {
-    await requireOwner();
+    const owner = await requireOwner();
+    const { limits } = await getOrgPlanLimits(owner.orgId);
+    if (!limits.najiz_integration) {
+      return NextResponse.json({ error: 'هذه الميزة متاحة فقط لنسخة الشركات.' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { poaNumber } = body;
 

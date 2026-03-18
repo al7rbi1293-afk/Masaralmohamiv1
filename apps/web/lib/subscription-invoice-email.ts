@@ -5,6 +5,7 @@ import { INVOICE_EMAIL_HTML } from '@/lib/email-templates';
 import { sendEmail } from '@/lib/email';
 import { renderInvoicePdfBuffer } from '@/lib/invoice-pdf';
 import { logError, logInfo, logWarn } from '@/lib/logger';
+import { normalizePlanCode as normalizeCanonicalPlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getPricingPlanCardByCode } from '@/lib/subscription-pricing';
 
@@ -72,7 +73,7 @@ export async function sendSubscriptionInvoiceEmail(
       return { sent: false, reason: 'recipient_not_found', toEmail: null };
     }
 
-    const normalizedPlanCode = normalizePlanCode(params.planCode);
+    const normalizedPlanCode = normalizeCanonicalPlanCode(params.planCode, 'SOLO');
     const planCard = getPricingPlanCardByCode(normalizedPlanCode);
     const durationMonths = resolveDurationMonths(params.durationMonths, params.billingPeriod);
     const amount =
@@ -183,7 +184,7 @@ export async function sendSubscriptionInvoiceEmail(
       meta: {
         source_kind: params.sourceKind,
         source_id: params.sourceId ?? null,
-        plan_code: normalizePlanCode(params.planCode),
+        plan_code: normalizeCanonicalPlanCode(params.planCode, 'SOLO'),
       },
     });
 
@@ -304,18 +305,6 @@ async function insertEmailLogBestEffort(params: {
       status: params.status,
     });
   }
-}
-
-function normalizePlanCode(rawPlan: string) {
-  const normalized = String(rawPlan ?? '').trim().toUpperCase();
-  if (!normalized) return 'SOLO';
-
-  if (normalized === 'TEAM' || normalized === 'SMALL_OFFICE') return 'SMALL_OFFICE';
-  if (normalized === 'BUSINESS' || normalized === 'MEDIUM' || normalized === 'MEDIUM_OFFICE') {
-    return 'MEDIUM_OFFICE';
-  }
-  if (normalized === 'PRO') return 'ENTERPRISE';
-  return normalized;
 }
 
 function resolveDurationMonths(

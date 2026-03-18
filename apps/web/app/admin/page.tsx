@@ -1,21 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { ShieldAlert, Users, Building, History, LayoutDashboard, Handshake } from 'lucide-react';
+import { ShieldAlert, Users, Building, History, LayoutDashboard, Handshake, Cable } from 'lucide-react';
 import RequestsTab from './_components/RequestsTab';
 import UsersTab from './_components/UsersTab';
 import OrgsTab from './_components/OrgsTab';
 import AuditTab from './_components/AuditTab';
 import OverviewTab from './_components/OverviewTab';
 import PartnersTab from './_components/PartnersTab';
+import NajizTab from './_components/NajizTab';
 
-export type TabId = 'overview' | 'requests' | 'users' | 'orgs' | 'audit' | 'partners';
+export type TabId = 'overview' | 'requests' | 'users' | 'orgs' | 'audit' | 'partners' | 'najiz';
 
 const navItems = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'requests', label: 'طلبات الاشتراك', icon: ShieldAlert },
     { id: 'users', label: 'المستخدمون', icon: Users },
     { id: 'orgs', label: 'المكاتب', icon: Building },
+    { id: 'najiz', label: 'Najiz', icon: Cable },
     { id: 'partners', label: 'شركاء النجاح', icon: Handshake },
     { id: 'audit', label: 'سجل التدقيق', icon: History },
 ] as const;
@@ -33,6 +35,8 @@ export default function AdminHomePage() {
                 return <OrgsTab />;
             case 'partners':
                 return <PartnersTab />;
+            case 'najiz':
+                return <NajizTab />;
             case 'audit':
                 return <AuditTab />;
             case 'overview':
@@ -78,4 +82,3 @@ export default function AdminHomePage() {
         </div>
     );
 }
-

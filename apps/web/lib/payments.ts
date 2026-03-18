@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { normalizePlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerRlsClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
@@ -37,11 +38,15 @@ export async function createPaymentRequest(params: {
     if (!user) throw new Error('Unauthorized');
 
     const supabase = createSupabaseServerRlsClient();
+    const normalizedPlanCode = normalizePlanCode(params.plan_code, 'TRIAL');
+    if (normalizedPlanCode === 'TRIAL') {
+        throw new Error('Invalid plan code');
+    }
 
     const basePayload = {
         org_id: orgId,
         amount: params.amount,
-        plan_code: params.plan_code,
+        plan_code: normalizedPlanCode,
         billing_period: params.billing_period,
         method: 'bank_transfer',
         status: 'pending',
@@ -121,11 +126,16 @@ export async function approvePaymentRequest(requestId: string, adminUserId: stri
     }
 
     // Update or Insert Subscription
+    const normalizedPlanCode = normalizePlanCode(request.plan_code, 'TRIAL');
+    if (normalizedPlanCode === 'TRIAL') {
+        throw new Error('Invalid plan code');
+    }
+
     const { error: subError } = await supabase
         .from('subscriptions')
         .upsert({
             org_id: request.org_id,
-            plan_code: request.plan_code,
+            plan_code: normalizedPlanCode,
             status: 'active',
             current_period_start: startDate,
             current_period_end: endDate.toISOString(),

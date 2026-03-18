@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
+import { normalizePlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -238,7 +239,7 @@ export async function PATCH(request: NextRequest) {
             .upsert({
                 org_id: singleOrgId,
                 status: 'active',
-                plan: 'BUSINESS', // default fallback
+                plan: 'MEDIUM_OFFICE',
                 payment_status: 'paid',
                 current_period_start: now.toISOString(),
                 current_period_end: end.toISOString(),
@@ -255,7 +256,7 @@ export async function PATCH(request: NextRequest) {
             action: 'subscription_updated',
             entity_type: 'org_subscriptions',
             entity_id: singleOrgId,
-            meta: { plan: 'BUSINESS', ends_at: end.toISOString() }
+            meta: { plan: 'MEDIUM_OFFICE', ends_at: end.toISOString() }
         });
 
         return NextResponse.json({ success: true });
@@ -273,7 +274,7 @@ export async function PATCH(request: NextRequest) {
             .upsert({
                 org_id: singleOrgId,
                 status: 'active',
-                plan: 'BUSINESS', // default fallback
+                plan: 'MEDIUM_OFFICE',
                 payment_status: 'paid',
                 current_period_start: now.toISOString(),
                 current_period_end: endsAt.toISOString(),
@@ -290,7 +291,7 @@ export async function PATCH(request: NextRequest) {
             action: 'subscription_updated',
             entity_type: 'org_subscriptions',
             entity_id: singleOrgId,
-            meta: { plan: 'BUSINESS', duration_months: months }
+            meta: { plan: 'MEDIUM_OFFICE', duration_months: months }
         });
 
         return NextResponse.json({ success: true });
@@ -298,6 +299,11 @@ export async function PATCH(request: NextRequest) {
 
     if (action === 'set_plan' && extra_data?.plan) {
         const now = new Date();
+        const normalizedPlan = normalizePlanCode(extra_data.plan, 'TRIAL');
+        if (normalizedPlan === 'TRIAL') {
+            return NextResponse.json({ error: 'الخطة غير صحيحة.' }, { status: 400 });
+        }
+
         let endsAt = new Date(now);
         endsAt.setFullYear(endsAt.getFullYear() + 1); // default 1 year expiry for manually set plans if no existing sub
 
@@ -312,7 +318,7 @@ export async function PATCH(request: NextRequest) {
             .upsert({
                 org_id: singleOrgId,
                 status: 'active',
-                plan: extra_data.plan,
+                plan: normalizedPlan,
                 payment_status: 'paid',
                 current_period_start: now.toISOString(),
                 current_period_end: endsAt.toISOString(),
@@ -329,7 +335,7 @@ export async function PATCH(request: NextRequest) {
             action: 'subscription_plan_changed',
             entity_type: 'org_subscriptions',
             entity_id: singleOrgId,
-            meta: { plan: extra_data.plan }
+            meta: { plan: normalizedPlan }
         });
 
         return NextResponse.json({ success: true });

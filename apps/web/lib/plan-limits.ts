@@ -4,9 +4,10 @@
  */
 import 'server-only';
 
+import { getProductEdition, normalizePlanCode, planSupportsNajizIntegration, type CanonicalPlanCode, type ProductEdition } from '@/lib/billing/plans';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 
-export type PlanCode = 'TRIAL' | 'SOLO' | 'TEAM' | 'BUSINESS' | 'ENTERPRISE';
+export type PlanCode = CanonicalPlanCode;
 
 type PlanLimits = {
     max_users: number;
@@ -37,7 +38,7 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
         calendar_enabled: true,
         najiz_integration: false,
     },
-    TEAM: {
+    SMALL_OFFICE: {
         max_users: 5,
         max_matters: 200,
         max_storage_mb: 2000,
@@ -46,14 +47,14 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
         calendar_enabled: true,
         najiz_integration: false,
     },
-    BUSINESS: {
-        max_users: 20,
+    MEDIUM_OFFICE: {
+        max_users: 10,
         max_matters: 1000,
         max_storage_mb: 10000,
         templates_enabled: true,
         email_integration: true,
         calendar_enabled: true,
-        najiz_integration: true,
+        najiz_integration: false,
     },
     ENTERPRISE: {
         max_users: 999,
@@ -70,18 +71,28 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
  * Get the plan limits for an org based on its subscription.
  * Falls back to TRIAL if no subscription found.
  */
-export async function getOrgPlanLimits(orgId: string): Promise<{ plan: PlanCode; limits: PlanLimits }> {
+export async function getOrgPlanLimits(orgId: string): Promise<{ plan: PlanCode; edition: ProductEdition; limits: PlanLimits }> {
     const supabase = createSupabaseServerRlsClient();
 
-    const { data } = await supabase
-        .from('org_subscriptions')
-        .select('plan')
-        .eq('org_id', orgId)
-        .eq('status', 'active')
-        .single();
+    const [{ data: subscriptionData }, { data: legacySubscriptionData }] = await Promise.all([
+        supabase
+            .from('subscriptions')
+            .select('plan_code')
+            .eq('org_id', orgId)
+            .maybeSingle(),
+        supabase
+            .from('org_subscriptions')
+            .select('plan')
+            .eq('org_id', orgId)
+            .maybeSingle(),
+    ]);
 
-    const plan = (data?.plan as PlanCode) || 'TRIAL';
-    return { plan, limits: PLAN_LIMITS[plan] || PLAN_LIMITS.TRIAL };
+    const plan = normalizePlanCode(subscriptionData?.plan_code ?? legacySubscriptionData?.plan, 'TRIAL');
+    return {
+        plan,
+        edition: getProductEdition(plan),
+        limits: PLAN_LIMITS[plan] || PLAN_LIMITS.TRIAL,
+    };
 }
 
 /**
@@ -163,8 +174,8 @@ export async function checkFeature(orgId: string, feature: 'email_integration' |
  * Server-side helper to ensure the org has access to Najiz features.
  */
 export async function requireNajizFeature(orgId: string): Promise<void> {
-    const { limits } = await getOrgPlanLimits(orgId);
-    if (!limits.najiz_integration) {
+    const { plan } = await getOrgPlanLimits(orgId);
+    if (!planSupportsNajizIntegration(plan)) {
         throw new Error('هذه الميزة متاحة فقط لمشتركي باقة الشركات.');
     }
 }

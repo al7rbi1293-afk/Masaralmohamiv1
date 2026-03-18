@@ -1,5 +1,6 @@
 'use server';
 
+import { getPlanDisplayLabel } from '@/lib/billing/plans';
 import { approvePaymentRequest, rejectPaymentRequest } from '@/lib/payments';
 import { revalidatePath } from 'next/cache';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
@@ -24,10 +25,7 @@ export async function approveRequestAction(requestId: string) {
         const request = await approvePaymentRequest(requestId, adminId);
 
         // 2. Generate Invoice
-        // Map plan code to name (Basic mapping)
-        const planName = request.plan_code === 'SOLO' ? 'محامي مستقل' :
-            request.plan_code === 'SMALL_OFFICE' ? 'مكتب صغير' :
-                request.plan_code === 'MEDIUM_OFFICE' ? 'مكتب متوسط' : request.plan_code;
+        const planName = getPlanDisplayLabel(request.plan_code);
 
         // Get user name
         const userName = request.user?.full_name || request.user?.email || 'مشترك';

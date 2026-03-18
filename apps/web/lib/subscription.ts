@@ -1,11 +1,12 @@
 import 'server-only';
+import { normalizePlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerRlsClient } from './supabase/server';
 
 export const SUBSCRIPTION_PLANS = {
     SOLO: { maxUsers: 1, label: 'محامي مستقل' },
-    TEAM: { maxUsers: 5, label: 'مكتب صغير' },
-    BUSINESS: { maxUsers: 25, label: 'مكتب متوسط' },
-    ENTERPRISE: { maxUsers: Infinity, label: 'مكتب كبير' },
+    SMALL_OFFICE: { maxUsers: 5, label: 'مكتب صغير' },
+    MEDIUM_OFFICE: { maxUsers: 10, label: 'مكتب متوسط' },
+    ENTERPRISE: { maxUsers: Infinity, label: 'نسخة الشركات' },
 };
 
 /**
@@ -16,14 +17,27 @@ export async function getActivePlan(orgId: string): Promise<keyof typeof SUBSCRI
 
     // Check paid subscription first
     const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('plan_code, status')
+        .eq('org_id', orgId)
+        .in('status', ['trial', 'active', 'past_due', 'canceled'])
+        .maybeSingle();
+
+    const normalizedSubscriptionPlan = normalizeSupportedPlan((sub as { plan_code?: string | null } | null)?.plan_code);
+    if (normalizedSubscriptionPlan) {
+        return normalizedSubscriptionPlan;
+    }
+
+    const { data: legacySub } = await supabase
         .from('org_subscriptions')
         .select('plan, status')
         .eq('org_id', orgId)
-        .in('status', ['active', 'past_due'])
+        .in('status', ['trial', 'active'])
         .maybeSingle();
 
-    if (sub && sub.plan && sub.plan in SUBSCRIPTION_PLANS) {
-        return sub.plan as keyof typeof SUBSCRIPTION_PLANS;
+    const normalizedLegacyPlan = normalizeSupportedPlan((legacySub as { plan?: string | null } | null)?.plan);
+    if (normalizedLegacyPlan) {
+        return normalizedLegacyPlan;
     }
 
     // Fallback to check if trial is active
@@ -35,8 +49,8 @@ export async function getActivePlan(orgId: string): Promise<keyof typeof SUBSCRI
         .maybeSingle();
 
     if (trial) {
-        // By default, trial gives the features of the SOLO plan unless you want it to be higher. Let's give them TEAM (up to 5) for trying.
-        return 'TEAM';
+        // Trial keeps access on the standard edition only and does not expose enterprise features.
+        return 'SMALL_OFFICE';
     }
 
     return null;
@@ -62,4 +76,13 @@ export async function canAddMoreMembers(orgId: string): Promise<boolean> {
     if (error) return false;
 
     return (count ?? 0) < limit;
+}
+
+function normalizeSupportedPlan(rawPlan: string | null | undefined): keyof typeof SUBSCRIPTION_PLANS | null {
+    const normalized = normalizePlanCode(rawPlan, 'TRIAL');
+    if (normalized === 'TRIAL' || !(normalized in SUBSCRIPTION_PLANS)) {
+        return null;
+    }
+
+    return normalized as keyof typeof SUBSCRIPTION_PLANS;
 }

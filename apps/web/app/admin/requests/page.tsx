@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { getPlanDisplayLabel } from '@/lib/billing/plans';
 
 type SubRequest = {
     id: string;
@@ -289,13 +290,5 @@ function compactText(value: string | null, max = 120) {
 }
 
 function planLabel(p: string) {
-    const map: Record<string, string> = {
-        'SOLO': 'محامي مستقل (1 مستخدم)',
-        'TEAM': 'مكتب صغير (5 مستخدمين)',
-        'SMALL_OFFICE': 'مكتب صغير (5 مستخدمين)',
-        'BUSINESS': 'مكتب متوسط (25 مستخدم)',
-        'MEDIUM_OFFICE': 'مكتب متوسط (25 مستخدم)',
-        'ENTERPRISE': 'مكتب كبير (مفتوح)'
-    };
-    return map[p] || p;
+    return getPlanDisplayLabel(p);
 }

@@ -658,7 +658,7 @@ export default function AdminOrgsPage() {
                                                     <option value="SOLO">محامي مستقل (1 مستخدم)</option>
                                                     <option value="SMALL_OFFICE">مكتب صغير (من 2 إلى 5مستخدمين)</option>
                                                     <option value="MEDIUM_OFFICE">مكتب متوسط (من 6 إلى 10 مستخدمين)</option>
-                                                    <option value="ENTERPRISE">مكتب كبير (11 إلى 30)</option>
+                                                    <option value="ENTERPRISE">نسخة الشركات (11 إلى 30)</option>
                                                 </select>
                                             </div>
 

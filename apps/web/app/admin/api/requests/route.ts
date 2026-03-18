@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
+import { getDefaultSeatLimit, normalizePlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { sendSubscriptionInvoiceEmail } from '@/lib/subscription-invoice-email';
 
@@ -105,32 +106,6 @@ function isMissingRelationError(message?: string) {
   );
 }
 
-function normalizePlanCode(rawPlan: string) {
-  const normalized = String(rawPlan ?? '').trim().toUpperCase();
-  if (!normalized) return 'SOLO';
-
-  if (normalized === 'TEAM' || normalized === 'SMALL_OFFICE') return 'SMALL_OFFICE';
-  if (normalized === 'BUSINESS' || normalized === 'MEDIUM' || normalized === 'MEDIUM_OFFICE') {
-    return 'MEDIUM_OFFICE';
-  }
-  if (normalized === 'PRO') return 'ENTERPRISE';
-  return normalized;
-}
-
-function toOrgSubscriptionPlan(planCode: string) {
-  if (planCode === 'SMALL_OFFICE') return 'TEAM';
-  if (planCode === 'MEDIUM_OFFICE') return 'BUSINESS';
-  return planCode;
-}
-
-function seatsForPlan(planCode: string) {
-  if (planCode === 'SOLO') return 1;
-  if (planCode === 'SMALL_OFFICE') return 5;
-  if (planCode === 'MEDIUM_OFFICE') return 25;
-  if (planCode === 'ENTERPRISE') return 999;
-  return 1;
-}
-
 function monthsFromBillingPeriod(period: string | null | undefined) {
   return String(period ?? '').toLowerCase() === 'yearly' ? 12 : 1;
 }
@@ -145,9 +120,9 @@ async function activatePaidSubscription(params: {
   sourceRequestId: string;
   adminId: string;
 }) {
-  const planCode = normalizePlanCode(params.planRequested);
-  const orgPlan = toOrgSubscriptionPlan(planCode);
-  const seats = seatsForPlan(planCode);
+  const normalizedPlanCode = normalizePlanCode(params.planRequested, 'TRIAL');
+  const planCode = normalizedPlanCode === 'TRIAL' ? 'SOLO' : normalizedPlanCode;
+  const seats = getDefaultSeatLimit(planCode);
 
   const periodStart = new Date();
   const periodEnd = new Date(periodStart);
@@ -178,7 +153,7 @@ async function activatePaidSubscription(params: {
       {
         org_id: params.orgId,
         status: 'active',
-        plan: orgPlan,
+        plan: planCode,
         payment_status: 'paid',
         current_period_start: periodStart.toISOString(),
         current_period_end: periodEnd.toISOString(),

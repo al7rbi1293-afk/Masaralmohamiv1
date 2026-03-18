@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { isSelfServePlanCode, normalizePlanCode } from '@/lib/billing/plans';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { getStripePriceId, getPublicSiteUrl } from '@/lib/env';
 import { getStripe } from '@/lib/stripe';
@@ -12,12 +13,8 @@ import { isMissingRelationError } from '@/lib/shared-utils';
 export const runtime = 'nodejs';
 
 const bodySchema = z.object({
-  plan_code: z.enum(['SOLO', 'TEAM', 'PRO'], {
-    errorMap: () => ({ message: 'الخطة غير صحيحة.' }),
-  }),
+  plan_code: z.string().trim().min(1, 'الخطة غير صحيحة.'),
 });
-
-
 
 export async function POST(request: NextRequest) {
   const ip = getRequestIp(request);
@@ -51,7 +48,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const planCode = parsed.data.plan_code.toUpperCase();
+  const planCode = normalizePlanCode(parsed.data.plan_code, 'TRIAL');
+  if (!isSelfServePlanCode(planCode)) {
+    return NextResponse.json({ error: 'هذه الخطة غير متاحة للدفع الإلكتروني حالياً.' }, { status: 400 });
+  }
 
   try {
     const { orgId } = await requireOwner();

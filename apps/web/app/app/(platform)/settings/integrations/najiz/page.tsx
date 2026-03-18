@@ -116,9 +116,14 @@ export default async function NajizIntegrationPage() {
     <Card className="p-6 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">التكاملات</h1>
-        <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>
-          رجوع
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/app/external/najiz/verify-lawyer" className={buttonVariants('outline', 'sm')}>
+            التحقق من المحامي
+          </Link>
+          <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>
+            رجوع
+          </Link>
+        </div>
       </div>
 
       <NajizIntegrationClient

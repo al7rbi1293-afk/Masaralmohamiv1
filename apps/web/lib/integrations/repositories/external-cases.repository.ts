@@ -7,13 +7,24 @@ type ExternalCaseRow = {
   id: string;
   org_id: string;
   external_id: string;
+  source?: string | null;
   case_number: string | null;
   title: string;
   court: string | null;
   status: string | null;
   payload_json: JsonObject | null;
   synced_at: string;
+  last_synced_at?: string | null;
   matter_id: string | null;
+};
+
+export type MatterExternalCaseSyncSummary = {
+  matterId: string;
+  source: string;
+  syncedAt: string;
+  externalId: string;
+  caseNumber: string | null;
+  status: string | null;
 };
 
 export async function findMatterExternalCase(orgId: string, matterId: string, fallbackCaseNumber?: string | null) {
@@ -220,4 +231,130 @@ export async function listMatterExternalCaseOverview(orgId: string, matterId: st
       synced_at: string;
     }> | null) ?? [],
   };
+}
+
+export async function listMatterExternalCaseSyncSummaries(
+  orgId: string,
+  matters: Array<{ id: string; najizCaseNumber: string | null }>,
+) {
+  const normalizedMatters = matters
+    .map((matter) => ({
+      id: matter.id,
+      najizCaseNumber: typeof matter.najizCaseNumber === 'string' ? matter.najizCaseNumber.trim() : '',
+    }))
+    .filter((matter) => matter.id);
+
+  if (!normalizedMatters.length) {
+    return new Map<string, MatterExternalCaseSyncSummary>();
+  }
+
+  const supabase = createSupabaseServerClient();
+  const matterIds = normalizedMatters.map((matter) => matter.id);
+  const fallbackCaseNumbers = [...new Set(normalizedMatters.map((matter) => matter.najizCaseNumber).filter(Boolean))];
+
+  const [linkedResult, fallbackResult] = await Promise.all([
+    supabase
+      .from('external_cases')
+      .select('matter_id, source, external_id, case_number, status, synced_at, last_synced_at')
+      .eq('org_id', orgId)
+      .in('matter_id', matterIds)
+      .order('last_synced_at', { ascending: false, nullsFirst: false }),
+    fallbackCaseNumbers.length
+      ? supabase
+          .from('external_cases')
+          .select('matter_id, source, external_id, case_number, status, synced_at, last_synced_at')
+          .eq('org_id', orgId)
+          .or(
+            `case_number.in.(${fallbackCaseNumbers.map(escapeSupabaseListValue).join(',')}),external_id.in.(${fallbackCaseNumbers.map(escapeSupabaseListValue).join(',')})`,
+          )
+          .order('last_synced_at', { ascending: false, nullsFirst: false })
+      : Promise.resolve({ data: [], error: null } as const),
+  ]);
+
+  if (linkedResult.error) {
+    throw linkedResult.error;
+  }
+
+  if (fallbackResult.error) {
+    throw fallbackResult.error;
+  }
+
+  const linkedRows = ((linkedResult.data as Array<{
+    matter_id: string | null;
+    source: string | null;
+    external_id: string;
+    case_number: string | null;
+    status: string | null;
+    synced_at: string;
+    last_synced_at: string | null;
+  }> | null) ?? []);
+
+  const fallbackRows = ((fallbackResult.data as Array<{
+    matter_id: string | null;
+    source: string | null;
+    external_id: string;
+    case_number: string | null;
+    status: string | null;
+    synced_at: string;
+    last_synced_at: string | null;
+  }> | null) ?? []);
+
+  const summaryByMatterId = new Map<string, MatterExternalCaseSyncSummary>();
+
+  for (const row of linkedRows) {
+    const matterId = typeof row.matter_id === 'string' ? row.matter_id : '';
+    if (!matterId || summaryByMatterId.has(matterId)) {
+      continue;
+    }
+
+    summaryByMatterId.set(matterId, {
+      matterId,
+      source: normalizeOptionalString(row.source) ?? 'najiz',
+      syncedAt: row.last_synced_at ?? row.synced_at,
+      externalId: row.external_id,
+      caseNumber: row.case_number,
+      status: row.status,
+    });
+  }
+
+  const fallbackByCaseNumber = new Map<string, MatterExternalCaseSyncSummary>();
+  for (const row of fallbackRows) {
+    const fallbackKey = normalizeOptionalString(row.case_number) ?? row.external_id;
+    if (!fallbackKey || fallbackByCaseNumber.has(fallbackKey)) {
+      continue;
+    }
+
+    fallbackByCaseNumber.set(fallbackKey, {
+      matterId: typeof row.matter_id === 'string' ? row.matter_id : '',
+      source: normalizeOptionalString(row.source) ?? 'najiz',
+      syncedAt: row.last_synced_at ?? row.synced_at,
+      externalId: row.external_id,
+      caseNumber: row.case_number,
+      status: row.status,
+    });
+  }
+
+  for (const matter of normalizedMatters) {
+    if (summaryByMatterId.has(matter.id) || !matter.najizCaseNumber) {
+      continue;
+    }
+
+    const fallback = fallbackByCaseNumber.get(matter.najizCaseNumber);
+    if (fallback) {
+      summaryByMatterId.set(matter.id, {
+        ...fallback,
+        matterId: matter.id,
+      });
+    }
+  }
+
+  return summaryByMatterId;
+}
+
+function normalizeOptionalString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function escapeSupabaseListValue(value: string) {
+  return `"${value.replace(/["\\]/g, '\\$&')}"`;
 }

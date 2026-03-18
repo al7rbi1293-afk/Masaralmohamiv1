@@ -4,8 +4,11 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ConfirmActionForm } from '@/components/ui/confirm-action-form';
 import { EmptyState } from '@/components/ui/empty-state';
+import { listMatterExternalCaseSyncSummaries } from '@/lib/integrations/repositories/external-cases.repository';
 import { listClients } from '@/lib/clients';
 import { listMatters, type MatterStatus } from '@/lib/matters';
+import { requireOrgIdForUser } from '@/lib/org';
+import { getOrgPlanLimits } from '@/lib/plan-limits';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { archiveMatterAction, deleteMatterAction, restoreMatterAction } from './actions';
 
@@ -57,9 +60,18 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
   let mattersResult: Awaited<ReturnType<typeof listMatters>>;
   let clientsResult: Awaited<ReturnType<typeof listClients>>;
   let currentUser: Awaited<ReturnType<typeof getCurrentAuthUser>>;
+  let showNajiz = false;
+  let matterSyncSummaries = new Map<
+    string,
+    {
+      source: string;
+      syncedAt: string;
+    }
+  >();
 
   try {
-    [mattersResult, clientsResult, currentUser] = await Promise.all([
+    const orgId = await requireOrgIdForUser();
+    const [matters, clients, authUser, planLimits] = await Promise.all([
       listMatters({
         q,
         status,
@@ -73,7 +85,33 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
         limit: 50,
       }),
       getCurrentAuthUser(),
+      getOrgPlanLimits(orgId).catch(() => ({ limits: { najiz_integration: false } })),
     ]);
+
+    mattersResult = matters;
+    clientsResult = clients;
+    currentUser = authUser;
+    showNajiz = Boolean(planLimits.limits.najiz_integration);
+
+    if (showNajiz && mattersResult.data.length) {
+      const summaries = await listMatterExternalCaseSyncSummaries(
+        orgId,
+        mattersResult.data.map((matter) => ({
+          id: matter.id,
+          najizCaseNumber: matter.najiz_case_number,
+        })),
+      );
+
+      matterSyncSummaries = new Map(
+        [...summaries.entries()].map(([matterId, summary]) => [
+          matterId,
+          {
+            source: summary.source,
+            syncedAt: summary.syncedAt,
+          },
+        ]),
+      );
+    }
   } catch (fetchError) {
     const message =
       fetchError instanceof Error && fetchError.message ? fetchError.message : 'تعذر تحميل القضايا.';
@@ -209,6 +247,13 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                   <Badge variant={matter.is_private ? 'warning' : 'default'}>
                     {matter.is_private ? 'خاصة' : 'عامة'}
                   </Badge>
+                  {showNajiz ? (
+                    <Badge variant={matterSyncSummaries.has(matter.id) ? 'success' : 'default'}>
+                      {matterSyncSummaries.has(matter.id)
+                        ? formatSyncSource(matterSyncSummaries.get(matter.id)?.source ?? null)
+                        : 'بدون مزامنة Najiz'}
+                    </Badge>
+                  ) : null}
                 </div>
 
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
@@ -228,6 +273,14 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                       {new Date(matter.updated_at).toLocaleDateString('ar-SA')}
                     </dd>
                   </div>
+                  {showNajiz ? (
+                    <div className="col-span-2 rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">آخر مزامنة Najiz</dt>
+                      <dd className="mt-1 font-medium text-slate-700 dark:text-slate-200">
+                        {formatSyncDate(matterSyncSummaries.get(matter.id)?.syncedAt ?? null)}
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
 
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -282,20 +335,33 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                   <th className="py-3 text-start font-medium">العنوان</th>
                   <th className="py-3 text-start font-medium">الموكل</th>
                   <th className="py-3 text-start font-medium">الحالة</th>
+                  {showNajiz ? <th className="py-3 text-start font-medium">مصدر المزامنة</th> : null}
                   <th className="py-3 text-start font-medium">خاص؟</th>
                   <th className="py-3 text-start font-medium">المسؤول</th>
+                  {showNajiz ? <th className="py-3 text-start font-medium">آخر مزامنة</th> : null}
                   <th className="py-3 text-start font-medium">آخر تحديث</th>
                   <th className="py-3 text-start font-medium">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border dark:divide-slate-800">
-                {mattersResult.data.map((matter) => (
+                {mattersResult.data.map((matter) => {
+                  const syncSummary = matterSyncSummaries.get(matter.id);
+                  return (
                   <tr key={matter.id} className="hover:bg-brand-background/60 dark:hover:bg-slate-800/60">
                     <td className="py-3 font-medium text-brand-navy dark:text-slate-100">{matter.title}</td>
                     <td className="py-3 text-slate-700 dark:text-slate-200">{matter.client?.name ?? '—'}</td>
                     <td className="py-3">
                       <Badge variant={statusVariant[matter.status]}>{statusLabel[matter.status]}</Badge>
                     </td>
+                    {showNajiz ? (
+                      <td className="py-3 text-slate-700 dark:text-slate-200">
+                        {syncSummary ? (
+                          <Badge variant="success">{formatSyncSource(syncSummary.source)}</Badge>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    ) : null}
                     <td className="py-3">
                       <Badge variant={matter.is_private ? 'warning' : 'default'}>
                         {matter.is_private ? 'خاصة' : 'عامة'}
@@ -304,6 +370,11 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                     <td className="py-3 text-slate-700 dark:text-slate-200">
                       {renderAssignee(matter.assigned_user_id, currentUser?.id)}
                     </td>
+                    {showNajiz ? (
+                      <td className="py-3 text-slate-700 dark:text-slate-200">
+                        {formatSyncDate(syncSummary?.syncedAt ?? null)}
+                      </td>
+                    ) : null}
                     <td className="py-3 text-slate-700 dark:text-slate-200">
                       {new Date(matter.updated_at).toLocaleDateString('ar-SA')}
                     </td>
@@ -351,7 +422,7 @@ export default async function MattersPage({ searchParams }: MattersPageProps) {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
@@ -409,6 +480,26 @@ function buildQuery(params: {
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function formatSyncSource(value: string | null) {
+  if (!value) {
+    return '—';
+  }
+
+  return value.toLowerCase() === 'najiz' ? 'Najiz' : value;
+}
+
+function formatSyncDate(value: string | null) {
+  if (!value) {
+    return '—';
+  }
+
+  try {
+    return new Date(value).toLocaleDateString('ar-SA');
   } catch {
     return value;
   }

@@ -123,9 +123,14 @@ export default async function NajizExternalCasesPage() {
             هذه بيانات مرجعية مستوردة. لإنشاء قضية داخل مسار، اختر &quot;إنشاء قضية في مسار&quot; ثم حدّد الموكل يدويًا.
           </p>
         </div>
-        <Link href="/app/settings/integrations/najiz" className={buttonVariants('outline', 'sm')}>
-          إعدادات ناجز
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/app/external/najiz/verify-lawyer" className={buttonVariants('outline', 'sm')}>
+            التحقق من المحامي
+          </Link>
+          <Link href="/app/settings/integrations/najiz" className={buttonVariants('outline', 'sm')}>
+            إعدادات ناجز
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-3 md:hidden">

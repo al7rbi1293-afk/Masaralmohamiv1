@@ -24,6 +24,12 @@ type OverviewStats = {
         activeSubscriptions: number;
         trialOrgs: number;
     };
+    subscription_details: {
+        id: string;
+        plan_name: string;
+        org_name: string;
+        current_period_end: string | null;
+    }[];
     timeline: {
         date: string;
         new_signups: number;
@@ -130,15 +136,43 @@ export default function OverviewTab({ onNavigate }: { onNavigate: (tab: TabId) =
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex items-center justify-between">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col">
+                    <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">الاشتراكات الفعالة</p>
                         <ShieldAlert className="h-4 w-4 text-brand-emerald" />
                     </div>
-                    <div className="mt-2 flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2 mb-3">
                         <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.activeSubscriptions}</p>
                         <span className="text-sm text-slate-500">خطة برو</span>
                     </div>
+
+                    {data.subscription_details.length > 0 && (
+                        <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                            {data.subscription_details.slice(0, 3).map((sub) => (
+                                <div key={sub.id} className="text-xs flex flex-col gap-0.5">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
+                                            {sub.org_name}
+                                        </span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium">
+                                            {sub.plan_name}
+                                        </span>
+                                    </div>
+                                    {sub.current_period_end && (
+                                        <div className="text-slate-400 flex items-center gap-1">
+                                            <span>ينتهي:</span>
+                                            <span>{new Date(sub.current_period_end).toLocaleDateString('ar-SA')}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            {data.subscription_details.length > 3 && (
+                                <p className="text-[10px] text-slate-400 text-center italic">
+                                    +{data.subscription_details.length - 3} اشتراكات إضافية
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">

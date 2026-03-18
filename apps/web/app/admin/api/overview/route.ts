@@ -49,18 +49,32 @@ export async function GET() {
         }
 
         // 3. Subscription Stats (Active vs Trial)
-        const { count: activeSubscriptionsCount, error: activeSubsError } = await supabase
+        const { data: activeSubscriptions, error: activeSubsError } = await supabase
             .from('subscriptions')
-            .select('*', { count: 'exact', head: true })
+            .select(`
+                id,
+                plan_code,
+                current_period_end,
+                organizations ( name ),
+                plan:plans!plan_code ( name_ar )
+            `)
             .eq('status', 'active');
-
-        // Estimate trials by checking orgs without an active subscription
-        const trialsCount = (activeOrgsCount || 0) - (activeSubscriptionsCount || 0);
 
         if (activeSubsError) {
             console.error('Error fetching subscription stats:', activeSubsError);
             throw new Error('فشل جلب إحصائيات الاشتراكات.');
         }
+
+        const activeSubscriptionsCount = activeSubscriptions?.length || 0;
+        const subscriptionDetails = (activeSubscriptions || []).map(sub => ({
+            id: sub.id,
+            plan_name: (sub.plan as any)?.name_ar || sub.plan_code,
+            org_name: (sub.organizations as any)?.name || '—',
+            current_period_end: sub.current_period_end
+        }));
+
+        // Estimate trials by checking orgs without an active subscription
+        const trialsCount = (activeOrgsCount || 0) - activeSubscriptionsCount;
 
         // 4. Trailing 30-day Signup Timeline
         const thirtyDaysAgo = new Date();
@@ -122,9 +136,10 @@ export async function GET() {
                 suspendedOrgs: suspendedOrgsCount || 0,
                 activeUsers: activeUsersCount || 0,
                 suspendedUsers: suspendedUsersCount || 0,
-                activeSubscriptions: activeSubscriptionsCount || 0,
+                activeSubscriptions: activeSubscriptionsCount,
                 trialOrgs: Math.max(0, trialsCount),
             },
+            subscription_details: subscriptionDetails,
             timeline,
             org_team_sizes: orgTeamSizes,
         });

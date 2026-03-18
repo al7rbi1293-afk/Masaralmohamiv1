@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
@@ -43,6 +44,32 @@ function formatDate(value: string | null) {
   return date.toLocaleDateString('ar-SA');
 }
 
+function subscriptionHasActiveAccess(subscription: {
+  status: string;
+  current_period_end: string | null;
+} | null) {
+  if (!subscription) {
+    return false;
+  }
+
+  const status = String(subscription.status || '').trim().toLowerCase();
+  const grantsAccess = status === 'active' || status === 'past_due' || status === 'canceled';
+  if (!grantsAccess) {
+    return false;
+  }
+
+  if (!subscription.current_period_end) {
+    return true;
+  }
+
+  const periodEnd = new Date(subscription.current_period_end);
+  if (Number.isNaN(periodEnd.getTime())) {
+    return false;
+  }
+
+  return periodEnd.getTime() > Date.now();
+}
+
 export default async function SubscriptionSettingsPage({ searchParams }: SubscriptionSettingsPageProps) {
   const user = await getCurrentAuthUser();
   if (!user) {
@@ -79,7 +106,12 @@ export default async function SubscriptionSettingsPage({ searchParams }: Subscri
     errorMessage = message || 'تعذر تحميل بيانات الاشتراك.';
   }
 
-  const showEndedMessage = searchParams?.expired === '1';
+  const hasActiveAccess = subscriptionHasActiveAccess(subscription);
+  if (searchParams?.expired === '1' && hasActiveAccess) {
+    redirect('/app');
+  }
+
+  const showEndedMessage = searchParams?.expired === '1' && !hasActiveAccess;
 
   return (
     <Card className="p-6 space-y-6">

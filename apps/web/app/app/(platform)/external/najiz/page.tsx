@@ -14,10 +14,20 @@ type ExternalCaseRow = {
   court: string | null;
   status: string | null;
   last_synced_at: string;
+  matter_id: string | null;
 };
 
-export default async function NajizExternalCasesPage() {
+type NajizExternalCasesPageProps = {
+  searchParams?: {
+    error?: string;
+    success?: string;
+  };
+};
+
+export default async function NajizExternalCasesPage({ searchParams }: NajizExternalCasesPageProps) {
   let orgId = '';
+  const successMessage = searchParams?.success ? safeDecode(searchParams.success) : '';
+  const errorMessage = searchParams?.error ? safeDecode(searchParams.error) : '';
 
   try {
     orgId = await requireOrgIdForUser();
@@ -71,7 +81,7 @@ export default async function NajizExternalCasesPage() {
   const supabase = createSupabaseServerRlsClient();
   const { data, error } = await supabase
     .from('external_cases')
-    .select('id, external_id, title, court, status, last_synced_at')
+    .select('id, external_id, title, court, status, last_synced_at, matter_id')
     .eq('org_id', orgId)
     .eq('provider', 'najiz')
     .order('last_synced_at', { ascending: false })
@@ -120,7 +130,7 @@ export default async function NajizExternalCasesPage() {
         <div>
           <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">بيانات ناجز</h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            هذه بيانات مرجعية مستوردة. لإنشاء قضية داخل مسار، اختر &quot;إنشاء قضية في مسار&quot; ثم حدّد الموكل يدويًا.
+            هذه بيانات مرجعية مستوردة. يمكنك استيراد القضية مباشرة إلى مسار، أو فتح القضية المرتبطة إذا كانت موجودة بالفعل.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -133,11 +143,32 @@ export default async function NajizExternalCasesPage() {
         </div>
       </div>
 
+      {successMessage ? (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+          {successMessage}
+        </p>
+      ) : null}
+
+      {errorMessage ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+          {errorMessage}
+        </p>
+      ) : null}
+
       <div className="space-y-3 md:hidden">
         {rows.map((row) => (
           <article key={row.id} className="rounded-lg border border-brand-border p-3 dark:border-slate-700">
-            <h3 className="text-base font-semibold text-brand-navy dark:text-slate-100">{row.title}</h3>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">#{row.external_id}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-brand-navy dark:text-slate-100">{row.title}</h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">#{row.external_id}</p>
+              </div>
+              {row.matter_id ? (
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  مرتبطة
+                </span>
+              ) : null}
+            </div>
 
             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
               <div className="rounded-md bg-brand-background/70 px-2 py-2 dark:bg-slate-800/70">
@@ -157,12 +188,7 @@ export default async function NajizExternalCasesPage() {
             </dl>
 
             <div className="mt-3">
-              <Link
-                href={`/app/matters/new?title=${encodeURIComponent(row.title)}`}
-                className={buttonVariants('primary', 'sm')}
-              >
-                إنشاء قضية في مسار
-              </Link>
+              <NajizExternalCaseActions row={row} />
             </div>
           </article>
         ))}
@@ -192,12 +218,7 @@ export default async function NajizExternalCasesPage() {
                   {new Date(row.last_synced_at).toLocaleString('ar-SA')}
                 </td>
                 <td className="px-3 py-3 align-top">
-                  <Link
-                    href={`/app/matters/new?title=${encodeURIComponent(row.title)}`}
-                    className={buttonVariants('primary', 'sm')}
-                  >
-                    إنشاء قضية في مسار
-                  </Link>
+                  <NajizExternalCaseActions row={row} />
                 </td>
               </tr>
             ))}
@@ -205,5 +226,36 @@ export default async function NajizExternalCasesPage() {
         </table>
       </div>
     </Card>
+  );
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function NajizExternalCaseActions({ row }: { row: ExternalCaseRow }) {
+  if (row.matter_id) {
+    return (
+      <Link href={`/app/matters/${row.matter_id}`} className={buttonVariants('primary', 'sm')}>
+        فتح القضية
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <form action={`/app/api/integrations/najiz/external-cases/${row.id}/import`} method="post">
+        <button type="submit" className={buttonVariants('primary', 'sm')}>
+          استيراد إلى قضية
+        </button>
+      </form>
+      <Link href={`/app/matters/new?title=${encodeURIComponent(row.title)}`} className={buttonVariants('outline', 'sm')}>
+        إنشاء يدوي
+      </Link>
+    </div>
   );
 }

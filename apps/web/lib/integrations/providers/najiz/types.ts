@@ -47,6 +47,30 @@ export type NajizLawyerVerificationPayload = {
   [key: string]: unknown;
 };
 
+export type NajizPowerOfAttorneyPayload = {
+  id?: string | number;
+  external_id?: string | number;
+  poaId?: string | number;
+  poa_id?: string | number;
+  poaNumber?: string;
+  poa_number?: string;
+  clientId?: string | number;
+  client_id?: string | number;
+  holderName?: string;
+  holder_name?: string;
+  status?: string;
+  isRevoked?: boolean;
+  is_revoked?: boolean;
+  revoked?: boolean;
+  issuedAt?: string;
+  issued_at?: string;
+  expiresAt?: string;
+  expires_at?: string;
+  verifiedAt?: string;
+  verified_at?: string;
+  [key: string]: unknown;
+};
+
 export type NajizCasePayload = {
   id?: string | number;
   external_id?: string | number;

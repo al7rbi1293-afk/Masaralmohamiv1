@@ -292,6 +292,35 @@ export type VerifyLawyerResult = {
   rawPayload: JsonObject;
 };
 
+export type PowerOfAttorneyValidationStatus = 'VALID' | 'REVOKED' | 'EXPIRED' | 'UNKNOWN';
+
+export type ValidatePowerOfAttorneyInput = {
+  clientId: string;
+  poaNumber: string;
+  endpointPath?: string | null;
+};
+
+export type NormalizedPowerOfAttorneyValidation = {
+  provider: IntegrationProviderKey;
+  source: string;
+  externalId: string;
+  clientId: string;
+  poaNumber: string;
+  status: PowerOfAttorneyValidationStatus;
+  isRevoked: boolean;
+  holderName: string | null;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  verifiedAt: string;
+  payloadJson: JsonObject;
+  syncedAt: string;
+};
+
+export type ValidatePowerOfAttorneyResult = {
+  validation: NormalizedPowerOfAttorneyValidation;
+  rawPayload: JsonObject;
+};
+
 export type SyncCaseInput = {
   matterId?: string | null;
   caseNumber?: string | null;

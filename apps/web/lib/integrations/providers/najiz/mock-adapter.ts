@@ -9,6 +9,7 @@ import type {
   SyncEnforcementRequestsInput,
   SyncJudicialCostsInput,
   SyncSessionMinutesInput,
+  ValidatePowerOfAttorneyInput,
   VerifyLawyerInput,
 } from '../../domain/models';
 import type { NajizProviderAdapter } from './adapter';
@@ -46,6 +47,32 @@ export class NajizMockAdapter implements NajizProviderAdapter {
         lawyer_name: `محامٍ تجريبي ${seed.slice(0, 4).toUpperCase()}`,
         office_name: 'مكتب مسار التجريبي',
         status,
+        verified_at: new Date().toISOString(),
+      },
+      mock: true,
+    };
+  }
+
+  async fetchPowerOfAttorneyValidation(
+    account: IntegrationAccount,
+    input: ValidatePowerOfAttorneyInput,
+  ): Promise<JsonObject> {
+    const seed = stableSeed(account.orgId, input.clientId, input.poaNumber);
+    const isRevoked = pickFromSeed(seed, ['false', 'false', 'false', 'true']) === 'true';
+    const issuedAt = new Date(Date.now() - (parseInt(seed.slice(0, 4), 16) % 720) * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(issuedAt);
+    expiresAt.setFullYear(expiresAt.getFullYear() + 5);
+
+    return {
+      data: {
+        id: `poa-${seed.slice(0, 12)}`,
+        poa_number: input.poaNumber,
+        client_id: input.clientId,
+        holder_name: `موكل تجريبي ${seed.slice(0, 4).toUpperCase()}`,
+        status: isRevoked ? 'REVOKED' : 'VALID',
+        is_revoked: isRevoked,
+        issued_at: issuedAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
         verified_at: new Date().toISOString(),
       },
       mock: true,

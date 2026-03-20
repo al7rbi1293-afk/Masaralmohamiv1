@@ -3,15 +3,11 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 import { requireOwner } from '@/lib/org';
-import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { NajizIntegrationClient } from '@/components/integrations/najiz-integration-client';
 import { getOrgPlanLimits } from '@/lib/plan-limits';
-
-type IntegrationRow = {
-  status: 'disconnected' | 'connected' | 'error';
-  config: any;
-  secret_enc: string | null;
-};
+import { createEmptyIntegrationAccount } from '@/lib/integrations/domain/services/account-config.service';
+import { getIntegrationAccount } from '@/lib/integrations/repositories/integration-accounts.repository';
+import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 
 type LastSyncRow = {
   status: 'completed' | 'failed';
@@ -75,18 +71,17 @@ export default async function NajizIntegrationPage() {
   }
 
   const supabase = createSupabaseServerRlsClient();
-  const { data, error } = await supabase
-    .from('org_integrations')
-    .select('status, config, secret_enc')
-    .eq('org_id', orgId)
-    .eq('provider', 'najiz')
-    .maybeSingle();
-
-  const row = (data as IntegrationRow | null) ?? null;
-
-  const status = row?.status ?? 'disconnected';
-  const config = (row?.config ?? {}) as any;
-  const hasSecrets = Boolean(row?.secret_enc);
+  const account = (await getIntegrationAccount(orgId, 'najiz').catch(() => null)) ?? createEmptyIntegrationAccount(orgId);
+  const activeEnvironment = account.activeEnvironment;
+  const activeEnvironmentConfig = account.environments[activeEnvironment];
+  const environmentConfigs = {
+    sandbox: snapshotEnvironment(account.environments.sandbox),
+    production: snapshotEnvironment(account.environments.production),
+  };
+  const credentialsByEnvironment = {
+    sandbox: Boolean(account.credentials.sandbox?.clientId && account.credentials.sandbox.clientSecret),
+    production: Boolean(account.credentials.production?.clientId && account.credentials.production.clientSecret),
+  } as const;
   const { data: lastSync } = await supabase
     .from('najiz_sync_runs')
     .select('status, imported_count, endpoint_path, created_at')
@@ -95,22 +90,6 @@ export default async function NajizIntegrationPage() {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  if (error) {
-    return (
-      <Card className="p-6">
-        <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">تكامل ناجز</h1>
-        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-          تعذر تحميل بيانات التكامل. {error.message}
-        </p>
-        <div className="mt-4">
-          <Link href="/app/settings" className={buttonVariants('outline', 'sm')}>
-            العودة إلى الإعدادات
-          </Link>
-        </div>
-      </Card>
-    );
-  }
 
   return (
     <Card className="p-6 space-y-5">
@@ -126,14 +105,77 @@ export default async function NajizIntegrationPage() {
         </div>
       </div>
 
+      <Card className="border border-brand-border/70 bg-brand-background/40 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-brand-navy dark:text-slate-100">نظرة سريعة على جاهزية ناجز</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              تعرض هذه الخلاصة ما إذا كان الربط الحالي live فعلًا أو ما زال sandbox/mock.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              البيئة: {activeEnvironment === 'production' ? 'Production' : 'Sandbox'}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              الوضع: {activeEnvironmentConfig.useMock ? 'Mock' : activeEnvironment === 'production' ? 'Live' : 'Sandbox'}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              الصحة: {account.healthStatus === 'healthy' ? 'Healthy' : account.healthStatus}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              الإعدادات: {credentialsByEnvironment[activeEnvironment] ? 'مكتملة' : 'غير مكتملة'}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              الجاهزية: {activeEnvironment === 'production' && account.healthStatus === 'healthy' && credentialsByEnvironment.production && !activeEnvironmentConfig.useMock ? 'جاهز' : 'غير جاهز'}
+            </span>
+          </div>
+        </div>
+        {account.activeEnvironment === 'production' && account.healthStatus === 'healthy' && credentialsByEnvironment.production && !activeEnvironmentConfig.useMock ? (
+          <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+            هذا الحساب جاهز للإنتاج الفعلي.
+          </p>
+        ) : (
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+            هذا الحساب ليس جاهزًا للإنتاج بعد. إذا كانت البيئة sandbox أو mock فهذه نتيجة اختبار فقط، وليست اتصالًا مباشرًا مع ناجز.
+          </p>
+        )}
+      </Card>
+
       <NajizIntegrationClient
         initial={{
-          status,
-          config,
-          hasSecrets,
+          status: account.status,
+          activeEnvironment,
+          activeEnvironmentHasCredentials: credentialsByEnvironment[activeEnvironment],
+          credentialsByEnvironment,
+          environmentConfigs,
+          healthStatus: account.healthStatus,
+          lastSyncedAt: account.lastSyncedAt,
+          lastHealthCheckedAt: account.lastHealthCheckedAt,
+          lastHealthError: account.lastHealthError,
         }}
         lastSync={(lastSync as LastSyncRow | null) ?? null}
       />
     </Card>
   );
+}
+
+function snapshotEnvironment(environment: {
+  baseUrl: string;
+  lastError: string | null;
+  lastTestedAt: string | null;
+  lastConnectedAt: string | null;
+  syncPaths: {
+    cases: string | null;
+  };
+  useMock: boolean;
+}) {
+  return {
+    base_url: environment.baseUrl,
+    sync_path: environment.syncPaths.cases ?? '',
+    last_error: environment.lastError,
+    last_tested_at: environment.lastTestedAt,
+    last_connected_at: environment.lastConnectedAt,
+    use_mock: environment.useMock,
+  };
 }

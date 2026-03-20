@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { randomUUID } from 'crypto';
+
 import { getOrgPlanLimits } from '@/lib/plan-limits';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logError, logInfo } from '@/lib/logger';
@@ -454,6 +456,129 @@ export async function verifyNajizLawyer(input: {
       jobKind: 'lawyer_verification',
       message: error instanceof Error ? error.message : 'تعذر التحقق من المحامي.',
       request: input.request,
+    });
+    throw error;
+  }
+}
+
+export async function validateNajizPowerOfAttorney(input: {
+  actor: IntegrationActor;
+  clientId: string;
+  poaNumber?: string | null;
+  endpointPath?: string | null;
+  request?: Request;
+}) {
+  const account = await ensureAccount(input.actor);
+  const provider = getIntegrationProvider(account);
+  const clientId = normalizeOptionalString(input.clientId);
+  if (!clientId) {
+    throw integrationError('missing_client_id', 'معرّف العميل مطلوب للتحقق من الوكالة.', {
+      statusCode: 400,
+    });
+  }
+
+  const supabase = createSupabaseServerClient();
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .select('id, agency_number')
+    .eq('org_id', input.actor.orgId)
+    .eq('id', clientId)
+    .maybeSingle();
+
+  if (clientError) {
+    throw clientError;
+  }
+
+  if (!client) {
+    throw integrationError('client_not_found', 'العميل غير موجود.', { statusCode: 404 });
+  }
+
+  const poaNumber =
+    normalizeOptionalString(input.poaNumber) ??
+    normalizeOptionalString((client as { agency_number?: string | null }).agency_number);
+
+  if (!poaNumber) {
+    throw integrationError('missing_poa_number', 'رقم الوكالة مطلوب للتحقق من الوكالة.', {
+      statusCode: 400,
+    });
+  }
+
+  try {
+    const result = await withRetry(
+      () =>
+        provider.validatePowerOfAttorney(
+          {
+            clientId,
+            poaNumber,
+            endpointPath: normalizeOptionalString(input.endpointPath),
+          },
+          { actor: input.actor, account },
+        ),
+      {
+        label: 'najiz_validate_poa',
+        attempts: 2,
+        shouldRetry,
+      },
+    );
+
+    const syncedAt = result.validation.verifiedAt || new Date().toISOString();
+    const poaId = randomUUID();
+    const { data: existing, error: existingError } = await supabase
+      .from('power_of_attorneys')
+      .select('id')
+      .eq('tenant_id', input.actor.orgId)
+      .eq('client_id', clientId)
+      .eq('poa_number', poaNumber)
+      .maybeSingle();
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    const { error: saveError } = await supabase.from('power_of_attorneys').upsert({
+      id: (existing as { id?: string } | null)?.id ?? poaId,
+      tenant_id: input.actor.orgId,
+      client_id: clientId,
+      poa_number: poaNumber,
+      status: result.validation.status,
+      issue_date: result.validation.issuedAt ?? syncedAt,
+      expiry_date: result.validation.expiresAt ?? null,
+      last_sync_at: syncedAt,
+    });
+
+    if (saveError) {
+      throw saveError;
+    }
+
+    await logInfo('najiz_power_of_attorney_validated', {
+      org_id: input.actor.orgId,
+      client_id: clientId,
+      poa_number: poaNumber,
+      status: result.validation.status,
+    });
+
+    await logIntegrationAudit({
+      actor: input.actor,
+      action: 'najiz.power_of_attorney_validated',
+      entityType: 'power_of_attorney',
+      entityId: (existing as { id?: string } | null)?.id ?? poaId,
+      meta: {
+        client_id: clientId,
+        poa_number: poaNumber,
+        status: result.validation.status,
+        is_revoked: result.validation.isRevoked,
+      },
+      request: input.request,
+    });
+
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'تعذر التحقق من الوكالة.';
+    await logError('najiz_power_of_attorney_validation_failed', {
+      org_id: input.actor.orgId,
+      client_id: clientId,
+      poa_number: poaNumber,
+      message,
     });
     throw error;
   }

@@ -111,6 +111,8 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
   }
 
   const currentUser = await getCurrentAuthUser();
+  const { limits: matterPlanLimits } = await getOrgPlanLimits(matter.org_id).catch(() => ({ limits: { najiz_integration: false } }));
+  const showNajiz = matterPlanLimits.najiz_integration;
 
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
   const error = searchParams?.error ? safeDecode(searchParams.error) : '';
@@ -148,6 +150,11 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
           <Link href={`/app/matters/${matter.id}/edit`} className={buttonVariants('primary', 'sm')}>
             تعديل القضية
           </Link>
+          {showNajiz ? (
+            <Link href={`/app/matters/${matter.id}/najiz-packets`} className={buttonVariants('outline', 'sm')}>
+              حزم ناجز
+            </Link>
+          ) : null}
           <Link href="/app/matters" className={buttonVariants('outline', 'sm')}>
             رجوع
           </Link>
@@ -270,7 +277,6 @@ async function MatterSummarySection({
     }).catch(() => null),
   ]);
 
-  // Check if Najiz integration is enabled for this org's plan
   const { limits: planLimits } = await getOrgPlanLimits(matter.org_id).catch(() => ({ limits: { najiz_integration: false } }));
   const showNajiz = planLimits.najiz_integration;
 

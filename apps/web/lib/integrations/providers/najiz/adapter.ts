@@ -11,6 +11,7 @@ import type {
   SyncEnforcementRequestsInput,
   SyncJudicialCostsInput,
   SyncSessionMinutesInput,
+  ValidatePowerOfAttorneyInput,
   VerifyLawyerInput,
 } from '../../domain/models';
 import { NajizMockAdapter } from './mock-adapter';
@@ -18,6 +19,10 @@ import { NajizMockAdapter } from './mock-adapter';
 export interface NajizProviderAdapter {
   checkHealth(account: IntegrationAccount): Promise<{ message: string; rawPayload: JsonObject }>;
   fetchLawyerVerification(account: IntegrationAccount, input: VerifyLawyerInput): Promise<JsonObject>;
+  fetchPowerOfAttorneyValidation(
+    account: IntegrationAccount,
+    input: ValidatePowerOfAttorneyInput,
+  ): Promise<JsonObject>;
   fetchCases(account: IntegrationAccount, input: SyncCaseInput): Promise<JsonObject>;
   fetchJudicialCosts(account: IntegrationAccount, input: SyncJudicialCostsInput): Promise<JsonObject>;
   fetchEnforcementRequests(account: IntegrationAccount, input: SyncEnforcementRequestsInput): Promise<JsonObject>;
@@ -60,6 +65,21 @@ class NajizHttpAdapter implements NajizProviderAdapter {
         lawyerUserId: input.lawyerUserId,
         licenseNumber: input.licenseNumber,
         nationalId: input.nationalId,
+      },
+    });
+  }
+
+  async fetchPowerOfAttorneyValidation(account: IntegrationAccount, input: ValidatePowerOfAttorneyInput) {
+    const path = input.endpointPath || '/api/v1/power-of-attorneys/validate';
+
+    return requestJson(account, {
+      path,
+      method: 'POST',
+      body: {
+        clientId: input.clientId,
+        client_id: input.clientId,
+        poaNumber: input.poaNumber,
+        poa_number: input.poaNumber,
       },
     });
   }

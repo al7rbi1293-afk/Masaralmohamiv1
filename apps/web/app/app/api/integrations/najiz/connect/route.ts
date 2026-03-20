@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateLimit';
 import { requireIntegrationActor } from '@/lib/integrations/domain/services/integration-access.service';
 import { saveNajizIntegrationSettings } from '@/lib/integrations/domain/services/najiz-integration.service';
+import { getIntegrationAccount } from '@/lib/integrations/repositories/integration-accounts.repository';
 import { toIntegrationErrorResponse } from '@/lib/integrations/http';
+import { buildNajizAccountResponseSnapshot } from '../_response';
 
 export const runtime = 'nodejs';
 
@@ -51,6 +53,8 @@ export async function POST(request: NextRequest) {
       orgId: parsed.data.org_id,
       allowedRoles: ['admin', 'owner'],
     });
+    const existingAccount = await getIntegrationAccount(actor.orgId, 'najiz').catch(() => null);
+    const existingEnvironment = existingAccount?.environments[parsed.data.environment];
 
     const result = await saveNajizIntegrationSettings({
       actor,
@@ -59,14 +63,17 @@ export async function POST(request: NextRequest) {
       clientId: parsed.data.client_id,
       clientSecret: parsed.data.client_secret,
       scope: parsed.data.scope_optional,
-      tokenPath: parsed.data.token_path,
-      healthPath: parsed.data.health_path,
+      tokenPath: parsed.data.token_path ?? existingEnvironment?.tokenPath ?? null,
+      healthPath: parsed.data.health_path ?? existingEnvironment?.healthPath ?? null,
       syncPaths: {
-        enforcementRequests: parsed.data.enforcement_requests_path,
-        documents: parsed.data.documents_path,
-        sessionMinutes: parsed.data.session_minutes_path,
+        cases: existingEnvironment?.syncPaths.cases ?? null,
+        lawyerVerification: existingEnvironment?.syncPaths.lawyerVerification ?? null,
+        judicialCosts: existingEnvironment?.syncPaths.judicialCosts ?? null,
+        enforcementRequests: parsed.data.enforcement_requests_path ?? existingEnvironment?.syncPaths.enforcementRequests ?? null,
+        documents: parsed.data.documents_path ?? existingEnvironment?.syncPaths.documents ?? null,
+        sessionMinutes: parsed.data.session_minutes_path ?? existingEnvironment?.syncPaths.sessionMinutes ?? null,
       },
-      useMock: parsed.data.use_mock,
+      useMock: parsed.data.use_mock ?? existingEnvironment?.useMock ?? false,
       request,
     });
 
@@ -76,7 +83,7 @@ export async function POST(request: NextRequest) {
         status: result.account.status,
         health_status: result.account.healthStatus,
         message: result.health.message,
-        config: result.account.rawConfig,
+        account: buildNajizAccountResponseSnapshot(result.account),
       },
       { status: result.health.ok ? 200 : 400 },
     );

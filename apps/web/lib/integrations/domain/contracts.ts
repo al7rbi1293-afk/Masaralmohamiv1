@@ -12,6 +12,8 @@ import type {
   SyncJudicialCostsResult,
   SyncSessionMinutesInput,
   SyncSessionMinutesResult,
+  ValidatePowerOfAttorneyInput,
+  ValidatePowerOfAttorneyResult,
   VerifyLawyerInput,
   VerifyLawyerResult,
 } from './models';
@@ -27,6 +29,11 @@ export interface IntegrationProvider {
   getHealthStatus(context: ProviderExecutionContext): Promise<ProviderHealthResult>;
 
   verifyLawyer(input: VerifyLawyerInput, context: ProviderExecutionContext): Promise<VerifyLawyerResult>;
+
+  validatePowerOfAttorney(
+    input: ValidatePowerOfAttorneyInput,
+    context: ProviderExecutionContext,
+  ): Promise<ValidatePowerOfAttorneyResult>;
 
   syncCase(input: SyncCaseInput, context: ProviderExecutionContext): Promise<SyncCaseResult>;
 

@@ -3,6 +3,7 @@ import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR } from '@/lib/rateL
 import { requireIntegrationActor } from '@/lib/integrations/domain/services/integration-access.service';
 import { testNajizHealth } from '@/lib/integrations/domain/services/najiz-integration.service';
 import { toIntegrationErrorResponse } from '@/lib/integrations/http';
+import { buildNajizAccountResponseSnapshot } from '../_response';
 
 export const runtime = 'nodejs';
 
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
         status: result.account.status,
         health_status: result.account.healthStatus,
         message: result.health.message,
+        account: buildNajizAccountResponseSnapshot(result.account),
       },
       { status: result.health.ok ? 200 : 400 },
     );

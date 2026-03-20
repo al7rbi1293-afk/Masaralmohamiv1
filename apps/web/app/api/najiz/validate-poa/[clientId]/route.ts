@@ -1,30 +1,44 @@
 import { NextResponse } from 'next/server';
-import { getOrgPlanLimits } from '@/lib/plan-limits';
-import { requireOwner } from '@/lib/org';
-import { validatePoA } from '@/lib/integrations/najizService';
+import { z } from 'zod';
+import { requireIntegrationActor } from '@/lib/integrations/domain/services/integration-access.service';
+import { validateNajizPowerOfAttorney } from '@/lib/integrations/domain/services/najiz-integration.service';
+import { toIntegrationErrorResponse } from '@/lib/integrations/http';
 
-export async function POST(
-  req: Request,
-  { params }: { params: { clientId: string } }
-) {
+const bodySchema = z.object({
+  poa_number: z.string().trim().max(120).optional(),
+  poaNumber: z.string().trim().max(120).optional(),
+  endpoint_path: z.string().trim().max(300).optional(),
+});
+
+export async function POST(req: Request, { params }: { params: { clientId: string } }) {
   try {
-    const owner = await requireOwner();
-    const { limits } = await getOrgPlanLimits(owner.orgId);
-    if (!limits.najiz_integration) {
-      return NextResponse.json({ error: 'هذه الميزة متاحة فقط لنسخة الشركات.' }, { status: 403 });
+    const body = await req.json().catch(() => ({}));
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'البيانات غير صحيحة.' }, { status: 400 });
     }
 
-    const body = await req.json();
-    const { poaNumber } = body;
+    const actor = await requireIntegrationActor({
+      allowedRoles: ['admin', 'owner', 'lawyer', 'assistant'],
+    });
+    const result = await validateNajizPowerOfAttorney({
+      actor,
+      clientId: params.clientId,
+      poaNumber: parsed.data.poa_number ?? parsed.data.poaNumber,
+      endpointPath: parsed.data.endpoint_path,
+      request: req,
+    });
 
-    if (!poaNumber) {
-      return NextResponse.json({ error: 'Missing poaNumber' }, { status: 400 });
-    }
-
-    const result = await validatePoA(params.clientId, poaNumber);
-    return NextResponse.json(result);
+    return NextResponse.json(
+      {
+        ok: true,
+        ...result.validation,
+        validation: result.validation,
+      },
+      { status: 200 },
+    );
   } catch (error: any) {
-    console.error('API Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const response = toIntegrationErrorResponse(error, 'najiz_validate_poa_failed');
+    return NextResponse.json(response.body, { status: response.status });
   }
 }

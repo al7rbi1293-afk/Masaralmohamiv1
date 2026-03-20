@@ -27,6 +27,46 @@ export type MatterExternalCaseSyncSummary = {
   status: string | null;
 };
 
+export async function getExternalCaseById(orgId: string, externalCaseId: string) {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('external_cases')
+    .select('id, org_id, external_id, case_number, title, court, status, payload_json, synced_at, matter_id')
+    .eq('org_id', orgId)
+    .eq('id', externalCaseId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as ExternalCaseRow | null) ?? null;
+}
+
+export async function linkExternalCaseToMatter(input: {
+  orgId: string;
+  externalCaseId: string;
+  matterId: string;
+}) {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('external_cases')
+    .update({
+      matter_id: input.matterId,
+    })
+    .eq('org_id', input.orgId)
+    .eq('id', input.externalCaseId)
+    .is('matter_id', null)
+    .select('id, matter_id')
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(data?.id);
+}
+
 export async function findMatterExternalCase(orgId: string, matterId: string, fallbackCaseNumber?: string | null) {
   const supabase = createSupabaseServerClient();
 

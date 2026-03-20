@@ -11,8 +11,12 @@ import type {
   NormalizedEnforcementRequestEvent,
   NormalizedJudicialCost,
   NormalizedLawyerVerification,
+  NormalizedPowerOfAttorneyValidation,
   NormalizedSessionMinute,
   ProviderHealthResult,
+  PowerOfAttorneyValidationStatus,
+  ValidatePowerOfAttorneyInput,
+  ValidatePowerOfAttorneyResult,
   SyncCaseInput,
   SyncCaseResult,
   SyncDocumentsInput,
@@ -35,6 +39,7 @@ import type {
   NajizEnforcementRequestPayload,
   NajizJudicialCostPayload,
   NajizLawyerVerificationPayload,
+  NajizPowerOfAttorneyPayload,
   NajizSessionMinutePayload,
 } from './types';
 import { resolveNajizProviderAdapter } from './adapter';
@@ -90,6 +95,48 @@ export class NajizProvider implements IntegrationProvider {
 
     return {
       verification,
+      rawPayload,
+    };
+  }
+
+  async validatePowerOfAttorney(
+    input: ValidatePowerOfAttorneyInput,
+    context: ProviderExecutionContext,
+  ): Promise<ValidatePowerOfAttorneyResult> {
+    if (!input.clientId || !input.poaNumber) {
+      throw integrationError('missing_poa_number', 'رقم الوكالة والعميل مطلوبان للتحقق من الوكالة.', {
+        statusCode: 400,
+      });
+    }
+
+    const adapter = resolveNajizProviderAdapter(context.account);
+    const rawPayload = await adapter.fetchPowerOfAttorneyValidation(context.account, input);
+    const record = extractSingleRecord<NajizPowerOfAttorneyPayload>(rawPayload);
+    const syncedAt = new Date().toISOString();
+    const verifiedAt = pickDate(record, ['verified_at', 'verifiedAt']) || syncedAt;
+    const expiresAt = pickDate(record, ['expires_at', 'expiresAt']);
+    const status = normalizePowerOfAttorneyStatus(record, expiresAt);
+    const validation: NormalizedPowerOfAttorneyValidation = {
+      provider: 'najiz',
+      source: 'najiz',
+      externalId:
+        pickString(record, ['external_id', 'id', 'poa_id', 'poaId']) ||
+        input.poaNumber ||
+        `poa-${syncedAt}`,
+      clientId: input.clientId,
+      poaNumber: input.poaNumber,
+      status,
+      isRevoked: status === 'REVOKED',
+      holderName: pickString(record, ['holder_name', 'holderName']) || null,
+      issuedAt: pickDate(record, ['issued_at', 'issuedAt']),
+      expiresAt,
+      verifiedAt,
+      payloadJson: ensureObject(record),
+      syncedAt,
+    };
+
+    return {
+      validation,
       rawPayload,
     };
   }
@@ -457,6 +504,25 @@ function pickString(obj: Record<string, unknown>, keys: string[]) {
   return '';
 }
 
+function pickBoolean(obj: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      if (value === 1) return true;
+      if (value === 0) return false;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
+      if (['false', '0', 'no', 'n'].includes(normalized)) return false;
+    }
+  }
+  return null;
+}
+
 function pickDate(obj: Record<string, unknown>, keys: string[]) {
   const value = pickString(obj, keys);
   if (!value) {
@@ -509,6 +575,41 @@ function ensureObject(value: unknown): JsonObject {
   }
 
   return { value: String(value ?? '') };
+}
+
+function normalizePowerOfAttorneyStatus(
+  record: Record<string, unknown>,
+  expiresAt?: string | null,
+): PowerOfAttorneyValidationStatus {
+  const status = pickString(record, ['status', 'verification_status', 'verificationStatus']).toLowerCase();
+  const isRevoked = pickBoolean(record, ['is_revoked', 'isRevoked', 'revoked']);
+
+  if (isRevoked === true || status.includes('revok') || status.includes('فسخ') || status.includes('ملغ')) {
+    return 'REVOKED';
+  }
+
+  if (expiresAt) {
+    const expiry = new Date(expiresAt);
+    if (!Number.isNaN(expiry.getTime()) && expiry.getTime() < Date.now()) {
+      return 'EXPIRED';
+    }
+  }
+
+  if (status.includes('expir') || status.includes('انته') || status.includes('منته')) {
+    return 'EXPIRED';
+  }
+
+  if (
+    status.includes('valid') ||
+    status.includes('active') ||
+    status.includes('ساري') ||
+    status.includes('صحيح') ||
+    status.includes('موثوق')
+  ) {
+    return 'VALID';
+  }
+
+  return 'VALID';
 }
 
 function normalizeLawyerVerificationStatus(value: string) {

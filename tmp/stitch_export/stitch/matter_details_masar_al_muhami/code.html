@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed": "#b5ede7",
+              "primary": "#003527",
+              "on-primary": "#ffffff",
+              "surface-tint": "#2b6954",
+              "on-secondary": "#ffffff",
+              "background": "#f9f9f8",
+              "primary-container": "#064e3b",
+              "on-surface-variant": "#404944",
+              "on-error": "#ffffff",
+              "primary-fixed-dim": "#95d3ba",
+              "surface-dim": "#dadad9",
+              "tertiary": "#735c00",
+              "secondary": "#316763",
+              "on-primary-fixed": "#002117",
+              "surface-container": "#eeeeed",
+              "secondary-fixed-dim": "#9ad1cb",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f4f4f3",
+              "on-secondary-container": "#376d69",
+              "surface-container-high": "#e8e8e7",
+              "on-secondary-fixed-variant": "#144f4b",
+              "on-tertiary-container": "#4e3d00",
+              "surface-bright": "#f9f9f8",
+              "inverse-primary": "#95d3ba",
+              "on-background": "#1a1c1c",
+              "on-tertiary-fixed": "#241a00",
+              "on-error-container": "#93000a",
+              "surface-variant": "#e2e2e2",
+              "surface": "#f9f9f8",
+              "on-tertiary-fixed-variant": "#574500",
+              "outline-variant": "#bfc9c3",
+              "primary-fixed": "#b0f0d6",
+              "error": "#ba1a1a",
+              "on-secondary-fixed": "#00201e",
+              "outline": "#707974",
+              "surface-container-highest": "#e2e2e2",
+              "on-surface": "#1a1c1c",
+              "error-container": "#ffdad6",
+              "on-primary-fixed-variant": "#0b513d",
+              "secondary-container": "#b5ede7",
+              "inverse-surface": "#2f3130",
+              "tertiary-container": "#cca72f",
+              "tertiary-fixed": "#ffe088",
+              "tertiary-fixed-dim": "#e9c349",
+              "inverse-on-surface": "#f1f1f0",
+              "on-primary-container": "#80bea6",
+              "on-tertiary": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Manrope", "IBM Plex Sans Arabic"],
+              "body": ["Inter", "IBM Plex Sans Arabic"],
+              "label": ["Inter", "IBM Plex Sans Arabic"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans Arabic', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex flex-row-reverse justify-between items-center px-6 py-4 bg-[#064E3B] dark:bg-slate-950 shadow-xl shadow-black/20 rtl">
+<div class="flex items-center gap-4">
+<div class="h-12 w-auto overflow-hidden">
+<img alt="مسار المحامي Logo" class="h-full w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0ug8At_te-QVxQky4mkeYTtLz63RagcS1jd0buSueQqCfYL8YVKxXHWbLN58Vk4WBF-arP6Oj8TJhFZ96JekcbM4kfHBSBrtA4ME1-39_6RLx1-JEprf3ft1LL9QYXq2wbB1AqpYk_T_SoXmuK4p3wvxQbNo-6XHMrDpGdaatEdq0oHsj31bJRb1Iz_yfBmzKUwIaNaUmNG0Z5YmN0knZAFWs9RenB6j8K5ucxBgNn-WVpRc4byuSpxXHYPdn0jtgIOM5vR2L8w4"/>
+</div>
+<div class="flex flex-col">
+<span class="text-[#D4AF37] font-['IBM_Plex_Sans_Arabic'] font-bold text-xl leading-snug">مسار المحامي</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-[#D4AF37] hover:bg-emerald-800/50 transition-colors p-2 rounded-xl">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-[#D4AF37] hover:bg-emerald-800/50 transition-colors p-2 rounded-xl">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<main class="pt-24 px-4 md:px-8 max-w-7xl mx-auto">
+<!-- Breadcrumbs & Actions -->
+<nav class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-2 text-on-surface-variant text-sm">
+<span>القضايا</span>
+<span class="material-symbols-outlined text-xs">chevron_left</span>
+<span class="text-primary font-bold">تفاصيل الملف</span>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-all text-on-surface font-medium">
+<span class="material-symbols-outlined text-lg">print</span>
+                    طباعة
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
+<span class="material-symbols-outlined text-lg">edit</span>
+                    تعديل البيانات
+                </button>
+</div>
+</nav>
+<!-- Case Hero Section (Asymmetric Layout) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+<div class="lg:col-span-8 bg-primary-container text-on-primary p-8 rounded-[2rem] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[280px]">
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-4">
+<span class="bg-tertiary text-on-tertiary px-4 py-1 rounded-full text-xs font-bold tracking-wide uppercase">قضية جارية</span>
+<span class="text-on-primary-container/80 font-headline font-bold">#١٢٣٤٥</span>
+</div>
+<h1 class="text-3xl md:text-4xl font-bold leading-tight mb-4 max-w-2xl">
+                        شركة المسار للمقاولات المحدودة ضد مؤسسة النور للتوريدات الكهربائية
+                    </h1>
+</div>
+<div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-on-primary-container/10">
+<div>
+<p class="text-on-primary-container/60 text-xs mb-1">تاريخ البدء</p>
+<p class="font-bold">١٥ أكتوبر ٢٠٢٣</p>
+</div>
+<div>
+<p class="text-on-primary-container/60 text-xs mb-1">المحكمة</p>
+<p class="font-bold">المحكمة التجارية بالرياض</p>
+</div>
+<div>
+<p class="text-on-primary-container/60 text-xs mb-1">القاضي</p>
+<p class="font-bold">د. خالد المنصور</p>
+</div>
+<div>
+<p class="text-on-primary-container/60 text-xs mb-1">الدائرة</p>
+<p class="font-bold">الدائرة التاسعة</p>
+</div>
+</div>
+<!-- Abstract decorative shape -->
+<div class="absolute -bottom-20 -left-20 w-64 h-64 bg-primary-fixed/10 rounded-full blur-3xl"></div>
+</div>
+<div class="lg:col-span-4 bg-surface-container-lowest p-8 rounded-[2rem] shadow-sm flex flex-col justify-center items-center text-center border border-outline-variant/10">
+<div class="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-tertiary-fixed text-on-tertiary-fixed">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">gavel</span>
+</div>
+<h3 class="text-xl font-bold mb-2">الحالة الراهنة</h3>
+<div class="bg-tertiary/10 text-tertiary px-6 py-2 rounded-full font-bold mb-6">
+                    في المحكمة (تحت التداول)
+                </div>
+<p class="text-on-surface-variant text-sm leading-relaxed px-4">
+                    تم الانتهاء من تبادل المذكرات الجوابية، والقضية الآن بانتظار تحديد موعد النطق بالحكم الابتدائي.
+                </p>
+</div>
+</section>
+<!-- Tab Bar -->
+<nav class="flex items-center gap-8 mb-8 border-b border-surface-container overflow-x-auto pb-0.5 scrollbar-hide">
+<a class="pb-4 border-b-4 border-tertiary text-primary font-bold px-2 whitespace-nowrap" href="#">الملخص</a>
+<a class="pb-4 border-b-4 border-transparent text-on-surface-variant hover:text-primary transition-all px-2 whitespace-nowrap" href="#">الجدول الزمني</a>
+<a class="pb-4 border-b-4 border-transparent text-on-surface-variant hover:text-primary transition-all px-2 whitespace-nowrap" href="#">المستندات</a>
+<a class="pb-4 border-b-4 border-transparent text-on-surface-variant hover:text-primary transition-all px-2 whitespace-nowrap" href="#">المهام</a>
+<a class="pb-4 border-b-4 border-transparent text-on-surface-variant hover:text-primary transition-all px-2 whitespace-nowrap" href="#">الفواتير</a>
+</nav>
+<!-- Bento Grid Content -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Next Hearing Card -->
+<div class="lg:col-span-2 bg-surface-container-low p-8 rounded-[2rem] border border-outline-variant/10">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">event_upcoming</span>
+<h2 class="text-xl font-bold">موعد الجلسة القادمة</h2>
+</div>
+</div>
+<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+<div>
+<div class="text-4xl font-black text-primary font-headline mb-1">٢٤ نوفمبر ٢٠٢٣</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span> ٠٩:٣٠ صباحاً</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span> القاعة رقم ٣ - الدور الثاني</span>
+</div>
+</div>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-container transition-all">
+<span class="material-symbols-outlined">calendar_add_on</span>
+                        إضافة للتقويم
+                    </button>
+</div>
+</div>
+<!-- Lead Lawyer Card -->
+<div class="bg-surface-container-lowest p-8 rounded-[2rem] shadow-sm border border-outline-variant/5">
+<h3 class="text-sm font-bold text-on-surface-variant mb-6">المحامي المسؤول</h3>
+<div class="flex items-center gap-4">
+<img alt="Lead Lawyer Avatar" class="w-16 h-16 rounded-2xl object-cover" data-alt="Professional portrait of a middle-aged male lawyer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCablUkqKNKooZ3fBJ1kcnFwNnE8hDFCVzUY6ozoVlaVBwJPpee4LUGmuuIlX1P2s3VoT034mGG8IoeSPWJ0JxHQCmDkahituYNgAfZUtuwIFCAKCPosxgpVa3pqv-5Ro77NqTQI6kb80-t5bwCSoummVi1wvGXnD_hV3siUDlpEMH7SKpgQRGXC5eVBK78u_RDKrbVtELNKfgQUHGD9q2fjvZFH5plDJkPZAsDNHofEJKgbt5Nbq5uaUQPMuI5rS_sVpk5svZNepo"/>
+<div>
+<div class="font-bold text-lg">أ. عبد العزيز التميمي</div>
+<div class="text-sm text-on-surface-variant">شريك أول - قسم النزاعات التجارية</div>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-surface-container flex gap-2">
+<button class="flex-1 bg-surface-container-high py-2 rounded-lg text-sm font-bold hover:bg-surface-container-highest transition-all">مراسلة</button>
+<button class="flex-1 bg-surface-container-high py-2 rounded-lg text-sm font-bold hover:bg-surface-container-highest transition-all">اتصال</button>
+</div>
+</div>
+<!-- Private Notes Section (Internal Only) -->
+<div class="lg:col-span-3 bg-white p-8 rounded-[2rem] border-2 border-dashed border-tertiary-fixed/40 relative overflow-hidden">
+<div class="absolute top-0 right-0 px-6 py-2 bg-tertiary-fixed text-on-tertiary-fixed text-xs font-bold rounded-bl-2xl flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">lock</span>
+                    للمكتب فقط (خاص)
+                </div>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-tertiary">notes</span>
+<h2 class="text-xl font-bold">ملاحظات داخلية</h2>
+</div>
+<div class="space-y-4">
+<div class="p-4 bg-surface-container-low rounded-xl">
+<div class="flex items-center justify-between mb-2">
+<span class="font-bold text-sm text-primary">أ. سارة الأحمد</span>
+<span class="text-[10px] text-on-surface-variant">منذ ساعتين</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                            تمت مراجعة القوائم المالية المرفقة من قبل المدعى عليه، ويوجد تضارب واضح في تواريخ التوريد بين الفاتورة رقم ٤٠٢ وشهادة الاستلام الموقعة. سنركز على هذه النقطة في المذكرة القادمة.
+                        </p>
+</div>
+<div class="relative">
+<textarea class="w-full bg-surface-container-low border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-tertiary-fixed transition-all resize-none h-24" placeholder="أضف ملاحظة سرية جديدة..."></textarea>
+<button class="absolute bottom-4 left-4 bg-tertiary text-on-tertiary w-8 h-8 rounded-lg flex items-center justify-center shadow-lg hover:scale-105 transition-all">
+<span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Matter Metrics -->
+<div class="bg-surface-container-low p-6 rounded-[2rem] border border-outline-variant/10">
+<h3 class="text-sm font-bold text-on-surface-variant mb-4">نسبة الإنجاز</h3>
+<div class="flex items-end gap-4 mb-2">
+<span class="text-4xl font-black text-primary font-headline">٧٥٪</span>
+<span class="text-xs text-on-surface-variant mb-2">تم إغلاق ١٥ من أصل ٢٠ مهمة</span>
+</div>
+<div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full w-3/4"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-[2rem] border border-outline-variant/10">
+<h3 class="text-sm font-bold text-on-surface-variant mb-4">المستندات الهامة</h3>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-red-600">picture_as_pdf</span>
+<span class="text-xs font-bold">لائحة الدعوى.pdf</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">download</span>
+</div>
+<div class="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-600">description</span>
+<span class="text-xs font-bold">عقد التأسيس.docx</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">download</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-[2rem] border border-outline-variant/10 flex flex-col justify-between">
+<div>
+<h3 class="text-sm font-bold text-on-surface-variant mb-1">إجمالي المطالبة</h3>
+<div class="text-2xl font-black text-tertiary font-headline">٢,٤٥٠,٠٠٠ ر.س</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/20">
+<h3 class="text-sm font-bold text-on-surface-variant mb-1">الأتعاب المحصلة</h3>
+<div class="text-lg font-bold text-primary">٤٥٠,٠٠٠ ر.س</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex flex-row-reverse justify-around items-center px-4 pb-6 pt-3 bg-[#064E3B]/95 backdrop-blur-xl dark:bg-slate-900/95 shadow-[0_-8px_30px_rgb(0,0,0,0.12)] rounded-t-[2rem] rtl">
+<a class="flex flex-col items-center justify-center text-emerald-200/60 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-['IBM_Plex_Sans_Arabic'] text-[11px] font-medium mt-1">الرئيسية</span>
+</a>
+<a class="flex flex-col items-center justify-center text-emerald-200/60 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-['IBM_Plex_Sans_Arabic'] text-[11px] font-medium mt-1">العملاء</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-emerald-800/50 text-[#D4AF37] rounded-2xl px-3 py-1.5 transform translate-y-[-2px] duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="gavel" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<span class="font-['IBM_Plex_Sans_Arabic'] text-[11px] font-medium mt-1">القضايا</span>
+</a>
+<a class="flex flex-col items-center justify-center text-emerald-200/60 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+<span class="font-['IBM_Plex_Sans_Arabic'] text-[11px] font-medium mt-1">المهام</span>
+</a>
+<a class="flex flex-col items-center justify-center text-emerald-200/60 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+<span class="font-['IBM_Plex_Sans_Arabic'] text-[11px] font-medium mt-1">المزيد</span>
+</a>
+</nav>
+</body></html>

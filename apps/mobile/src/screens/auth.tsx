@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'rea
 import { useNavigation } from '@react-navigation/native';
 import { Card, Field, HeroCard, Page, PrimaryButton, SegmentedControl, StatusChip } from '../components/ui';
 import { useAuth } from '../context/auth-context';
-import { colors, fonts, radius, spacing } from '../theme';
+import { colors, fonts } from '../theme';
 
 type PortalTab = 'workforce' | 'client';
 type Flow = 'signin' | 'signup';
@@ -279,13 +279,13 @@ export function AuthScreen() {
 
   const subtitle =
     portalTab === 'workforce'
-      ? 'دخول موحد لأصحاب المكاتب وشركاء النجاح والإدارة. أدخل البريد وكلمة المرور، ثم يصلك OTP تلقائيًا، وبعدها يتم تحويلك تلقائيًا إلى البوابة المناسبة.'
-      : 'دخول العملاء يبقى كما هو: البريد الإلكتروني ثم رمز تحقق OTP ثم التحويل مباشرة إلى بوابة العملاء.';
+      ? 'أصحاب المكاتب وشركاء النجاح والإدارة'
+      : 'عملاء المكتب';
 
   return (
     <AuthShell
       eyebrow="مسار المحامي"
-      title="بوابة دخول موحدة"
+      title="تسجيل الدخول"
       subtitle={subtitle}
       badge={portalTab === 'workforce' ? 'بوابة الفريق' : 'بوابة العملاء'}
     >
@@ -301,12 +301,6 @@ export function AuthScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {message ? <Text style={styles.message}>{message}</Text> : null}
-
-        {__DEV__ && !devAutoLoginEnabled ? (
-          <Text style={styles.helper}>
-            تم إيقاف الدخول التلقائي التجريبي. استخدم بيانات الحساب الحقيقية لاختبار التحويل التلقائي إلى المكتب أو الشريك أو الإدارة.
-          </Text>
-        ) : null}
 
         {portalTab === 'workforce' ? (
           flow === 'signup' ? (
@@ -356,9 +350,6 @@ export function AuthScreen() {
               <Pressable onPress={() => handleFlowChange('signin')} disabled={submitting}>
                 <Text style={styles.linkText}>لدي حساب بالفعل</Text>
               </Pressable>
-              <Text style={styles.helper}>
-                بعد إنشاء الحساب سيتم إرسال رابط التفعيل إلى البريد الإلكتروني. فعّل البريد ثم عد إلى شاشة الدخول.
-              </Text>
             </>
           ) : (
             <>
@@ -422,10 +413,6 @@ export function AuthScreen() {
                   <Text style={styles.linkText}>تسجيل مكتب جديد</Text>
                 </Pressable>
               </View>
-
-              <Text style={styles.helper}>
-                بعد التحقق من كلمة المرور، سيتم إرسال OTP تلقائيًا إلى البريد. عند إدخاله، نحولك تلقائيًا إلى المكتب أو بوابة الشركاء أو الإدارة حسب نوع الحساب.
-              </Text>
             </>
           )
         ) : (
@@ -459,35 +446,11 @@ export function AuthScreen() {
             {otpRequested ? (
               <PrimaryButton title="إعادة إرسال OTP" onPress={handleClientRequestOtp} disabled={submitting} secondary />
             ) : null}
-
-            <Text style={styles.helper}>
-              حساب العميل يُنشأ من داخل النظام، وبعدها يدخل العميل بنفس بريده الإلكتروني ويستلم رمز التحقق ثم يتحول تلقائيًا إلى بوابة العملاء.
-            </Text>
           </>
         )}
 
         {submitting ? <ActivityIndicator color={colors.primary} /> : null}
       </Card>
-
-      {portalTab === 'client' ? (
-        <Card muted>
-          <Text style={styles.altTitle}>بوابة الفريق</Text>
-          <Text style={styles.altText}>
-            مخصصة لأصحاب المكاتب وشركاء النجاح والإدارة. تعتمد كلمة المرور أولًا ثم التحقق بخطوتين عبر OTP.
-          </Text>
-          <PrimaryButton
-            title="الانتقال إلى بوابة الفريق"
-            onPress={() => {
-              setPortalTab('workforce');
-              setFlow('signin');
-              setOtpRequested(false);
-              setCode('');
-              resetMessages();
-            }}
-            secondary
-          />
-        </Card>
-      ) : null}
     </AuthShell>
   );
 }
@@ -531,26 +494,6 @@ const styles = StyleSheet.create({
   message: {
     color: colors.success,
     fontFamily: fonts.arabicMedium,
-    fontSize: 13,
-    lineHeight: 22,
-    textAlign: 'right',
-  },
-  helper: {
-    color: colors.textMuted,
-    fontFamily: fonts.arabicRegular,
-    fontSize: 13,
-    lineHeight: 22,
-    textAlign: 'right',
-  },
-  altTitle: {
-    color: colors.primary,
-    fontFamily: fonts.arabicBold,
-    fontSize: 18,
-    textAlign: 'right',
-  },
-  altText: {
-    color: colors.textMuted,
-    fontFamily: fonts.arabicRegular,
     fontSize: 13,
     lineHeight: 22,
     textAlign: 'right',

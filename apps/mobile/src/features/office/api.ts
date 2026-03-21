@@ -32,9 +32,26 @@ function buildUrl(path: string, query?: Record<string, string | number | boolean
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
-  const payload = (await response.json().catch(() => ({}))) as T & { error?: string };
+  const contentType = response.headers.get('content-type') ?? '';
+  const raw = await response.text().catch(() => '');
+  let payload = {} as T & { error?: string };
+  if (contentType.includes('application/json') && raw) {
+    try {
+      payload = JSON.parse(raw) as T & { error?: string };
+    } catch {
+      payload = {} as T & { error?: string };
+    }
+  }
   if (!response.ok) {
-    throw new Error((payload as { error?: string }).error || 'تعذر إكمال الطلب.');
+    if ((payload as { error?: string }).error) {
+      throw new Error((payload as { error?: string }).error as string);
+    }
+
+    if (raw.includes('<!DOCTYPE html>') || raw.includes('<html')) {
+      throw new Error('الخدمة المطلوبة غير متاحة على هذا الرابط حالياً. حدّث بيئة التطبيق ثم أعد المحاولة.');
+    }
+
+    throw new Error(`تعذر إكمال الطلب. (${response.status})`);
   }
   return payload;
 }

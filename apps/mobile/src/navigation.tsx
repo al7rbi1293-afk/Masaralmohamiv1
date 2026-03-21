@@ -25,7 +25,14 @@ import {
   OfficeMoreScreen,
   type OfficeStackParamList,
 } from './screens/office';
-import { AdminHomeScreen, type AdminStackParamList } from './screens/admin';
+import {
+  AdminAuditScreen,
+  AdminHomeScreen,
+  AdminOrgsScreen,
+  AdminRequestsScreen,
+  AdminUsersScreen,
+  type AdminStackParamList,
+} from './screens/admin';
 import {
   PartnerCommissionsScreen,
   PartnerHomeScreen,
@@ -234,6 +241,10 @@ function AdminNavigator() {
       }}
     >
       <AdminStack.Screen name="AdminHome" component={AdminHomeScreen} options={{ title: 'لوحة الإدارة' }} />
+      <AdminStack.Screen name="AdminRequests" component={AdminRequestsScreen} options={{ title: 'طلبات الاشتراك' }} />
+      <AdminStack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: 'المستخدمون' }} />
+      <AdminStack.Screen name="AdminOrgs" component={AdminOrgsScreen} options={{ title: 'المكاتب' }} />
+      <AdminStack.Screen name="AdminAudit" component={AdminAuditScreen} options={{ title: 'سجل التدقيق' }} />
     </AdminStack.Navigator>
   );
 }

@@ -725,6 +725,32 @@ export async function requireOfficeAppContext(request: NextRequest | Request) {
   return auth;
 }
 
+export async function requireOfficeOwnerAppContext(request: NextRequest | Request) {
+  const auth = await requireOfficeAppContext(request);
+  if (!auth.ok) {
+    return auth;
+  }
+
+  if (auth.context.role !== 'owner') {
+    return { ok: false as const, status: 403, error: 'لا تملك صلاحية تنفيذ هذا الإجراء.' };
+  }
+
+  return auth;
+}
+
+export async function requireMobileOfficeOwnerContext(request: NextRequest | Request) {
+  const auth = await requireOfficeAppContext(request);
+  if (!auth.ok) {
+    return auth;
+  }
+
+  if (auth.context.role !== 'owner') {
+    return { ok: false as const, status: 403, error: 'هذا الحساب لا يملك صلاحية إدارة الفريق.' };
+  }
+
+  return auth;
+}
+
 export async function requirePartnerAppContext(request: NextRequest | Request) {
   const auth = await authenticateMobileAppUser(request);
   if (!auth.ok) {

@@ -84,12 +84,13 @@ async function requestJson<T>(
   init: RequestInit,
 ) {
   const orgId = await resolveOfficeOrgId(session.token, session.orgId);
+  const hasBody = init.body !== undefined && init.body !== null;
   const response = await fetch(buildUrl(path), {
     ...init,
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${session.token}`,
-      ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(hasBody && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       Cookie: buildCookieHeader(session, orgId),
       ...(orgId ? { 'x-org-id': orgId } : {}),
       ...(init.headers ?? {}),
@@ -276,6 +277,7 @@ export type OfficeInvoiceDetails = {
     client?: {
       id: string;
       name: string | null;
+      email?: string | null;
     } | null;
     matter?: {
       id: string;
@@ -305,6 +307,7 @@ export type OfficeQuoteDetails = {
     client?: {
       id: string;
       name: string | null;
+      email?: string | null;
     } | null;
     matter?: {
       id: string;
@@ -828,6 +831,342 @@ export async function addOfficeInvoicePayment(
     note: payload.note ?? null,
     }),
   });
+}
+
+export async function sendOfficeInvoiceEmail(
+  session: OfficeMutationSession,
+  payload: {
+    invoice_id: string;
+    to_email?: string | null;
+    message_optional?: string | null;
+  },
+) {
+  return requestJson<{ ok: true; to_email: string }>(
+    `/api/mobile/office/billing/invoices/${payload.invoice_id}/send-email`,
+    session,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        to_email: payload.to_email ?? null,
+        message_optional: payload.message_optional ?? undefined,
+      }),
+    },
+  );
+}
+
+export type OfficeTeamRole = 'owner' | 'lawyer' | 'assistant';
+
+export type OfficeTeamMember = {
+  user_id: string;
+  email: string | null;
+  full_name: string;
+  phone: string | null;
+  license_number: string | null;
+  role: OfficeTeamRole;
+  permissions: Record<string, boolean>;
+  created_at: string;
+  is_current_user: boolean;
+};
+
+export type OfficeTeamInvitation = {
+  id: string;
+  email: string;
+  role: OfficeTeamRole;
+  token: string;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+};
+
+export type OfficeTeamOverview = {
+  ok: true;
+  org: {
+    id: string;
+    name: string | null;
+    logo_url: string | null;
+  } | null;
+  members: OfficeTeamMember[];
+  invitations: OfficeTeamInvitation[];
+  seat_summary: {
+    plan_code: string | null;
+    plan_label: string | null;
+    seat_limit: number | null;
+    member_count: number;
+    remaining_seats: number | null;
+    can_add_more_members: boolean;
+  };
+};
+
+export type OfficeSettings = {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  tax_number: string | null;
+  cr_number: string | null;
+  address: string | null;
+};
+
+export type OfficePricingPlanCard = {
+  code: 'SOLO' | 'SMALL_OFFICE' | 'MEDIUM_OFFICE' | 'ENTERPRISE';
+  title: string;
+  priceMonthly: number | null;
+  priceAnnual: number | null;
+  priceLabel: string;
+  periodLabel: string;
+  description: string;
+  seatsLabel: string;
+  action: 'subscribe' | 'contact';
+};
+
+export type OfficeSubscriptionOverview = {
+  subscription: {
+    id: string;
+    org_id: string;
+    plan_code: string;
+    status: string;
+    seats: number | null;
+    current_period_start: string | null;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean | null;
+    provider: string | null;
+    provider_customer_id: string | null;
+    provider_subscription_id: string | null;
+    created_at: string;
+  } | null;
+  current_plan_card: OfficePricingPlanCard | null;
+  pricing_cards: OfficePricingPlanCard[];
+  seat_usage: {
+    used: number;
+    limit: number;
+    available: number;
+  };
+  payment_requests: Array<{
+    id: string;
+    kind: 'payment_request';
+    org_id: string;
+    status: string;
+    plan_code: string;
+    billing_period: 'monthly' | 'yearly' | null;
+    amount: number | null;
+    currency: string | null;
+    bank_reference: string | null;
+    created_at: string;
+    reviewed_at: string | null;
+    reviewed_by: string | null;
+    review_note: string | null;
+    duration_months: number | null;
+    payment_method: string | null;
+    payment_reference: string | null;
+  }>;
+  latest_payment_request: OfficeSubscriptionOverview['payment_requests'][number] | null;
+  subscription_requests: Array<{
+    id: string;
+    kind: 'subscription_request';
+    org_id: string;
+    status: string;
+    plan_code: string;
+    billing_period: 'monthly' | 'yearly' | null;
+    amount: number | null;
+    currency: string | null;
+    bank_reference: string | null;
+    created_at: string;
+    reviewed_at: string | null;
+    reviewed_by: string | null;
+    review_note: string | null;
+    duration_months: number | null;
+    payment_method: string | null;
+    payment_reference: string | null;
+  }>;
+  recent_requests: Array<{
+    id: string;
+    kind: 'payment_request' | 'subscription_request';
+    org_id: string;
+    status: string;
+    plan_code: string;
+    billing_period: 'monthly' | 'yearly' | null;
+    amount: number | null;
+    currency: string | null;
+    bank_reference: string | null;
+    created_at: string;
+    reviewed_at: string | null;
+    reviewed_by: string | null;
+    review_note: string | null;
+    duration_months: number | null;
+    payment_method: string | null;
+    payment_reference: string | null;
+  }>;
+  has_active_access: boolean;
+};
+
+export async function fetchOfficeSettings(session: OfficeMutationSession) {
+  return requestJson<{ settings: OfficeSettings }>('/api/mobile/office/settings', session, {
+    method: 'GET',
+  });
+}
+
+export async function saveOfficeSettings(
+  session: OfficeMutationSession,
+  payload: {
+    name: string;
+    tax_number?: string | null;
+    cr_number?: string | null;
+    address?: string | null;
+    logo_url?: string | null;
+    logo_file?: { uri: string; name: string; mimeType?: string | null } | null;
+  },
+) {
+  if (payload.logo_file) {
+    const form = new FormData();
+    form.append('name', payload.name);
+    if (payload.tax_number !== undefined) form.append('tax_number', payload.tax_number ?? '');
+    if (payload.cr_number !== undefined) form.append('cr_number', payload.cr_number ?? '');
+    if (payload.address !== undefined) form.append('address', payload.address ?? '');
+    if (payload.logo_url !== undefined) form.append('logo_url', payload.logo_url ?? '');
+    form.append(
+      'logo_file',
+      {
+        uri: payload.logo_file.uri,
+        name: payload.logo_file.name,
+        type: payload.logo_file.mimeType ?? 'application/octet-stream',
+      } as any,
+    );
+
+    return requestJson<{ success: true; settings: OfficeSettings }>('/api/mobile/office/settings', session, {
+      method: 'POST',
+      body: form,
+    });
+  }
+
+  return requestJson<{ success: true; settings: OfficeSettings }>('/api/mobile/office/settings', session, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchOfficeTeamOverview(session: OfficeMutationSession) {
+  return requestJson<OfficeTeamOverview>('/api/mobile/office/team', session, {
+    method: 'GET',
+  });
+}
+
+export async function addOfficeTeamMember(
+  session: OfficeMutationSession,
+  payload: {
+    fullName: string;
+    email: string;
+    password: string;
+    licenseNumber?: string | null;
+    role: OfficeTeamRole;
+    permissions?: Record<string, boolean>;
+  },
+) {
+  return requestJson<{ ok: true }>('/api/mobile/office/team/members', session, {
+    method: 'POST',
+    body: JSON.stringify({
+      fullName: payload.fullName,
+      email: payload.email,
+      password: payload.password,
+      licenseNumber: payload.licenseNumber ?? null,
+      role: payload.role,
+      permissions: payload.permissions ?? {},
+    }),
+  });
+}
+
+export async function updateOfficeTeamMember(
+  session: OfficeMutationSession,
+  userId: string,
+  payload: {
+    fullName: string;
+    email: string;
+    phone?: string | null;
+    licenseNumber?: string | null;
+    permissions?: Record<string, boolean>;
+  },
+) {
+  return requestJson<{ ok: true }>(`/api/mobile/office/team/members/${userId}`, session, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      fullName: payload.fullName,
+      email: payload.email,
+      phone: payload.phone ?? null,
+      licenseNumber: payload.licenseNumber ?? null,
+      permissions: payload.permissions ?? undefined,
+    }),
+  });
+}
+
+export async function changeOfficeTeamMemberRole(
+  session: OfficeMutationSession,
+  userId: string,
+  role: OfficeTeamRole,
+) {
+  return requestJson<{ ok: true }>(`/api/mobile/office/team/members/${userId}`, session, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'role',
+      role,
+    }),
+  });
+}
+
+export async function removeOfficeTeamMember(session: OfficeMutationSession, userId: string) {
+  return requestJson<{ ok: true }>(`/api/mobile/office/team/members/${userId}`, session, {
+    method: 'DELETE',
+  });
+}
+
+export async function createOfficeTeamInvitation(
+  session: OfficeMutationSession,
+  payload: {
+    email: string;
+    role: OfficeTeamRole;
+    expiresIn?: '24h' | '7d';
+  },
+) {
+  return requestJson<{
+    ok: true;
+    inviteUrl: string;
+    invitation: OfficeTeamInvitation;
+  }>('/api/mobile/office/team/invitations', session, {
+    method: 'POST',
+    body: JSON.stringify({
+      email: payload.email,
+      role: payload.role,
+      expiresIn: payload.expiresIn ?? '7d',
+    }),
+  });
+}
+
+export async function revokeOfficeTeamInvitation(session: OfficeMutationSession, invitationId: string) {
+  return requestJson<{ ok: true }>(`/api/mobile/office/team/invitations/${invitationId}/revoke`, session, {
+    method: 'POST',
+  });
+}
+
+export async function fetchOfficeSubscriptionOverview(session: OfficeMutationSession) {
+  return requestJson<OfficeSubscriptionOverview>('/api/mobile/office/subscription', session, {
+    method: 'GET',
+  });
+}
+
+export async function createOfficeBankTransferRequest(
+  session: OfficeMutationSession,
+  payload: {
+    plan_code: string;
+    billing_period: 'monthly' | 'yearly';
+    amount: number;
+    bank_reference: string;
+  },
+) {
+  return requestJson<{ success: true; request: OfficeSubscriptionOverview['recent_requests'][number] }>(
+    '/api/mobile/office/subscription',
+    session,
+    {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    },
+  );
 }
 
 export function buildOfficeInvoicePdfUrl(session: OfficeMutationSession, invoiceId: string) {

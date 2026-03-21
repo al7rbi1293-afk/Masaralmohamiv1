@@ -26,6 +26,13 @@ import {
   type OfficeStackParamList,
 } from './screens/office';
 import {
+  OfficeIdentitySettingsScreen,
+  OfficeSettingsHomeScreen,
+  OfficeSettingsScreen,
+  OfficeSubscriptionSettingsScreen,
+  OfficeTeamSettingsScreen,
+} from './screens/office-settings';
+import {
   AdminAuditScreen,
   AdminHomeScreen,
   AdminOrgsScreen,
@@ -227,6 +234,11 @@ function OfficeNavigator() {
       <OfficeStack.Screen name="OfficeTaskForm" component={OfficeTaskFormScreen} options={({ route }) => ({ title: route.params.mode === 'edit' ? 'تعديل مهمة' : 'مهمة جديدة' })} />
       <OfficeStack.Screen name="OfficeDocumentForm" component={OfficeDocumentFormScreen} options={{ title: 'مستند جديد' }} />
       <OfficeStack.Screen name="OfficeBillingForm" component={OfficeBillingFormScreen} options={({ route }) => ({ title: route.params.mode === 'quote' ? 'عرض سعر' : 'فاتورة جديدة' })} />
+      <OfficeStack.Screen name="OfficeSettingsHome" component={OfficeSettingsHomeScreen} options={{ title: 'إدارة المكتب' }} />
+      <OfficeStack.Screen name="OfficeIdentitySettings" component={OfficeIdentitySettingsScreen} options={{ title: 'هوية المكتب' }} />
+      <OfficeStack.Screen name="OfficeTeamSettings" component={OfficeTeamSettingsScreen} options={{ title: 'الفريق' }} />
+      <OfficeStack.Screen name="OfficeSubscriptionSettings" component={OfficeSubscriptionSettingsScreen} options={{ title: 'الاشتراك' }} />
+      <OfficeStack.Screen name="OfficeSettings" component={OfficeSettingsScreen} options={{ title: 'إعدادات المكتب' }} />
     </OfficeStack.Navigator>
   );
 }

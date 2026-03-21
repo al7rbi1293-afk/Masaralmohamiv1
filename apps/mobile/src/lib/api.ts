@@ -335,6 +335,13 @@ export async function signInOffice(email: string, password: string) {
   });
 }
 
+export async function requestOfficeOtpAfterPassword(email: string, password: string) {
+  return postJson<OfficeOtpRequestResponse>('/api/mobile/auth/password-challenge', {
+    email,
+    password,
+  });
+}
+
 export async function requestOfficeOtp(email: string) {
   return postJson<OfficeOtpRequestResponse>('/api/mobile/auth/request-otp', {
     email,

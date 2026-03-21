@@ -5,6 +5,7 @@ import {
   fetchClientBootstrap,
   fetchOfficeBootstrap,
   fetchPartnerBootstrap,
+  requestOfficeOtpAfterPassword as requestOfficeOtpAfterPasswordApi,
   requestOfficeOtp as requestOfficeOtpApi,
   resendOfficeActivation as resendOfficeActivationApi,
   requestClientOtp,
@@ -26,11 +27,12 @@ type AuthState = {
     password: string;
     targetPortal?: 'office' | 'partner' | 'admin';
   }) => Promise<void>;
+  requestOfficeOtpAfterPassword: (params: { email: string; password: string }) => Promise<string>;
   requestOfficeOtp: (email: string) => Promise<string>;
   signInOfficeWithOtp: (params: {
     email: string;
     code: string;
-    targetPortal?: 'office' | 'partner' | 'admin';
+    targetPortal?: 'office' | 'partner' | 'admin' | 'auto';
   }) => Promise<void>;
   requestOtp: (email: string) => Promise<string>;
   signInClientWithOtp: (params: { email: string; code: string }) => Promise<void>;
@@ -67,12 +69,22 @@ async function validateSession(session: StoredSession) {
   return fetchOfficeBootstrap(session.token);
 }
 
-function resolveOfficeSession(payload: OfficeSessionResponse, targetPortal: 'office' | 'partner' | 'admin' = 'office') {
-  const resolvedPortal: StoredSession['portal'] = targetPortal === 'admin'
-    ? 'admin'
-    : payload.role.partner_only || (!payload.role.has_office_access && payload.role.has_partner_access)
-      ? 'partner'
-      : 'office';
+function resolveOfficeSession(
+  payload: OfficeSessionResponse,
+  targetPortal: 'office' | 'partner' | 'admin' | 'auto' = 'auto',
+) {
+  const resolvedPortal: StoredSession['portal'] =
+    targetPortal === 'admin'
+      ? 'admin'
+      : targetPortal === 'partner'
+        ? 'partner'
+        : targetPortal === 'office'
+          ? 'office'
+          : payload.role.is_admin
+            ? 'admin'
+            : payload.role.partner_only || (!payload.role.has_office_access && payload.role.has_partner_access)
+              ? 'partner'
+              : 'office';
 
   if (targetPortal === 'partner' && resolvedPortal !== 'partner') {
     throw new Error('هذا الحساب ليس مرتبطًا ببوابة الشريك.');
@@ -169,6 +181,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await saveSession(nextSession);
         setSession(nextSession);
       },
+      async requestOfficeOtpAfterPassword({ email, password }) {
+        const payload = await requestOfficeOtpAfterPasswordApi(email, password);
+        if (payload.error) {
+          throw new Error(payload.error);
+        }
+        return payload.message || 'تم إرسال رمز التحقق.';
+      },
       async requestOfficeOtp(email) {
         const payload = await requestOfficeOtpApi(email);
         if (payload.error) {
@@ -176,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return payload.message || 'تم إرسال رمز التحقق.';
       },
-      async signInOfficeWithOtp({ email, code, targetPortal = 'office' }) {
+      async signInOfficeWithOtp({ email, code, targetPortal = 'auto' }) {
         const payload = await verifyOfficeOtpApi(email, code);
         const nextSession = resolveOfficeSession(payload, targetPortal);
 

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Card, Field, HeroCard, Page, PrimaryButton, StatusChip } from '../components/ui';
+import { useNavigation } from '@react-navigation/native';
+import { Card, Field, HeroCard, Page, PrimaryButton, SegmentedControl, StatusChip } from '../components/ui';
 import { useAuth } from '../context/auth-context';
 import { colors, fonts, radius, spacing } from '../theme';
 
-type Mode = 'office' | 'client' | 'partner' | 'admin';
+type PortalTab = 'workforce' | 'client';
 type Flow = 'signin' | 'signup';
 
 const devAutoLoginEnabled = process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN_ENABLED?.trim().toLowerCase() === 'true';
@@ -17,10 +18,42 @@ const devAutoLoginPortal =
       ? 'admin'
       : 'office';
 
+function AuthShell({
+  eyebrow,
+  title,
+  subtitle,
+  badge,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  children: ReactNode;
+}) {
+  return (
+    <Page>
+      <HeroCard
+        eyebrow={eyebrow}
+        title={title}
+        subtitle={subtitle}
+        aside={<StatusChip label={badge} tone={badge === 'بوابة العملاء' ? 'gold' : 'danger'} />}
+      />
+
+      <View style={styles.logoWrap}>
+        <Image source={require('../../assets/masar-logo.png')} style={styles.logo} resizeMode="contain" />
+      </View>
+
+      {children}
+    </Page>
+  );
+}
+
 export function AuthScreen() {
+  const navigation = useNavigation<any>();
   const {
     signInWithPassword,
-    requestOfficeOtp,
+    requestOfficeOtpAfterPassword,
     signInOfficeWithOtp,
     requestOtp,
     signInClientWithOtp,
@@ -29,12 +62,12 @@ export function AuthScreen() {
   } = useAuth();
   const autoLoginAttemptedRef = useRef(false);
 
-  const [mode, setMode] = useState<Mode>('office');
+  const [portalTab, setPortalTab] = useState<PortalTab>('workforce');
   const [flow, setFlow] = useState<Flow>('signin');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [fullName, setFullName] = useState('');
-  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [firmName, setFirmName] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
@@ -54,7 +87,7 @@ export function AuthScreen() {
     }
 
     autoLoginAttemptedRef.current = true;
-    setMode(devAutoLoginPortal);
+    setPortalTab('workforce');
     setFlow('signin');
     setEmail(devAutoLoginEmail);
     setSubmitting(true);
@@ -92,13 +125,11 @@ export function AuthScreen() {
     setMessage('');
   }
 
-  function handleModeChange(nextMode: Mode) {
-    setMode(nextMode);
+  function handlePortalTabChange(nextTab: PortalTab) {
+    setPortalTab(nextTab);
+    setFlow('signin');
     setCode('');
     setOtpRequested(false);
-    if (nextMode !== 'office') {
-      setFlow('signin');
-    }
     resetMessages();
   }
 
@@ -109,7 +140,54 @@ export function AuthScreen() {
     resetMessages();
   }
 
-  async function handleRequestOtp() {
+  async function handleWorkforceStartSignIn() {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password.trim()) {
+      setError('يرجى إدخال البريد الإلكتروني وكلمة المرور.');
+      return;
+    }
+
+    setSubmitting(true);
+    resetMessages();
+
+    try {
+      const nextMessage = await requestOfficeOtpAfterPassword({
+        email: normalizedEmail,
+        password,
+      });
+      setMessage(nextMessage);
+      setOtpRequested(true);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'تعذر بدء التحقق بخطوتين.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleWorkforceVerifyOtp() {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedCode = code.trim();
+    if (!normalizedEmail || normalizedCode.length < 4) {
+      setError('يرجى إدخال البريد الإلكتروني ورمز التحقق.');
+      return;
+    }
+
+    setSubmitting(true);
+    resetMessages();
+
+    try {
+      await signInOfficeWithOtp({
+        email: normalizedEmail,
+        code: normalizedCode,
+      });
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : 'تعذر التحقق من الرمز.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleClientRequestOtp() {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
       setError('يرجى إدخال البريد الإلكتروني.');
@@ -120,10 +198,7 @@ export function AuthScreen() {
     resetMessages();
 
     try {
-      const nextMessage =
-        mode === 'client'
-          ? await requestOtp(normalizedEmail)
-          : await requestOfficeOtp(normalizedEmail);
+      const nextMessage = await requestOtp(normalizedEmail);
       setMessage(nextMessage);
       setOtpRequested(true);
     } catch (nextError) {
@@ -133,7 +208,7 @@ export function AuthScreen() {
     }
   }
 
-  async function handleVerifyOtp() {
+  async function handleClientVerifyOtp() {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedCode = code.trim();
     if (!normalizedEmail || normalizedCode.length < 4) {
@@ -145,16 +220,7 @@ export function AuthScreen() {
     resetMessages();
 
     try {
-      if (mode === 'client') {
-        await signInClientWithOtp({ email: normalizedEmail, code: normalizedCode });
-        return;
-      }
-
-      await signInOfficeWithOtp({
-        email: normalizedEmail,
-        code: normalizedCode,
-        targetPortal: mode === 'partner' ? 'partner' : mode === 'admin' ? 'admin' : 'office',
-      });
+      await signInClientWithOtp({ email: normalizedEmail, code: normalizedCode });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'تعذر التحقق من الرمز.');
     } finally {
@@ -212,131 +278,156 @@ export function AuthScreen() {
   }
 
   const subtitle =
-    flow === 'signup'
-      ? 'أنشئ حساب مكتب جديد ثم فعّل البريد الإلكتروني قبل أول دخول.'
-      : mode === 'office'
-        ? 'دخول المكتب عبر رمز تحقق يصل إلى البريد الإلكتروني لكل أعضاء الفريق.'
-        : mode === 'client'
-          ? 'بوابة العميل تعمل برمز تحقق على البريد الإلكتروني.'
-          : mode === 'partner'
-            ? 'بوابة الشريك تعمل الآن أيضًا برمز تحقق على البريد الإلكتروني.'
-            : 'الدخول إلى لوحة الإدارة يتم عبر رمز تحقق مع صلاحيات الأدمن.';
-
-  const modeLabel =
-    mode === 'client'
-      ? 'بوابة العميل'
-      : mode === 'partner'
-        ? 'بوابة الشريك'
-        : mode === 'admin'
-          ? 'الإدارة'
-          : 'تشغيل المكتب';
+    portalTab === 'workforce'
+      ? 'دخول موحد لأصحاب المكاتب وشركاء النجاح والإدارة. أدخل البريد وكلمة المرور، ثم يصلك OTP تلقائيًا، وبعدها يتم تحويلك تلقائيًا إلى البوابة المناسبة.'
+      : 'دخول العملاء يبقى كما هو: البريد الإلكتروني ثم رمز تحقق OTP ثم التحويل مباشرة إلى بوابة العملاء.';
 
   return (
-    <Page>
-      <HeroCard
-        eyebrow="مسار المحامي"
-        title="منصة واحدة للمكتب والعميل والشريك والإدارة"
-        subtitle={subtitle}
-        aside={<StatusChip label={modeLabel} tone={mode === 'admin' ? 'danger' : 'gold'} />}
-      />
-
-      <View style={styles.logoWrap}>
-        <Image source={require('../../assets/masar-logo.png')} style={styles.logo} resizeMode="contain" />
-      </View>
-
+    <AuthShell
+      eyebrow="مسار المحامي"
+      title="بوابة دخول موحدة"
+      subtitle={subtitle}
+      badge={portalTab === 'workforce' ? 'بوابة الفريق' : 'بوابة العملاء'}
+    >
       <Card>
-        <View style={styles.segmentRow}>
-          {[
-            { key: 'office', label: 'المكتب' },
-            { key: 'client', label: 'العميل' },
-            { key: 'partner', label: 'الشريك' },
-            { key: 'admin', label: 'الإدارة' },
-          ].map((item) => (
-            <Pressable
-              key={item.key}
-              onPress={() => handleModeChange(item.key as Mode)}
-              style={[styles.segment, mode === item.key && styles.segmentActive]}
-            >
-              <Text style={[styles.segmentText, mode === item.key && styles.segmentTextActive]}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {mode === 'office' ? (
-          <View style={styles.flowRow}>
-            {[
-              { key: 'signin', label: 'تسجيل الدخول' },
-              { key: 'signup', label: 'تسجيل جديد' },
-            ].map((item) => (
-              <Pressable
-                key={item.key}
-                onPress={() => handleFlowChange(item.key as Flow)}
-                style={[styles.flowChip, flow === item.key && styles.flowChipActive]}
-              >
-                <Text style={[styles.flowChipText, flow === item.key && styles.flowChipTextActive]}>{item.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+        <SegmentedControl
+          options={[
+            { key: 'workforce', label: 'بوابة الفريق' },
+            { key: 'client', label: 'بوابة العملاء' },
+          ]}
+          value={portalTab}
+          onChange={(value) => handlePortalTabChange(value as PortalTab)}
+        />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
         {__DEV__ && !devAutoLoginEnabled ? (
           <Text style={styles.helper}>
-            تم إيقاف الدخول التلقائي التجريبي. سجّل بنفس بيانات الموقع الحالية لاختبار التطبيق على بياناتك الحقيقية.
+            تم إيقاف الدخول التلقائي التجريبي. استخدم بيانات الحساب الحقيقية لاختبار التحويل التلقائي إلى المكتب أو الشريك أو الإدارة.
           </Text>
         ) : null}
 
-        {flow === 'signup' ? (
-          <>
-            <Field
-              label="الاسم الكامل"
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="عبدالعزيز الحازمي"
-              editable={!submitting}
-            />
-            <Field
-              label="البريد الإلكتروني"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="name@example.com"
-              keyboardType="email-address"
-              editable={!submitting}
-            />
-            <Field
-              label="رقم الجوال"
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="05xxxxxxxx"
-              editable={!submitting}
-            />
-            <Field
-              label="كلمة المرور"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              secureTextEntry
-              editable={!submitting}
-            />
-            <Field
-              label="اسم المكتب"
-              value={firmName}
-              onChangeText={setFirmName}
-              placeholder="اختياري"
-              editable={!submitting}
-            />
-            <PrimaryButton
-              title="إنشاء الحساب"
-              onPress={handleSignUp}
-              disabled={submitting || !fullName.trim() || !email.trim() || !phone.trim() || !password.trim()}
-            />
-            <PrimaryButton title="لدي حساب بالفعل" onPress={() => handleFlowChange('signin')} disabled={submitting} secondary />
-            <Text style={styles.helper}>
-              بعد إنشاء الحساب سنرسل رسالة تفعيل إلى البريد الإلكتروني. فعّل البريد ثم عد إلى تسجيل الدخول بالرمز.
-            </Text>
-          </>
+        {portalTab === 'workforce' ? (
+          flow === 'signup' ? (
+            <>
+              <Field
+                label="الاسم الكامل"
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="عبدالعزيز الحازمي"
+                editable={!submitting}
+              />
+              <Field
+                label="البريد الإلكتروني"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="name@example.com"
+                keyboardType="email-address"
+                editable={!submitting}
+              />
+              <Field
+                label="رقم الجوال"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="05xxxxxxxx"
+                editable={!submitting}
+              />
+              <Field
+                label="كلمة المرور"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                secureTextEntry
+                editable={!submitting}
+              />
+              <Field
+                label="اسم المكتب"
+                value={firmName}
+                onChangeText={setFirmName}
+                placeholder="اختياري"
+                editable={!submitting}
+              />
+              <PrimaryButton
+                title="إنشاء حساب مكتب جديد"
+                onPress={handleSignUp}
+                disabled={submitting || !fullName.trim() || !email.trim() || !phone.trim() || !password.trim()}
+              />
+              <Pressable onPress={() => handleFlowChange('signin')} disabled={submitting}>
+                <Text style={styles.linkText}>لدي حساب بالفعل</Text>
+              </Pressable>
+              <Text style={styles.helper}>
+                بعد إنشاء الحساب سيتم إرسال رابط التفعيل إلى البريد الإلكتروني. فعّل البريد ثم عد إلى شاشة الدخول.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Field
+                label="البريد الإلكتروني"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="name@example.com"
+                keyboardType="email-address"
+                editable={!submitting}
+              />
+              <Field
+                label="كلمة المرور"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                secureTextEntry
+                editable={!submitting}
+              />
+
+              {otpRequested ? (
+                <Field
+                  label="رمز التحقق"
+                  value={code}
+                  onChangeText={setCode}
+                  placeholder="123456"
+                  keyboardType="numeric"
+                  editable={!submitting}
+                />
+              ) : null}
+
+              <PrimaryButton
+                title={otpRequested ? 'تأكيد الدخول' : 'متابعة'}
+                onPress={otpRequested ? handleWorkforceVerifyOtp : handleWorkforceStartSignIn}
+                disabled={
+                  submitting ||
+                  !email.trim() ||
+                  !password.trim() ||
+                  (otpRequested && code.trim().length < 4)
+                }
+              />
+
+              {otpRequested ? (
+                <PrimaryButton
+                  title="إعادة إرسال OTP"
+                  onPress={handleWorkforceStartSignIn}
+                  disabled={submitting || !email.trim() || !password.trim()}
+                  secondary
+                />
+              ) : null}
+
+              <PrimaryButton
+                title="إعادة إرسال رسالة التفعيل"
+                onPress={handleResendActivation}
+                disabled={submitting || !email.trim()}
+                secondary
+              />
+
+              <View style={styles.inlineActions}>
+                <Pressable onPress={() => handleFlowChange('signup')} disabled={submitting}>
+                  <Text style={styles.linkText}>تسجيل مكتب جديد</Text>
+                </Pressable>
+              </View>
+
+              <Text style={styles.helper}>
+                بعد التحقق من كلمة المرور، سيتم إرسال OTP تلقائيًا إلى البريد. عند إدخاله، نحولك تلقائيًا إلى المكتب أو بوابة الشركاء أو الإدارة حسب نوع الحساب.
+              </Text>
+            </>
+          )
         ) : (
           <>
             <Field
@@ -360,48 +451,55 @@ export function AuthScreen() {
             ) : null}
 
             <PrimaryButton
-              title={otpRequested ? 'تأكيد الدخول' : 'إرسال رمز التحقق'}
-              onPress={otpRequested ? handleVerifyOtp : handleRequestOtp}
+              title={otpRequested ? 'تأكيد الدخول' : 'إرسال OTP'}
+              onPress={otpRequested ? handleClientVerifyOtp : handleClientRequestOtp}
               disabled={submitting || !email.trim() || (otpRequested && code.trim().length < 4)}
             />
 
             {otpRequested ? (
-              <PrimaryButton title="إعادة إرسال الرمز" onPress={handleRequestOtp} disabled={submitting} secondary />
+              <PrimaryButton title="إعادة إرسال OTP" onPress={handleClientRequestOtp} disabled={submitting} secondary />
             ) : null}
 
-            {mode !== 'client' ? (
-              <PrimaryButton
-                title="إعادة إرسال رسالة التفعيل"
-                onPress={handleResendActivation}
-                disabled={submitting || !email.trim()}
-                secondary
-              />
-            ) : null}
-
-            {mode === 'office' ? (
-              <Text style={styles.helper}>
-                إذا كان هذا أول حساب للمكتب فاختر "تسجيل جديد". جميع أعضاء المكتب يسجّلون الدخول الآن عبر OTP على البريد.
-              </Text>
-            ) : mode === 'client' ? (
-              <Text style={styles.helper}>
-                حساب العميل يُنشأ من داخل النظام، وبعدها يدخل العميل بنفس بريده عبر رمز التحقق.
-              </Text>
-            ) : mode === 'partner' ? (
-              <Text style={styles.helper}>
-                حسابات الشركاء تُفعل من الإدارة، وبعدها يتم الدخول عبر OTP على البريد الإلكتروني.
-              </Text>
-            ) : (
-              <Text style={styles.helper}>
-                استخدم بريد الأدمن لتدخل إلى لوحة الإدارة، وبعدها تفتح أدوات الإدارة الكاملة من داخل التطبيق.
-              </Text>
-            )}
+            <Text style={styles.helper}>
+              حساب العميل يُنشأ من داخل النظام، وبعدها يدخل العميل بنفس بريده الإلكتروني ويستلم رمز التحقق ثم يتحول تلقائيًا إلى بوابة العملاء.
+            </Text>
           </>
         )}
 
         {submitting ? <ActivityIndicator color={colors.primary} /> : null}
       </Card>
-    </Page>
+
+      {portalTab === 'client' ? (
+        <Card muted>
+          <Text style={styles.altTitle}>بوابة الفريق</Text>
+          <Text style={styles.altText}>
+            مخصصة لأصحاب المكاتب وشركاء النجاح والإدارة. تعتمد كلمة المرور أولًا ثم التحقق بخطوتين عبر OTP.
+          </Text>
+          <PrimaryButton
+            title="الانتقال إلى بوابة الفريق"
+            onPress={() => {
+              setPortalTab('workforce');
+              setFlow('signin');
+              setOtpRequested(false);
+              setCode('');
+              resetMessages();
+            }}
+            secondary
+          />
+        </Card>
+      ) : null}
+    </AuthShell>
   );
+}
+
+export function ClientAuthScreen() {
+  const navigation = useNavigation<any>();
+
+  useEffect(() => {
+    navigation.replace('Auth');
+  }, [navigation]);
+
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -412,56 +510,16 @@ const styles = StyleSheet.create({
     width: 180,
     height: 90,
   },
-  segmentRow: {
+  inlineActions: {
     flexDirection: 'row-reverse',
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.md,
-    padding: 4,
-    gap: 4,
-  },
-  segment: {
-    flex: 1,
-    borderRadius: radius.md,
-    paddingVertical: 12,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  segmentActive: {
-    backgroundColor: colors.surface,
-  },
-  segmentText: {
-    color: colors.textMuted,
+  linkText: {
+    color: colors.primary,
     fontFamily: fonts.arabicSemiBold,
     fontSize: 13,
-  },
-  segmentTextActive: {
-    color: colors.primary,
-  },
-  flowRow: {
-    flexDirection: 'row-reverse',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  flowChip: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  flowChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.surfaceMuted,
-  },
-  flowChipText: {
-    color: colors.textMuted,
-    fontFamily: fonts.arabicSemiBold,
-    fontSize: 13,
-  },
-  flowChipTextActive: {
-    color: colors.primary,
+    textAlign: 'right',
   },
   error: {
     color: colors.danger,
@@ -478,6 +536,19 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   helper: {
+    color: colors.textMuted,
+    fontFamily: fonts.arabicRegular,
+    fontSize: 13,
+    lineHeight: 22,
+    textAlign: 'right',
+  },
+  altTitle: {
+    color: colors.primary,
+    fontFamily: fonts.arabicBold,
+    fontSize: 18,
+    textAlign: 'right',
+  },
+  altText: {
     color: colors.textMuted,
     fontFamily: fonts.arabicRegular,
     fontSize: 13,

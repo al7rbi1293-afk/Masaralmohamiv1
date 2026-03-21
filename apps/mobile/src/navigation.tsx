@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { AuthScreen } from './screens/auth';
+import { AuthScreen, ClientAuthScreen } from './screens/auth';
 import {
   ClientCenterScreen,
   ClientHomeScreen,
@@ -358,7 +358,10 @@ export function AppNavigation() {
     <NavigationContainer theme={navTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {!session ? (
-          <RootStack.Screen name="Auth" component={AuthScreen} />
+          <>
+            <RootStack.Screen name="Auth" component={AuthScreen} />
+            <RootStack.Screen name="ClientAuth" component={ClientAuthScreen} />
+          </>
         ) : session.portal === 'client' ? (
           <RootStack.Screen name="Client" component={ClientNavigator} />
         ) : session.portal === 'admin' ? (

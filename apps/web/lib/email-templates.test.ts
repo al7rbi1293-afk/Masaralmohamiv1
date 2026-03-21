@@ -11,6 +11,9 @@ import {
   CLIENT_PORTAL_WELCOME_EMAIL_HTML,
   CLIENT_PORTAL_WELCOME_EMAIL_SUBJECT,
   CLIENT_PORTAL_WELCOME_EMAIL_TEXT,
+  LOGIN_OTP_EMAIL_HTML,
+  LOGIN_OTP_EMAIL_SUBJECT,
+  LOGIN_OTP_EMAIL_TEXT,
   TASK_REMINDER_EMAIL_HTML,
   TASK_REMINDER_EMAIL_SUBJECT,
   TASK_REMINDER_EMAIL_TEXT,
@@ -107,4 +110,25 @@ test('task reminder email includes status, due date, and office note', () => {
   assert.match(html, /قيد التنفيذ/);
   assert.match(html, /يرجى إرسال النسخة الموقعة قبل نهاية اليوم/);
   assert.match(text, /موعد الاستحقاق: 15 مارس 2026، 09:30 ص/);
+});
+
+test('login otp email uses the shared branded template and text copy', () => {
+  const html = LOGIN_OTP_EMAIL_HTML({
+    name: 'عبدالعزيز',
+    code: '654321',
+    ttlMinutes: 10,
+  });
+  const text = LOGIN_OTP_EMAIL_TEXT({
+    name: 'عبدالعزيز',
+    code: '654321',
+    ttlMinutes: 10,
+  });
+
+  assert.match(LOGIN_OTP_EMAIL_SUBJECT, /رمز التحقق/);
+  assert.match(html, /عبدالعزيز/);
+  assert.match(html, /654321/);
+  assert.match(html, /10 دقائق/);
+  assert.match(html, /تحقق ثنائي/);
+  assert.match(text, /654321/);
+  assert.match(text, /صلاحية الرمز: 10 دقائق/);
 });

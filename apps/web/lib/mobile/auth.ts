@@ -6,6 +6,9 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { generateSessionToken, verifyPassword, verifySessionToken } from '@/lib/auth-custom';
 import { sendEmail } from '@/lib/email';
 import {
+  LOGIN_OTP_EMAIL_HTML,
+  LOGIN_OTP_EMAIL_SUBJECT,
+  LOGIN_OTP_EMAIL_TEXT,
   WELCOME_EMAIL_HTML,
   WELCOME_EMAIL_SUBJECT,
 } from '@/lib/email-templates';
@@ -222,25 +225,19 @@ async function sendMobileOtpEmail(params: {
   fullName: string | null;
   code: string;
 }) {
-  const html = `
-    <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.8; color: #1f2937;">
-      <h2 style="color: #0f766e; margin-bottom: 12px;">رمز الدخول إلى مسار المحامي</h2>
-      <p>مرحباً ${params.fullName || 'عميلنا الكريم'}،</p>
-      <p>تم طلب تسجيل دخول إلى حسابك في مسار المحامي. استخدم الرمز التالي لإكمال العملية:</p>
-      <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:16px;padding:20px;text-align:center;margin:20px 0;">
-        <div style="font-size:32px;letter-spacing:8px;font-weight:700;color:#047857;">${params.code}</div>
-        <p style="margin:12px 0 0;color:#065f46;">هذا الرمز صالح لمدة ${MOBILE_OTP_TTL_MINUTES} دقائق فقط.</p>
-      </div>
-      <p>إذا لم تكن أنت من طلب هذا الرمز، تجاهل هذه الرسالة ولن يتم تسجيل الدخول.</p>
-      <p>مع التحية،<br/>فريق مسار المحامي</p>
-    </div>
-  `;
-
   await sendEmail({
     to: params.email,
-    subject: 'رمز الدخول إلى مسار المحامي',
-    html,
-    text: `رمز التحقق هو ${params.code}. صالح لمدة ${MOBILE_OTP_TTL_MINUTES} دقائق.`,
+    subject: LOGIN_OTP_EMAIL_SUBJECT,
+    html: LOGIN_OTP_EMAIL_HTML({
+      name: params.fullName || 'عميلنا الكريم',
+      code: params.code,
+      ttlMinutes: MOBILE_OTP_TTL_MINUTES,
+    }),
+    text: LOGIN_OTP_EMAIL_TEXT({
+      name: params.fullName || 'عميلنا الكريم',
+      code: params.code,
+      ttlMinutes: MOBILE_OTP_TTL_MINUTES,
+    }),
   });
 }
 

@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Masar Al-Muhami",
+    "slug": "masar-al-muhami-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "jsEngine": "hermes",
+    "userInterfaceStyle": "light",
+    "scheme": "masar",
+    "splash": {
+      "image": "./assets/masar-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b2f25"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.masaralmuhami.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.masaralmuhami.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6706a16c-17ff-4819-a95b-d4b2f1ed1205"
+      }
+    },
+    "owner": "abdulazizalhazmi",
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      "expo-secure-store"
+    ]
+  }
+}

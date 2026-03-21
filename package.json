@@ -8,6 +8,12 @@
   "scripts": {
     "build": "npm run build --workspace @masar/web",
     "build:all": "npm run build --workspaces",
+    "mobile:start": "npm run start --workspace @masar/mobile",
+    "mobile:android": "npm run android --workspace @masar/mobile",
+    "mobile:ios": "npm run ios --workspace @masar/mobile",
+    "mobile:web": "npm run web --workspace @masar/mobile",
+    "mobile:testflight": "npx eas-cli build --platform ios --profile production --local false",
+    "mobile:testflight:submit": "npx eas-cli submit --platform ios --profile production",
     "pretest": "npm run prisma:generate --workspace @sijil/api",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",

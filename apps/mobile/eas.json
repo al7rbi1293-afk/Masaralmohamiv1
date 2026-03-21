@@ -1,0 +1,59 @@
+{
+  "cli": {
+    "version": ">= 18.4.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://masaralmohami.com"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://masaralmohami.com"
+      }
+    },
+    "qaLocal": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.100.46:3002"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://masaralmohami.com"
+      }
+    },
+    "storeAndroid": {
+      "extends": "production",
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://masaralmohami.com"
+      }
+    },
+    "storeIos": {
+      "extends": "production",
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://masaralmohami.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {},
+    "storeAndroid": {},
+    "storeIos": {}
+  }
+}

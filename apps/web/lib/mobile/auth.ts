@@ -24,7 +24,7 @@ type AppUserRow = {
   email_verified: boolean;
 };
 
-type AppUserAuthRow = Pick<AppUserRow, 'id' | 'email' | 'full_name' | 'status' | 'email_verified'> & {
+type AppUserAuthRow = Pick<AppUserRow, 'id' | 'email' | 'full_name' | 'password_hash' | 'status' | 'email_verified'> & {
   otp_code: string | null;
   otp_expires_at: string | null;
   email_verification_token: string | null;
@@ -131,7 +131,9 @@ async function loadAppUserByEmail(db: SupabaseClient, email: string) {
   const normalizedEmail = normalizeEmail(email);
   const { data, error } = await db
     .from('app_users')
-    .select('id, email, full_name, status, email_verified, otp_code, otp_expires_at, email_verification_token, email_verification_expires_at')
+    .select(
+      'id, email, full_name, password_hash, status, email_verified, otp_code, otp_expires_at, email_verification_token, email_verification_expires_at',
+    )
     .eq('email', normalizedEmail)
     .maybeSingle();
 
@@ -431,6 +433,69 @@ export async function requestMobileAppUserOtp(params: { email: string }) {
     message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني بنجاح.',
     ttl_minutes: MOBILE_OTP_TTL_MINUTES,
   };
+}
+
+export async function requestMobileAppUserOtpAfterPassword(params: {
+  email: string;
+  password: string;
+}) {
+  try {
+    const db = createSupabaseServerClient();
+    const normalizedEmail = normalizeEmail(params.email);
+    const user = await loadAppUserByEmail(db, normalizedEmail);
+
+    if (!user) {
+      return { ok: false as const, status: 401, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
+    }
+
+    if (user.status === 'suspended') {
+      return { ok: false as const, status: 403, error: 'تم تعليق الحساب. تواصل مع الإدارة.' };
+    }
+
+    if (!user.email_verified) {
+      return {
+        ok: false as const,
+        status: 403,
+        error: 'الحساب موجود ولكنه غير مفعل. يرجى إعادة إرسال رابط التفعيل أولاً.',
+      };
+    }
+
+    const passwordMatch = await verifyPassword(params.password, user.password_hash);
+    if (!passwordMatch) {
+      return { ok: false as const, status: 401, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
+    }
+
+    const otpCode = generateMobileOtpCode();
+
+    try {
+      await saveAppUserOtp(db, user.id, otpCode);
+    } catch (updateError) {
+      console.error('mobile_auth_password_challenge_update_failed', updateError);
+      return { ok: false as const, status: 500, error: 'حدث خطأ أثناء إعداد رمز التحقق. حاول لاحقاً.' };
+    }
+
+    try {
+      await sendMobileOtpEmail({
+        email: user.email,
+        fullName: user.full_name,
+        code: otpCode,
+      });
+    } catch (sendError) {
+      await clearAppUserOtp(db, user.id).catch(() => null);
+      console.error('mobile_auth_password_challenge_email_failed', sendError);
+      return { ok: false as const, status: 500, error: 'حدث خطأ أثناء إرسال البريد الإلكتروني. حاول مرة أخرى.' };
+    }
+
+    return {
+      ok: true as const,
+      status: 200,
+      message: 'تم التحقق من كلمة المرور وإرسال رمز التحقق إلى بريدك الإلكتروني.',
+      ttl_minutes: MOBILE_OTP_TTL_MINUTES,
+    };
+  } catch (error) {
+    console.error('mobile_auth_password_challenge_failed', error);
+    return { ok: false as const, status: 500, error: 'تعذر بدء التحقق بخطوتين. حاول مرة أخرى.' };
+  }
 }
 
 export async function verifyMobileAppUserOtp(params: {

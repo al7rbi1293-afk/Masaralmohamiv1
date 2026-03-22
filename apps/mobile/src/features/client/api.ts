@@ -111,6 +111,17 @@ export async function submitClientPortalRequest(
   );
 }
 
+export async function requestClientPortalAccountDeletion(token: string, message?: string) {
+  return requestJson<{ ok: true; message: string }>(
+    '/api/mobile/client-portal/account/delete-request',
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({ message: message?.trim() || undefined }),
+    },
+  );
+}
+
 export async function submitClientPortalCommunication(
   token: string,
   payload: {

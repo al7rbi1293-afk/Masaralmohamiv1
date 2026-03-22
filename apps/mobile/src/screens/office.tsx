@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -77,8 +78,15 @@ import {
   openRemoteFileInApp,
   shareRemoteFileFromDevice,
 } from '../lib/file-actions';
-import { fetchOfficeMatterDetails, fetchOfficeMatters, type MatterDetails, type MatterSummary } from '../lib/api';
+import {
+  fetchOfficeMatterDetails,
+  fetchOfficeMatters,
+  requestSignedInAccountDeletion,
+  type MatterDetails,
+  type MatterSummary,
+} from '../lib/api';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/format';
+import { openPrivacyPolicy, openSupportPage, openTermsOfService } from '../lib/legal-links';
 import { colors, fonts, radius, spacing } from '../theme';
 
 export type OfficeStackParamList = {
@@ -1383,14 +1391,14 @@ export function OfficeMoreScreen() {
           </Pressable>
           <Pressable style={styles.actionTile} onPress={() => navigation.navigate('OfficeSettingsHome')}>
             <Text style={styles.actionTileTitle}>إدارة المكتب</Text>
-            <Text style={styles.actionTileMeta}>الهوية، الفريق، الاشتراك</Text>
+            <Text style={styles.actionTileMeta}>الهوية، الفريق، والخطة الحالية</Text>
           </Pressable>
         </View>
         {actionMessage ? <Text style={styles.formMessage}>{actionMessage}</Text> : null}
       </Card>
 
       <Card>
-        <SectionTitle title="إعدادات المكتب" subtitle="الوصول السريع إلى الهوية والفريق والاشتراك." />
+        <SectionTitle title="إعدادات المكتب" subtitle="الوصول السريع إلى الهوية والفريق والخطة الحالية." />
         <View style={styles.quickActionsGrid}>
           <Pressable style={styles.actionTile} onPress={() => navigation.navigate('OfficeSettings', { section: 'identity' })}>
             <Text style={styles.actionTileTitle}>الهوية</Text>
@@ -1401,8 +1409,8 @@ export function OfficeMoreScreen() {
             <Text style={styles.actionTileMeta}>الأعضاء والدعوات</Text>
           </Pressable>
           <Pressable style={styles.actionTile} onPress={() => navigation.navigate('OfficeSettings', { section: 'subscription' })}>
-            <Text style={styles.actionTileTitle}>الاشتراك</Text>
-            <Text style={styles.actionTileMeta}>الخطة والتحويل</Text>
+            <Text style={styles.actionTileTitle}>الخطة الحالية</Text>
+            <Text style={styles.actionTileMeta}>عرض فقط</Text>
           </Pressable>
         </View>
       </Card>
@@ -1954,6 +1962,40 @@ export function OfficeMoreScreen() {
         <Pressable onPress={() => void signOut()} style={styles.signOutButton}>
           <Text style={styles.signOutText}>تسجيل الخروج</Text>
         </Pressable>
+        <View style={styles.accountActionsRow}>
+          <PrimaryButton title="الدعم" onPress={() => void openSupportPage()} secondary />
+          <PrimaryButton title="الشروط" onPress={() => void openTermsOfService()} secondary />
+        </View>
+        <View style={styles.accountActionsRow}>
+          <PrimaryButton title="الخصوصية" onPress={() => void openPrivacyPolicy()} secondary />
+          <PrimaryButton
+            title={session?.role === 'owner' ? 'طلب حذف الحساب والبيانات' : 'طلب حذف الحساب'}
+            onPress={() =>
+              Alert.alert(
+                'طلب حذف الحساب',
+                'سيتم إرسال طلب حذف الحساب للمراجعة مع التحقق من الهوية قبل التنفيذ. هل تريد المتابعة؟',
+                [
+                  { text: 'إلغاء', style: 'cancel' },
+                  {
+                    text: 'إرسال الطلب',
+                    style: 'destructive',
+                    onPress: () => {
+                      if (!session?.token) return;
+                      void requestSignedInAccountDeletion(session.token)
+                        .then((response) => {
+                          setActionMessage(response.message || 'تم إرسال طلب حذف الحساب.');
+                        })
+                        .catch((nextError) => {
+                          setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر إرسال الطلب.');
+                        });
+                    },
+                  },
+                ],
+              )
+            }
+            secondary
+          />
+        </View>
       </Card>
     </Page>
   );
@@ -3072,6 +3114,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  accountActionsRow: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   adminSwitchButton: {
     backgroundColor: colors.surfaceMuted,

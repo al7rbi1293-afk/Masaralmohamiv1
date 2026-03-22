@@ -293,6 +293,10 @@ export function buildApiUrl(path: string) {
   return buildUrl(path);
 }
 
+export function buildPublicWebUrl(path: string) {
+  return buildUrl(path);
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
   const contentType = response.headers.get('content-type') ?? '';
   const raw = await response.text().catch(() => '');
@@ -430,6 +434,14 @@ export async function fetchPartnerBootstrap(token: string) {
 
 export async function fetchAdminBootstrap(token: string) {
   return getJson<AdminBootstrap>('/api/mobile/admin/bootstrap', token);
+}
+
+export async function requestSignedInAccountDeletion(token: string, message?: string) {
+  return postJson<AuthMessageResponse>(
+    '/api/mobile/account/delete-request',
+    { message: message?.trim() || undefined },
+    token,
+  );
 }
 
 export function buildMobileAuthBridgeUrl(token: string, nextPath = '/admin') {

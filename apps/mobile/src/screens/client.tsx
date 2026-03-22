@@ -27,6 +27,7 @@ import {
   buildClientPortalInvoicePdfUrl,
   buildClientPortalQuotePdfUrl,
   fetchClientPortalOverview,
+  requestClientPortalAccountDeletion,
   requestClientPortalDocumentDownloadUrl,
   submitClientPortalCommunication,
   submitClientPortalRequest,
@@ -48,6 +49,7 @@ import {
   shareRemoteFileFromDevice,
 } from '../lib/file-actions';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/format';
+import { openPrivacyPolicy, openSupportPage, openTermsOfService } from '../lib/legal-links';
 import { colors, fonts, radius, spacing } from '../theme';
 
 export type ClientStackParamList = {
@@ -799,6 +801,40 @@ export function ClientCenterScreen() {
         <SummaryRow title={data.bootstrap.client.name} subtitle={session?.email || data.bootstrap.client.email || '—'} />
         <SummaryRow title="الجوال" subtitle={data.bootstrap.client.phone || 'غير مسجل'} />
         <SummaryRow title="الهوية / السجل" subtitle={data.bootstrap.client.identity_no || data.bootstrap.client.commercial_no || 'غير متوفر'} />
+        <View style={styles.actionRow}>
+          <PrimaryButton title="الدعم" onPress={() => void openSupportPage()} secondary />
+          <PrimaryButton title="الشروط" onPress={() => void openTermsOfService()} secondary />
+        </View>
+        <View style={styles.actionRow}>
+          <PrimaryButton title="الخصوصية" onPress={() => void openPrivacyPolicy()} secondary />
+          <PrimaryButton
+            title="طلب حذف الحساب"
+            onPress={() =>
+              Alert.alert(
+                'طلب حذف الحساب',
+                'سيتم إرسال طلب حذف الحساب إلى المكتب مع التحقق من الهوية قبل التنفيذ. هل تريد المتابعة؟',
+                [
+                  { text: 'إلغاء', style: 'cancel' },
+                  {
+                    text: 'إرسال الطلب',
+                    style: 'destructive',
+                    onPress: () => {
+                      if (!token) return;
+                      void requestClientPortalAccountDeletion(token)
+                        .then((response) => {
+                          Alert.alert('تم الإرسال', response.message || 'تم إرسال طلب حذف الحساب.');
+                        })
+                        .catch((nextError) => {
+                          Alert.alert('تعذر الإرسال', nextError instanceof Error ? nextError.message : 'تعذر إرسال الطلب.');
+                        });
+                    },
+                  },
+                ],
+              )
+            }
+            secondary
+          />
+        </View>
         <Pressable onPress={() => void signOut()} style={styles.logout}>
           <Text style={styles.logoutText}>تسجيل الخروج</Text>
         </Pressable>

@@ -3,10 +3,10 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'rea
 import { useNavigation } from '@react-navigation/native';
 import { Card, Field, HeroCard, Page, PrimaryButton, SegmentedControl, StatusChip } from '../components/ui';
 import { useAuth } from '../context/auth-context';
+import { openPrivacyPolicy, openSupportPage, openTermsOfService } from '../lib/legal-links';
 import { colors, fonts } from '../theme';
 
 type PortalTab = 'workforce' | 'client';
-type Flow = 'signin' | 'signup';
 
 const devAutoLoginEnabled = process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN_ENABLED?.trim().toLowerCase() === 'true';
 const devAutoLoginEmail = process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN_EMAIL?.trim() || '';
@@ -57,19 +57,14 @@ export function AuthScreen() {
     signInOfficeWithOtp,
     requestOtp,
     signInClientWithOtp,
-    signUpOffice,
     resendActivation,
   } = useAuth();
   const autoLoginAttemptedRef = useRef(false);
 
   const [portalTab, setPortalTab] = useState<PortalTab>('workforce');
-  const [flow, setFlow] = useState<Flow>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [firmName, setFirmName] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -88,7 +83,6 @@ export function AuthScreen() {
 
     autoLoginAttemptedRef.current = true;
     setPortalTab('workforce');
-    setFlow('signin');
     setEmail(devAutoLoginEmail);
     setSubmitting(true);
     setError('');
@@ -127,14 +121,6 @@ export function AuthScreen() {
 
   function handlePortalTabChange(nextTab: PortalTab) {
     setPortalTab(nextTab);
-    setFlow('signin');
-    setCode('');
-    setOtpRequested(false);
-    resetMessages();
-  }
-
-  function handleFlowChange(nextFlow: Flow) {
-    setFlow(nextFlow);
     setCode('');
     setOtpRequested(false);
     resetMessages();
@@ -228,35 +214,6 @@ export function AuthScreen() {
     }
   }
 
-  async function handleSignUp() {
-    if (!fullName.trim() || !email.trim() || !password.trim() || !phone.trim()) {
-      setError('أكمل الاسم والبريد وكلمة المرور ورقم الجوال.');
-      return;
-    }
-
-    setSubmitting(true);
-    resetMessages();
-
-    try {
-      const nextMessage = await signUpOffice({
-        fullName: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        phone: phone.trim(),
-        firmName: firmName.trim(),
-      });
-
-      setFlow('signin');
-      setOtpRequested(false);
-      setCode('');
-      setMessage(nextMessage);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'تعذر إنشاء الحساب.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function handleResendActivation() {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
@@ -303,118 +260,62 @@ export function AuthScreen() {
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
         {portalTab === 'workforce' ? (
-          flow === 'signup' ? (
-            <>
+          <>
+            <Field
+              label="البريد الإلكتروني"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="name@example.com"
+              keyboardType="email-address"
+              editable={!submitting}
+            />
+            <Field
+              label="كلمة المرور"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+              editable={!submitting}
+            />
+
+            {otpRequested ? (
               <Field
-                label="الاسم الكامل"
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="عبدالعزيز الحازمي"
+                label="رمز التحقق"
+                value={code}
+                onChangeText={setCode}
+                placeholder="123456"
+                keyboardType="numeric"
                 editable={!submitting}
               />
-              <Field
-                label="البريد الإلكتروني"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="name@example.com"
-                keyboardType="email-address"
-                editable={!submitting}
-              />
-              <Field
-                label="رقم الجوال"
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="05xxxxxxxx"
-                editable={!submitting}
-              />
-              <Field
-                label="كلمة المرور"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                secureTextEntry
-                editable={!submitting}
-              />
-              <Field
-                label="اسم المكتب"
-                value={firmName}
-                onChangeText={setFirmName}
-                placeholder="اختياري"
-                editable={!submitting}
-              />
+            ) : null}
+
+            <PrimaryButton
+              title={otpRequested ? 'تأكيد الدخول' : 'متابعة'}
+              onPress={otpRequested ? handleWorkforceVerifyOtp : handleWorkforceStartSignIn}
+              disabled={
+                submitting ||
+                !email.trim() ||
+                !password.trim() ||
+                (otpRequested && code.trim().length < 4)
+              }
+            />
+
+            {otpRequested ? (
               <PrimaryButton
-                title="إنشاء حساب مكتب جديد"
-                onPress={handleSignUp}
-                disabled={submitting || !fullName.trim() || !email.trim() || !phone.trim() || !password.trim()}
-              />
-              <Pressable onPress={() => handleFlowChange('signin')} disabled={submitting}>
-                <Text style={styles.linkText}>لدي حساب بالفعل</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Field
-                label="البريد الإلكتروني"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="name@example.com"
-                keyboardType="email-address"
-                editable={!submitting}
-              />
-              <Field
-                label="كلمة المرور"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                secureTextEntry
-                editable={!submitting}
-              />
-
-              {otpRequested ? (
-                <Field
-                  label="رمز التحقق"
-                  value={code}
-                  onChangeText={setCode}
-                  placeholder="123456"
-                  keyboardType="numeric"
-                  editable={!submitting}
-                />
-              ) : null}
-
-              <PrimaryButton
-                title={otpRequested ? 'تأكيد الدخول' : 'متابعة'}
-                onPress={otpRequested ? handleWorkforceVerifyOtp : handleWorkforceStartSignIn}
-                disabled={
-                  submitting ||
-                  !email.trim() ||
-                  !password.trim() ||
-                  (otpRequested && code.trim().length < 4)
-                }
-              />
-
-              {otpRequested ? (
-                <PrimaryButton
-                  title="إعادة إرسال OTP"
-                  onPress={handleWorkforceStartSignIn}
-                  disabled={submitting || !email.trim() || !password.trim()}
-                  secondary
-                />
-              ) : null}
-
-              <PrimaryButton
-                title="إعادة إرسال رسالة التفعيل"
-                onPress={handleResendActivation}
-                disabled={submitting || !email.trim()}
+                title="إعادة إرسال OTP"
+                onPress={handleWorkforceStartSignIn}
+                disabled={submitting || !email.trim() || !password.trim()}
                 secondary
               />
+            ) : null}
 
-              <View style={styles.inlineActions}>
-                <Pressable onPress={() => handleFlowChange('signup')} disabled={submitting}>
-                  <Text style={styles.linkText}>تسجيل مكتب جديد</Text>
-                </Pressable>
-              </View>
-            </>
-          )
+            <PrimaryButton
+              title="إعادة إرسال رسالة التفعيل"
+              onPress={handleResendActivation}
+              disabled={submitting || !email.trim()}
+              secondary
+            />
+          </>
         ) : (
           <>
             <Field
@@ -450,6 +351,20 @@ export function AuthScreen() {
         )}
 
         {submitting ? <ActivityIndicator color={colors.primary} /> : null}
+      </Card>
+
+      <Card>
+        <View style={styles.inlineActions}>
+          <Pressable onPress={() => void openSupportPage()}>
+            <Text style={styles.linkText}>الدعم</Text>
+          </Pressable>
+          <Pressable onPress={() => void openTermsOfService()}>
+            <Text style={styles.linkText}>الشروط</Text>
+          </Pressable>
+          <Pressable onPress={() => void openPrivacyPolicy()}>
+            <Text style={styles.linkText}>الخصوصية</Text>
+          </Pressable>
+        </View>
       </Card>
     </AuthShell>
   );

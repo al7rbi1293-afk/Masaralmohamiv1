@@ -13,7 +13,6 @@ import {
 import {
   addOfficeTeamMember,
   changeOfficeTeamMemberRole,
-  createOfficeBankTransferRequest,
   createOfficeTeamInvitation,
   fetchOfficeSettings,
   fetchOfficeSubscriptionOverview,
@@ -22,7 +21,6 @@ import {
   revokeOfficeTeamInvitation,
   saveOfficeSettings,
   updateOfficeTeamMember,
-  type OfficePricingPlanCard,
   type OfficeSettings,
   type OfficeSubscriptionOverview,
   type OfficeTeamOverview,
@@ -50,6 +48,7 @@ import type { OfficeStackParamList } from './office';
 type SettingsHubProps = NativeStackScreenProps<OfficeStackParamList, 'OfficeSettingsHome'>;
 type SettingsRouteProps = NativeStackScreenProps<OfficeStackParamList, 'OfficeSettings'>;
 type OfficeSubscriptionRequestItem = OfficeSubscriptionOverview['recent_requests'][number];
+const ENABLE_MOBILE_SUBSCRIPTION_REQUESTS = false;
 
 const permissionOptions = [
   { key: 'matters', label: 'القضايا' },
@@ -110,11 +109,6 @@ function requestTone(value: string | null | undefined): 'default' | 'success' | 
     default:
       return 'gold';
   }
-}
-
-function planPrice(plan: OfficePricingPlanCard, billingPeriod: 'monthly' | 'yearly') {
-  const value = billingPeriod === 'yearly' ? plan.priceAnnual : plan.priceMonthly;
-  return typeof value === 'number' ? value : null;
 }
 
 function ensureOfficeSession(session: ReturnType<typeof useAuth>['session']) {
@@ -191,8 +185,8 @@ export function OfficeSettingsHomeScreen({ navigation }: SettingsHubProps) {
               <Text style={styles.hubSubtitle}>الدعوات، الإضافة المباشرة، الأدوار</Text>
             </Pressable>
             <Pressable style={styles.hubCard} onPress={() => navigation.navigate('OfficeSubscriptionSettings')}>
-              <Text style={styles.hubTitle}>الاشتراك</Text>
-              <Text style={styles.hubSubtitle}>الخطة الحالية، الباقات، وطلبات التحويل البنكي</Text>
+              <Text style={styles.hubTitle}>الخطة الحالية</Text>
+              <Text style={styles.hubSubtitle}>عرض حالة الخطة الحالية والمقاعد المتاحة فقط</Text>
             </Pressable>
           </View>
         </Card>
@@ -759,14 +753,7 @@ export function OfficeSubscriptionSettingsScreen() {
   const { session } = useAuth();
   const isFocused = useIsFocused();
   const [overview, setOverview] = useState<OfficeSubscriptionOverview | null>(null);
-  const [section, setSection] = useState<'overview' | 'request' | 'history'>('overview');
-  const [selectedPlan, setSelectedPlan] = useState('SOLO');
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
-  const [amount, setAmount] = useState('');
-  const [reference, setReference] = useState('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -780,8 +767,6 @@ export function OfficeSubscriptionSettingsScreen() {
         const next = await fetchOfficeSubscriptionOverview(activeSession);
         if (!mounted) return;
         setOverview(next);
-        const defaultPlan = next.current_plan_card?.code || next.pricing_cards[0]?.code || 'SOLO';
-        setSelectedPlan(defaultPlan);
       } catch (nextError) {
         if (mounted) {
           setError(nextError instanceof Error ? nextError.message : 'تعذر تحميل الاشتراك.');
@@ -799,45 +784,6 @@ export function OfficeSubscriptionSettingsScreen() {
     };
   }, [isFocused, session]);
 
-  const selectedPlanCard = useMemo(
-    () => overview?.pricing_cards.find((plan) => plan.code === selectedPlan) ?? null,
-    [overview?.pricing_cards, selectedPlan],
-  );
-
-  useEffect(() => {
-    if (!selectedPlanCard) {
-      setAmount('');
-      return;
-    }
-
-    const planAmount = planPrice(selectedPlanCard, billingPeriod);
-    setAmount(planAmount ? String(planAmount) : '');
-  }, [billingPeriod, selectedPlanCard]);
-
-  async function handleRequest() {
-    try {
-      const activeSession = ensureOfficeSession(session);
-      setSaving(true);
-      setMessage('');
-      setError('');
-      const response = await createOfficeBankTransferRequest(activeSession, {
-        plan_code: selectedPlan,
-        billing_period: billingPeriod,
-        amount: Number(amount),
-        bank_reference: reference.trim(),
-      });
-      setReference('');
-      setSection('history');
-      setMessage(`تم إرسال الطلب بنجاح ورقمه ${response.request.id}.`);
-      const refreshed = await fetchOfficeSubscriptionOverview(activeSession);
-      setOverview(refreshed);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'تعذر إرسال طلب الاشتراك.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (loading) {
     return (
       <Page>
@@ -851,7 +797,7 @@ export function OfficeSubscriptionSettingsScreen() {
       <HeroCard
         eyebrow="الاشتراك"
         title={overview?.current_plan_card?.title || 'خطة المكتب'}
-        subtitle="تابع حالة الاشتراك وقدّم طلبات التحويل البنكي من التطبيق مباشرة."
+        subtitle="عرض حالة الاشتراك الحالية والمقاعد المتاحة في نسخة الجوال."
         aside={<StatusChip label={requestStatusLabel(overview?.subscription?.status)} tone={requestTone(overview?.subscription?.status)} />}
       />
 
@@ -867,100 +813,40 @@ export function OfficeSubscriptionSettingsScreen() {
       </Card>
 
       <Card>
-        <SectionTitle title="بوابة الاشتراك" subtitle="قسّم العرض بين نظرة عامة، طلب جديد، وسجل الطلبات." />
-        <SegmentedControl
-          value={section}
-          onChange={(next) => setSection(next as typeof section)}
-          options={[
-            { key: 'overview', label: 'الباقات' },
-            { key: 'request', label: 'طلب جديد' },
-            { key: 'history', label: `السجل (${overview?.recent_requests.length || 0})` },
-          ]}
-        />
+        <SectionTitle title="إدارة الخطة" subtitle="نسخة المتجر تعرض الخطة الحالية فقط بدون شراء أو تحويل بنكي داخل التطبيق." />
+        <Text style={styles.bodyText}>
+          لأي تعديل على الخطة أو الاشتراك استخدم إدارة الحساب في الموقع أو تواصل مع فريق الدعم. هذا يحافظ على
+          اتساق تجربة الجوال مع سياسات المتاجر.
+        </Text>
+        {!ENABLE_MOBILE_SUBSCRIPTION_REQUESTS ? (
+          <StatusChip label="قراءة فقط" tone="warning" />
+        ) : null}
       </Card>
 
-      {section === 'overview' ? (
-        <Card>
-          <SectionTitle title="الباقات المتاحة" subtitle="اختر الخطة المناسبة قبل إرسال طلب التحويل البنكي." />
-          <View style={styles.planList}>
-            {overview?.pricing_cards.map((plan) => (
-              <Pressable
-                key={plan.code}
-                style={[styles.planCard, selectedPlan === plan.code && styles.planCardActive]}
-                onPress={() => setSelectedPlan(plan.code)}
-              >
-                <View style={styles.rowBetween}>
-                  <View style={styles.gapXs}>
-                    <Text style={styles.cardTitle}>{plan.title}</Text>
-                    <Text style={styles.cardMeta}>{plan.seatsLabel}</Text>
-                  </View>
-                  <StatusChip label={plan.priceLabel} tone={selectedPlan === plan.code ? 'success' : 'gold'} />
+      <Card>
+        <SectionTitle title="آخر الطلبات السابقة" subtitle="عرض فقط لسجل الطلبات الموجودة سابقًا على الحساب." />
+        {overview?.recent_requests.length ? (
+          overview.recent_requests.map((item: OfficeSubscriptionRequestItem) => (
+            <View key={item.id} style={styles.planCard}>
+              <View style={styles.rowBetween}>
+                <View style={styles.gapXs}>
+                  <Text style={styles.cardTitle}>{item.plan_code}</Text>
+                  <Text style={styles.cardMeta}>{formatDate(item.created_at)}</Text>
                 </View>
-                <Text style={styles.bodyText}>{plan.description}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
-      ) : null}
-
-      {section === 'request' ? (
-        <Card>
-          <SectionTitle title="طلب تحويل بنكي" subtitle="أدخل مرجع التحويل وسيصل الطلب للإدارة بنفس آلية الموقع." />
-          <Text style={styles.fieldLabel}>الخطة</Text>
-          <View style={styles.planList}>
-            {overview?.pricing_cards.map((plan) => (
-              <Pressable
-                key={plan.code}
-                style={[styles.planCard, selectedPlan === plan.code && styles.planCardActive]}
-                onPress={() => setSelectedPlan(plan.code)}
-              >
-                <Text style={styles.cardTitle}>{plan.title}</Text>
-                <Text style={styles.cardMeta}>{plan.priceLabel}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.fieldLabel}>الدورة</Text>
-          <SegmentedControl
-            value={billingPeriod}
-            onChange={(next) => setBillingPeriod(next as 'monthly' | 'yearly')}
-            options={[
-              { key: 'monthly', label: 'شهري' },
-              { key: 'yearly', label: 'سنوي' },
-            ]}
-          />
-          <Field label="المبلغ" value={amount} onChangeText={setAmount} keyboardType="numeric" placeholder="0" />
-          <Field label="مرجع التحويل" value={reference} onChangeText={setReference} placeholder="رقم مرجع العملية البنكية" />
-          <PrimaryButton title={saving ? 'جارٍ الإرسال...' : 'إرسال الطلب'} onPress={() => void handleRequest()} disabled={saving} />
-        </Card>
-      ) : null}
-
-      {section === 'history' ? (
-        <Card>
-          <SectionTitle title="سجل الطلبات" subtitle="آخر الطلبات والحالات المرتبطة باشتراك المكتب." />
-          {overview?.recent_requests.length ? (
-            overview.recent_requests.map((item: OfficeSubscriptionRequestItem) => (
-              <View key={item.id} style={styles.planCard}>
-                <View style={styles.rowBetween}>
-                  <View style={styles.gapXs}>
-                    <Text style={styles.cardTitle}>{item.plan_code}</Text>
-                    <Text style={styles.cardMeta}>{formatDate(item.created_at)}</Text>
-                  </View>
-                  <StatusChip label={requestStatusLabel(item.status)} tone={requestTone(item.status)} />
-                </View>
-                <Text style={styles.cardMeta}>
-                  {item.amount ? `${formatCurrency(item.amount)}${item.currency ? ` ${item.currency}` : ''}` : 'بدون مبلغ مسجل'}
-                </Text>
-                <Text style={styles.cardMeta}>المرجع البنكي: {item.bank_reference || item.payment_reference || '—'}</Text>
-                {item.review_note ? <Text style={styles.bodyText}>الملاحظة: {item.review_note}</Text> : null}
+                <StatusChip label={requestStatusLabel(item.status)} tone={requestTone(item.status)} />
               </View>
-            ))
-          ) : (
-            <EmptyState title="لا توجد طلبات" message="ستظهر هنا طلبات الاشتراك أو التحويل البنكي الخاصة بالمكتب." />
-          )}
-        </Card>
-      ) : null}
+              <Text style={styles.cardMeta}>
+                {item.amount ? `${formatCurrency(item.amount)}${item.currency ? ` ${item.currency}` : ''}` : 'بدون مبلغ مسجل'}
+              </Text>
+              <Text style={styles.cardMeta}>المرجع البنكي: {item.bank_reference || item.payment_reference || '—'}</Text>
+              {item.review_note ? <Text style={styles.bodyText}>الملاحظة: {item.review_note}</Text> : null}
+            </View>
+          ))
+        ) : (
+          <EmptyState title="لا توجد طلبات" message="لا توجد طلبات اشتراك محفوظة لهذا المكتب حاليًا." />
+        )}
+      </Card>
 
-      {message ? <Text style={styles.message}>{message}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </Page>
   );
@@ -981,7 +867,7 @@ export function OfficeSettingsScreen({ route, navigation }: SettingsRouteProps) 
     }
 
     if (section === 'subscription') {
-      navigation.setOptions({ title: 'الاشتراك' });
+      navigation.setOptions({ title: 'الخطة الحالية' });
       return;
     }
 

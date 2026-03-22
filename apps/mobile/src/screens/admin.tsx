@@ -30,7 +30,8 @@ import {
   StatusChip,
 } from '../components/ui';
 import { useAuth } from '../context/auth-context';
-import { fetchAdminBootstrap, type AdminBootstrap } from '../lib/api';
+import { fetchAdminBootstrap, requestSignedInAccountDeletion, type AdminBootstrap } from '../lib/api';
+import { openPrivacyPolicy, openSupportPage, openTermsOfService } from '../lib/legal-links';
 import { colors, fonts, radius, spacing } from '../theme';
 
 export type AdminStackParamList = {
@@ -521,6 +522,40 @@ export function AdminHomeScreen() {
           <Text style={styles.accountValue}>{session?.email || '—'}</Text>
           <Text style={styles.accountLabel}>المسار الافتراضي</Text>
           <Text style={styles.accountValue}>{bootstrap?.role.default_path || session?.defaultPath || '/admin'}</Text>
+        </View>
+        <View style={styles.buttonRow}>
+          <PrimaryButton title="الدعم" onPress={() => void openSupportPage()} secondary />
+          <PrimaryButton title="الشروط" onPress={() => void openTermsOfService()} secondary />
+        </View>
+        <View style={styles.buttonRow}>
+          <PrimaryButton title="الخصوصية" onPress={() => void openPrivacyPolicy()} secondary />
+          <PrimaryButton
+            title="طلب حذف الحساب"
+            onPress={() =>
+              Alert.alert(
+                'طلب حذف الحساب',
+                'سيتم إرسال طلب حذف الحساب للمراجعة مع التحقق من الهوية قبل التنفيذ. هل تريد المتابعة؟',
+                [
+                  { text: 'إلغاء', style: 'cancel' },
+                  {
+                    text: 'إرسال الطلب',
+                    style: 'destructive',
+                    onPress: () => {
+                      if (!session?.token) return;
+                      void requestSignedInAccountDeletion(session.token)
+                        .then((response) => {
+                          setMessage(response.message || 'تم إرسال طلب حذف الحساب.');
+                        })
+                        .catch((nextError) => {
+                          setMessage(nextError instanceof Error ? nextError.message : 'تعذر إرسال الطلب.');
+                        });
+                    },
+                  },
+                ],
+              )
+            }
+            secondary
+          />
         </View>
         <View style={styles.signOutWrap}>
           <Pressable onPress={confirmSignOut} style={styles.signOutButton}>

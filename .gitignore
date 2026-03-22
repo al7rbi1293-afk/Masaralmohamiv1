@@ -5,6 +5,7 @@ node_modules
 dist
 .next
 coverage
+*.tsbuildinfo
 *.log
 .DS_Store
 apps/api/prisma/migrations/*/migration_lock.toml
@@ -13,3 +14,6 @@ apps/web/playwright-report
 apps/web/test-results
 localhost
 Masaralmohamiv1
+output/
+tmp/pdfs/
+tmp/stitch_export/

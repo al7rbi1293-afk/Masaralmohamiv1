@@ -108,6 +108,7 @@ export async function POST(request: Request) {
           code: otp,
           ttlMinutes,
         }),
+        requireConfigured: true,
       });
     } catch (emailError) {
       console.error('Failed to send OTP email:', emailError);

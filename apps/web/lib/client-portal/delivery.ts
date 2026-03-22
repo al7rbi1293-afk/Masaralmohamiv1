@@ -35,9 +35,26 @@ function renderTemplate(template: string, params: { code: string; ttlMinutes: nu
     .replaceAll('{{TTL_MIN}}', String(params.ttlMinutes));
 }
 
-function shouldUseMockProvider() {
+function isMockProviderAllowed() {
+  if (process.env.NODE_ENV === 'test') {
+    return true;
+  }
+
+  const raw = String(process.env.CLIENT_PORTAL_ALLOW_MOCK_EMAIL_PROVIDER ?? '').trim().toLowerCase();
+  return raw === '1' || raw === 'true';
+}
+
+function resolveEmailProvider() {
   const provider = String(process.env.CLIENT_PORTAL_EMAIL_PROVIDER ?? 'smtp').trim().toLowerCase();
-  return provider !== 'smtp';
+  if (!provider || provider === 'smtp') {
+    return 'smtp' as const;
+  }
+
+  if (provider === 'mock') {
+    return isMockProviderAllowed() ? ('mock' as const) : ('mock_disabled' as const);
+  }
+
+  return 'invalid' as const;
 }
 
 function shouldForceMockFailure() {
@@ -126,6 +143,7 @@ async function sendViaEmail(params: {
       subject,
       text: textBody,
       html: htmlBody,
+      requireConfigured: true,
     });
 
     return {
@@ -152,9 +170,30 @@ export async function deliverClientPortalOtp(params: {
   ttlSeconds: number;
 }) : Promise<ClientPortalOtpDeliveryResult> {
   const clientEmail = String(params.email ?? '').trim().toLowerCase() || null;
+  const provider = resolveEmailProvider();
 
-  if (shouldUseMockProvider()) {
+  if (provider === 'mock') {
     return sendViaMock({ email: clientEmail });
+  }
+
+  if (provider === 'mock_disabled') {
+    return {
+      ok: false,
+      channel: 'email',
+      provider: 'smtp',
+      errorMessage: 'mock_email_provider_disabled',
+      fallbackTried: false,
+    };
+  }
+
+  if (provider === 'invalid') {
+    return {
+      ok: false,
+      channel: 'email',
+      provider: 'smtp',
+      errorMessage: 'invalid_email_provider',
+      fallbackTried: false,
+    };
   }
 
   return sendViaEmail({

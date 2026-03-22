@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
 
     // Send Welcome Email
     try {
-      const { sendEmail, sendNewSignupAlertEmail } = await import('@/lib/email');
+      const { sendEmail } = await import('@/lib/email');
       const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
 
       const siteUrl = getRequestSiteUrl(request);
@@ -247,8 +247,26 @@ export async function POST(request: NextRequest) {
         subject: WELCOME_EMAIL_SUBJECT,
         text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
         html: WELCOME_EMAIL_HTML(fullName, verificationLink),
+        requireConfigured: true,
       });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      const destination = buildPendingActivationDestination(
+        email,
+        'تم إنشاء الحساب لكن تعذر إرسال رسالة التفعيل. استخدم إعادة الإرسال بعد قليل.',
+      );
+      const response = NextResponse.json(
+        { redirectTo: destination, requestId },
+        { status: 200 },
+      );
+      setRequestIdHeader(response, requestId);
+      setRateLimitHeaders(response, rate);
+      applyReferralContext(response, manualReferralContext);
+      return response;
+    }
 
+    try {
+      const { sendNewSignupAlertEmail } = await import('@/lib/email');
       await sendNewSignupAlertEmail({
         fullName,
         email,
@@ -257,12 +275,11 @@ export async function POST(request: NextRequest) {
         source: 'trial',
       });
     } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
-      // We do not fail the request if the email fails, they can request another one.
+      console.error('Failed to send signup alert email:', emailError);
     }
 
     // Redirect newly created users to the pending activation page
-    const destination = `/signup?status=pending_activation&email=${encodeURIComponent(email)}`;
+    const destination = buildPendingActivationDestination(email);
     logInfo('trial_started_pending_verification', { requestId, ip: requestIp, userId });
 
     const response = NextResponse.json(
@@ -446,6 +463,16 @@ function getOrCreateRequestId(request: NextRequest) {
   if (incoming) return incoming;
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `${Date.now()}`;
+}
+
+function buildPendingActivationDestination(email: string, errorMessage?: string) {
+  const search = new URLSearchParams();
+  search.set('status', 'pending_activation');
+  search.set('email', email);
+  if (errorMessage) {
+    search.set('error', errorMessage);
+  }
+  return `/signup?${search.toString()}`;
 }
 
 function jsonResponse(

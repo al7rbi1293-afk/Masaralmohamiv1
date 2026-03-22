@@ -99,7 +99,7 @@ export async function signUpAction(formData: FormData) {
 
   // Send welcome + activation email
   try {
-    const { sendEmail, sendNewSignupAlertEmail } = await import('@/lib/email');
+    const { sendEmail } = await import('@/lib/email');
     const { WELCOME_EMAIL_SUBJECT, WELCOME_EMAIL_HTML } = await import('@/lib/email-templates');
 
     await sendEmail({
@@ -107,8 +107,21 @@ export async function signUpAction(formData: FormData) {
       subject: WELCOME_EMAIL_SUBJECT,
       text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
       html: WELCOME_EMAIL_HTML(fullName, verificationLink),
+      requireConfigured: true,
     });
+  } catch (error) {
+    console.error('Failed to send welcome email:', error);
+    redirect(
+      buildPendingActivationHref(
+        email,
+        token,
+        'تم إنشاء الحساب لكن تعذر إرسال رسالة التفعيل. استخدم إعادة الإرسال بعد قليل.',
+      ),
+    );
+  }
 
+  try {
+    const { sendNewSignupAlertEmail } = await import('@/lib/email');
     await sendNewSignupAlertEmail({
       fullName,
       email,
@@ -117,7 +130,7 @@ export async function signUpAction(formData: FormData) {
       source: 'invite',
     });
   } catch (error) {
-    console.error('Failed to send welcome email:', error);
+    console.error('Failed to send signup alert email:', error);
   }
 
   // Redirect to verification pending page.
@@ -129,7 +142,7 @@ export async function resendActivationAction(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
 
   if (!email) {
-    redirect(`/signup?error=${encodeURIComponent('يرجى إدخال البريد الإلكتروني.')}`);
+    redirect(buildPendingActivationHref(email, token, 'يرجى إدخال البريد الإلكتروني.'));
   }
 
   const ip = getServerActionIp();
@@ -140,9 +153,7 @@ export async function resendActivationAction(formData: FormData) {
   });
 
   if (!rate.allowed) {
-    redirect(
-      `/signup?error=${encodeURIComponent(RATE_LIMIT_MESSAGE_AR)}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`,
-    );
+    redirect(buildPendingActivationHref(email, token, RATE_LIMIT_MESSAGE_AR));
   }
 
   const siteUrl = getRequestSiteUrl();
@@ -152,7 +163,7 @@ export async function resendActivationAction(formData: FormData) {
 
   const { data: user } = await db.from('app_users').select('id, email_verified').eq('email', email).maybeSingle();
   if (!user) {
-    redirect(`/signup?error=${encodeURIComponent('الحساب غير موجود.')}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`);
+    redirect(buildPendingActivationHref(email, token, 'الحساب غير موجود.'));
   }
   if (user.email_verified) {
     redirect(`/signin?success=${encodeURIComponent('الحساب مفعل مسبقاً، يمكنك تسجيل الدخول.')}&email=${encodeURIComponent(email)}`);
@@ -168,9 +179,7 @@ export async function resendActivationAction(formData: FormData) {
   }).eq('id', user.id);
 
   if (updateError) {
-    redirect(
-      `/signup?error=${encodeURIComponent('تعذر إعادة إرسال رسالة التفعيل. حاول مرة أخرى.')}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`,
-    );
+    redirect(buildPendingActivationHref(email, token, 'تعذر إعادة إرسال رسالة التفعيل. حاول مرة أخرى.'));
   }
 
   const verificationLink = `${siteUrl}/api/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`;
@@ -184,11 +193,10 @@ export async function resendActivationAction(formData: FormData) {
       subject: WELCOME_EMAIL_SUBJECT,
       text: 'مرحباً بك في مسار المحامي. يرجى تفعيل حسابك للبدء.',
       html: WELCOME_EMAIL_HTML('عميلنا الكريم', verificationLink),
+      requireConfigured: true,
     });
   } catch {
-    redirect(
-      `/signup?error=${encodeURIComponent('تم إنشاء رابط التفعيل لكن تعذر إرسال البريد. حاول مرة أخرى.')}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`,
-    );
+    redirect(buildPendingActivationHref(email, token, 'تم إنشاء رابط التفعيل لكن تعذر إرسال البريد. حاول مرة أخرى.'));
   }
 
   redirect(
@@ -236,8 +244,19 @@ function getServerActionIp() {
   return realIp?.trim() || 'unknown';
 }
 
-function buildPendingActivationHref(email: string, token: string) {
-  return `/signup?status=pending_activation&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+function buildPendingActivationHref(email: string, token: string, error?: string) {
+  const search = new URLSearchParams();
+  search.set('status', 'pending_activation');
+  if (email) {
+    search.set('email', email);
+  }
+  if (token) {
+    search.set('token', token);
+  }
+  if (error) {
+    search.set('error', error);
+  }
+  return `/signup?${search.toString()}`;
 }
 
 function getRequestSiteUrl() {

@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         code,
         siteUrl: origin,
       }),
+      requireConfigured: true,
     });
 
     return NextResponse.json({ ok: true }, { status: 200 });
@@ -90,4 +91,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'تعذر إرسال الرمز. حاول مرة أخرى.' }, { status: 500 });
   }
 }
-

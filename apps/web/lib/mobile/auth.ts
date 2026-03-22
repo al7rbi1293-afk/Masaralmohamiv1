@@ -239,6 +239,7 @@ async function sendMobileOtpEmail(params: {
       code: params.code,
       ttlMinutes: MOBILE_OTP_TTL_MINUTES,
     }),
+    requireConfigured: true,
   });
 }
 
@@ -252,6 +253,7 @@ async function sendMobileActivationEmail(params: {
     subject: WELCOME_EMAIL_SUBJECT,
     html: WELCOME_EMAIL_HTML(params.fullName || 'عميلنا الكريم', params.verificationLink),
     text: `يرجى تفعيل حسابك عبر الرابط التالي: ${params.verificationLink}`,
+    requireConfigured: true,
   });
 }
 

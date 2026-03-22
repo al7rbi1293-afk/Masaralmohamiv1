@@ -18,6 +18,7 @@ export type SendEmailParams = {
   subject: string;
   text?: string;
   html?: string;
+  requireConfigured?: boolean;
   attachments?: Array<{
     filename: string;
     content: Buffer;
@@ -58,6 +59,9 @@ function getTransport() {
 
 export async function sendEmail(params: SendEmailParams) {
   if (!isSmtpConfigured()) {
+    if (params.requireConfigured) {
+      throw new Error('smtp_not_configured');
+    }
     console.warn('SMTP not configured, skipping email to', params.to);
     return;
   }

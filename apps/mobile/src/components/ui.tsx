@@ -2,6 +2,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,10 +25,12 @@ export function Page({
 }) {
   const content = scroll ? (
     <ScrollView
-      contentContainerStyle={styles.pageContent}
+      contentContainerStyle={[styles.pageContent, styles.pageContentScrollable]}
       style={styles.page}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       removeClippedSubviews
     >
       {children}
@@ -35,7 +39,17 @@ export function Page({
     <View style={[styles.page, styles.pageContent]}>{children}</View>
   );
 
-  return <SafeAreaView style={styles.safe}>{content}</SafeAreaView>;
+  return (
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoider}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+      >
+        {content}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
 
 export function HeroCard({
@@ -243,6 +257,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  keyboardAvoider: {
+    flex: 1,
+  },
   page: {
     flex: 1,
     backgroundColor: colors.background,
@@ -251,6 +268,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
     gap: spacing.md,
+  },
+  pageContentScrollable: {
+    flexGrow: 1,
   },
   hero: {
     borderRadius: radius.lg,

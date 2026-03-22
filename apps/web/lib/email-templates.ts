@@ -691,6 +691,21 @@ export const LAWYER_REPLY_EMAIL_HTML = (params: {
 
 export const LOGIN_OTP_EMAIL_SUBJECT = 'رمز التحقق لتسجيل الدخول | مسار المحامي';
 
+export const LOGIN_OTP_EMAIL_TEXT = (params: {
+  name: string;
+  code: string;
+  ttlMinutes: number;
+}) =>
+  [
+    `مرحباً ${params.name || 'عميلنا الكريم'}،`,
+    '',
+    'تلقّينا طلب تسجيل دخول إلى حسابك في مسار المحامي.',
+    `رمز التحقق الخاص بك هو: ${params.code}`,
+    `صلاحية الرمز: ${params.ttlMinutes} دقائق.`,
+    '',
+    'إذا لم تكن أنت من يحاول الدخول، يرجى تغيير كلمة المرور فوراً وعدم مشاركة الرمز مع أي شخص.',
+  ].join('\n');
+
 export const LOGIN_OTP_EMAIL_HTML = (params: {
   name: string;
   code: string;

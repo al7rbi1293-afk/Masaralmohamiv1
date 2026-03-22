@@ -293,10 +293,31 @@ export function buildApiUrl(path: string) {
   return buildUrl(path);
 }
 
+export function buildPublicWebUrl(path: string) {
+  return buildUrl(path);
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
-  const payload = (await response.json().catch(() => ({}))) as T & { error?: string };
+  const contentType = response.headers.get('content-type') ?? '';
+  const raw = await response.text().catch(() => '');
+  let payload = {} as T & { error?: string };
+  if (contentType.includes('application/json') && raw) {
+    try {
+      payload = JSON.parse(raw) as T & { error?: string };
+    } catch {
+      payload = {} as T & { error?: string };
+    }
+  }
   if (!response.ok) {
-    throw new Error((payload as { error?: string }).error || 'تعذر إكمال الطلب.');
+    if ((payload as { error?: string }).error) {
+      throw new Error((payload as { error?: string }).error as string);
+    }
+
+    if (raw.includes('<!DOCTYPE html>') || raw.includes('<html')) {
+      throw new Error('الخدمة المطلوبة غير متاحة على هذا الرابط حالياً. حدّث بيئة التطبيق ثم أعد المحاولة.');
+    }
+
+    throw new Error(`تعذر إكمال الطلب. (${response.status})`);
   }
   return payload;
 }
@@ -330,6 +351,13 @@ export async function getJson<T>(path: string, token: string) {
 
 export async function signInOffice(email: string, password: string) {
   return postJson<OfficeSessionResponse>('/api/mobile/auth/signin', {
+    email,
+    password,
+  });
+}
+
+export async function requestOfficeOtpAfterPassword(email: string, password: string) {
+  return postJson<OfficeOtpRequestResponse>('/api/mobile/auth/password-challenge', {
     email,
     password,
   });
@@ -406,6 +434,14 @@ export async function fetchPartnerBootstrap(token: string) {
 
 export async function fetchAdminBootstrap(token: string) {
   return getJson<AdminBootstrap>('/api/mobile/admin/bootstrap', token);
+}
+
+export async function requestSignedInAccountDeletion(token: string, message?: string) {
+  return postJson<AuthMessageResponse>(
+    '/api/mobile/account/delete-request',
+    { message: message?.trim() || undefined },
+    token,
+  );
 }
 
 export function buildMobileAuthBridgeUrl(token: string, nextPath = '/admin') {

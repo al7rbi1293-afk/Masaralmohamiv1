@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&amp;family=Manrope:wght@400;600;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed": "#b5ede7",
+              "primary": "#003527",
+              "on-primary": "#ffffff",
+              "surface-tint": "#2b6954",
+              "on-secondary": "#ffffff",
+              "background": "#f9f9f8",
+              "primary-container": "#064e3b",
+              "on-surface-variant": "#404944",
+              "on-error": "#ffffff",
+              "primary-fixed-dim": "#95d3ba",
+              "surface-dim": "#dadad9",
+              "tertiary": "#735c00",
+              "secondary": "#316763",
+              "on-primary-fixed": "#002117",
+              "surface-container": "#eeeeed",
+              "secondary-fixed-dim": "#9ad1cb",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f4f4f3",
+              "on-secondary-container": "#376d69",
+              "surface-container-high": "#e8e8e7",
+              "on-secondary-fixed-variant": "#144f4b",
+              "on-tertiary-container": "#4e3d00",
+              "surface-bright": "#f9f9f8",
+              "inverse-primary": "#95d3ba",
+              "on-background": "#1a1c1c",
+              "on-tertiary-fixed": "#241a00",
+              "on-error-container": "#93000a",
+              "surface-variant": "#e2e2e2",
+              "surface": "#f9f9f8",
+              "on-tertiary-fixed-variant": "#574500",
+              "outline-variant": "#bfc9c3",
+              "primary-fixed": "#b0f0d6",
+              "error": "#ba1a1a",
+              "on-secondary-fixed": "#00201e",
+              "outline": "#707974",
+              "surface-container-highest": "#e2e2e2",
+              "on-surface": "#1a1c1c",
+              "error-container": "#ffdad6",
+              "on-primary-fixed-variant": "#0b513d",
+              "secondary-container": "#b5ede7",
+              "inverse-surface": "#2f3130",
+              "tertiary-container": "#cca72f",
+              "tertiary-fixed": "#ffe088",
+              "tertiary-fixed-dim": "#e9c349",
+              "inverse-on-surface": "#f1f1f0",
+              "on-primary-container": "#80bea6",
+              "on-tertiary": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Manrope", "IBM Plex Sans Arabic"],
+              "body": ["Inter", "IBM Plex Sans Arabic"],
+              "label": ["Inter", "IBM Plex Sans Arabic"],
+              "arabic": ["IBM Plex Sans Arabic"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .pattern-overlay {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4AF37' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .loader-ring {
+            border: 3px solid rgba(212, 175, 55, 0.1);
+            border-top: 3px solid #D4AF37;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        body {
+            font-family: 'IBM Plex Sans Arabic', sans-serif;
+            background-color: #003527;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="antialiased overflow-hidden">
+<!-- Main Splash Container -->
+<main class="relative h-screen w-full flex flex-col items-center justify-between py-20 bg-primary overflow-hidden">
+<!-- Abstract Background Layers -->
+<div class="absolute inset-0 z-0">
+<!-- Professional Saudi Geometric Pattern Overlay -->
+<div class="absolute inset-0 pattern-overlay opacity-40"></div>
+<!-- Tonal Radial Gradient for Depth -->
+<div class="absolute inset-0 bg-gradient-to-tr from-primary via-primary-container to-primary opacity-90"></div>
+<!-- Dynamic Light Accent -->
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-tertiary opacity-5 blur-[120px] rounded-full"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-400 opacity-5 blur-[120px] rounded-full"></div>
+</div>
+<!-- Top Branding/Tagline (Optional subtle presence) -->
+<div class="relative z-10 opacity-60">
+<span class="text-on-primary font-arabic text-sm tracking-[0.2em] font-light">
+                النظام الرقمي المتكامل
+            </span>
+</div>
+<!-- Center Identity Section -->
+<div class="relative z-10 flex flex-col items-center gap-8">
+<!-- Logo Container with Decorative Elements -->
+<div class="relative group">
+<!-- Outer Arch Motif Glow -->
+<div class="absolute -inset-8 bg-tertiary/10 blur-3xl rounded-full scale-110"></div>
+<!-- Logo Frame -->
+<div class="relative bg-primary-container/40 p-10 rounded-[3rem] backdrop-blur-md shadow-2xl shadow-black/40 border border-on-primary-fixed-variant/20 flex flex-col items-center justify-center bg-transparent border-none shadow-none p-0">
+<img alt="Masar Al-Muhami Logo" class="w-64 h-auto object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0ug8At_te-QVxQky4mkeYTtLz63RagcS1jd0buSueQqCfYL8YVKxXHWbLN58Vk4WBF-arP6Oj8TJhFZ96JekcbM4kfHBSBrtA4ME1-39_6RLx1-JEprf3ft1LL9QYXq2wbB1AqpYk_T_SoXmuK4p3wvxQbNo-6XHMrDpGdaatEdq0oHsj31bJRb1Iz_yfBmzKUwIaNaUmNG0Z5YmN0knZAFWs9RenB6j8K5ucxBgNn-WVpRc4byuSpxXHYPdn0jtgIOM5vR2L8w4"/>
+</div>
+<!-- Brand Text Under Logo -->
+<div class="mt-8 text-center">
+<p class="mt-4 text-primary-fixed-dim font-arabic font-medium text-lg opacity-80">
+                        لإدارة العمليات القانونية
+                    </p>
+</div>
+</div>
+</div>
+<!-- Bottom Status/Loading Section -->
+<div class="relative z-10 flex flex-col items-center gap-6 mb-10">
+<!-- Gold Circular Progress Indicator -->
+<div class="loader-ring"></div>
+<div class="text-center">
+<p class="text-emerald-100/60 font-arabic text-sm font-light tracking-wide">
+                    جاري تهيئة البيئة القانونية الآمنة...
+                </p>
+</div>
+<!-- Trust Indicators -->
+<div class="mt-8 flex items-center gap-4 text-emerald-100/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-xs">shield</span>
+<span class="font-arabic text-[10px] uppercase tracking-widest">تشفير متقدم</span>
+</div>
+<div class="w-1 h-1 bg-emerald-100/20 rounded-full"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-xs">verified_user</span>
+<span class="font-arabic text-[10px] uppercase tracking-widest">موثوق ومعتمد</span>
+</div>
+</div>
+</div>
+<!-- Decorative Subtle Footnote -->
+<div class="absolute bottom-6 left-0 w-full text-center z-10 px-6">
+<p class="text-emerald-900/40 font-arabic text-[11px] leading-relaxed">
+                جميع الحقوق محفوظة © ٢٠٢٤ لمكتب مسار للمحاماة والاستشارات القانونية
+            </p>
+</div>
+</main>
+<!-- Navigation suppression as per "The Destination Rule" for splash screens -->
+<!-- (No BottomNavBar or TopAppBar rendered for this transactional/onboarding view) -->
+</body></html>

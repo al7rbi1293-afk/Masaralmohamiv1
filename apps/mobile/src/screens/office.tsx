@@ -2,8 +2,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -30,6 +30,8 @@ import {
   archiveOfficeDocument,
   archiveOfficeInvoice,
   archiveOfficeTask,
+  buildOfficeInvoicePdfUrl,
+  buildOfficeQuotePdfUrl,
   createOfficeClient,
   createOfficeInvoice,
   createOfficeMatter,
@@ -48,8 +50,8 @@ import {
   fetchOfficeQuoteDetails,
   fetchOfficeTasks,
   requestOfficeDocumentDownloadUrl,
+  sendOfficeInvoiceEmail,
   setOfficeTaskStatus,
-  shareOfficeDocument,
   updateOfficeClient,
   updateOfficeMatter,
   updateOfficeTask,
@@ -71,8 +73,20 @@ import {
   type OfficeTask,
   type OfficeTaskWritePayload,
 } from '../features/office/api';
-import { fetchOfficeMatterDetails, fetchOfficeMatters, type MatterDetails, type MatterSummary } from '../lib/api';
+import {
+  exportRemoteFileToDevice,
+  openRemoteFileInApp,
+  shareRemoteFileFromDevice,
+} from '../lib/file-actions';
+import {
+  fetchOfficeMatterDetails,
+  fetchOfficeMatters,
+  requestSignedInAccountDeletion,
+  type MatterDetails,
+  type MatterSummary,
+} from '../lib/api';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/format';
+import { openPrivacyPolicy, openSupportPage, openTermsOfService } from '../lib/legal-links';
 import { colors, fonts, radius, spacing } from '../theme';
 
 export type OfficeStackParamList = {
@@ -82,6 +96,10 @@ export type OfficeStackParamList = {
   OfficeMatterForm: { mode: 'create' | 'edit'; matter?: Partial<OfficeMatterWritePayload> & { id?: string } };
   OfficeTaskForm: { mode: 'create' | 'edit'; task?: Partial<OfficeTaskWritePayload> & { id?: string } };
   OfficeDocumentForm: { mode: 'create'; draft?: Partial<OfficeDocumentWritePayload> };
+  OfficeSettingsHome: undefined;
+  OfficeIdentitySettings: undefined;
+  OfficeTeamSettings: undefined;
+  OfficeSubscriptionSettings: undefined;
   OfficeBillingForm: {
     mode: 'quote' | 'invoice';
     draft?: {
@@ -90,6 +108,7 @@ export type OfficeStackParamList = {
       items?: OfficeBillingItem[];
     };
   };
+  OfficeSettings: { section?: 'identity' | 'team' | 'subscription' } | undefined;
 };
 
 type OfficeMatterDetailsProps = NativeStackScreenProps<OfficeStackParamList, 'OfficeMatterDetails'>;
@@ -844,9 +863,9 @@ export function OfficeMatterDetailsScreen({ route }: OfficeMatterDetailsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function openMatterDocument(document: MatterDetails['documents'][number]) {
+  async function resolveMatterDocument(document: MatterDetails['documents'][number]) {
     if (!session?.token || !document.latest_version?.storage_path) {
-      return;
+      throw new Error('لا توجد نسخة قابلة للعرض لهذا المستند.');
     }
 
     const result = await requestOfficeDocumentDownloadUrl(
@@ -857,7 +876,21 @@ export function OfficeMatterDetailsScreen({ route }: OfficeMatterDetailsProps) {
       },
     );
 
-    await Linking.openURL(result.signedDownloadUrl);
+    return {
+      url: result.signedDownloadUrl,
+      fileName: document.latest_version.file_name || `${document.title}.pdf`,
+      mimeType: document.latest_version.mime_type,
+    };
+  }
+
+  async function openMatterDocument(document: MatterDetails['documents'][number]) {
+    const remote = await resolveMatterDocument(document);
+    await openRemoteFileInApp(remote);
+  }
+
+  async function downloadMatterDocument(document: MatterDetails['documents'][number]) {
+    const remote = await resolveMatterDocument(document);
+    await exportRemoteFileToDevice(remote);
   }
 
   useEffect(() => {
@@ -1070,7 +1103,20 @@ export function OfficeMatterDetailsScreen({ route }: OfficeMatterDetailsProps) {
                       }
                     }}
                   >
-                    <Text style={styles.inlineActionText}>فتح</Text>
+                    <Text style={styles.inlineActionText}>عرض</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.inlineAction}
+                    onPress={async () => {
+                      try {
+                        await downloadMatterDocument(document);
+                        setError('');
+                      } catch (nextError) {
+                        setError(nextError instanceof Error ? nextError.message : 'تعذر تنزيل المستند.');
+                      }
+                    }}
+                  >
+                    <Text style={styles.inlineActionText}>تحميل</Text>
                   </Pressable>
                 </View>
               </View>
@@ -1140,9 +1186,123 @@ export function OfficeMoreScreen() {
     | null
   >(null);
   const [billingPreviewLoading, setBillingPreviewLoading] = useState(false);
+  const [invoiceEmailTo, setInvoiceEmailTo] = useState('');
+  const [invoiceEmailMessage, setInvoiceEmailMessage] = useState('');
+  const [invoiceEmailSending, setInvoiceEmailSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+
+  useEffect(() => {
+    if (billingPreview?.kind === 'invoice') {
+      setInvoiceEmailTo(billingPreview.invoice.client?.email || '');
+      setInvoiceEmailMessage('');
+      return;
+    }
+
+    setInvoiceEmailTo('');
+    setInvoiceEmailMessage('');
+  }, [billingPreview]);
+
+  async function resolveOfficeDocumentRemote(document: OfficeDocument) {
+    if (!session?.token || !document.latest_version?.storage_path) {
+      throw new Error('لا توجد نسخة قابلة للوصول لهذا المستند.');
+    }
+
+    const result = await requestOfficeDocumentDownloadUrl(
+      { token: session.token, orgId: session.orgId },
+      { document_id: document.id, storage_path: document.latest_version.storage_path },
+    );
+
+    return {
+      url: result.signedDownloadUrl,
+      fileName: document.latest_version.file_name || `${document.title}.pdf`,
+      mimeType: document.latest_version.mime_type,
+    };
+  }
+
+  async function handleViewOfficeDocument(document: OfficeDocument) {
+    const remote = await resolveOfficeDocumentRemote(document);
+    await openRemoteFileInApp(remote);
+  }
+
+  async function handleDownloadOfficeDocument(document: OfficeDocument) {
+    const remote = await resolveOfficeDocumentRemote(document);
+    await exportRemoteFileToDevice(remote);
+  }
+
+  async function handleShareOfficeDocument(document: OfficeDocument) {
+    const remote = await resolveOfficeDocumentRemote(document);
+    await shareRemoteFileFromDevice(remote);
+  }
+
+  async function handleViewBillingPdf(kind: 'invoice' | 'quote', id: string, number: string) {
+    if (!session?.token) return;
+
+    const remote = {
+      url: kind === 'invoice'
+        ? buildOfficeInvoicePdfUrl({ token: session.token, orgId: session.orgId }, id)
+        : buildOfficeQuotePdfUrl({ token: session.token, orgId: session.orgId }, id),
+      fileName: `${kind}-${number}.pdf`,
+      mimeType: 'application/pdf',
+    };
+
+    await openRemoteFileInApp(remote);
+  }
+
+  async function handleDownloadBillingPdf(kind: 'invoice' | 'quote', id: string, number: string) {
+    if (!session?.token) return;
+
+    const remote = {
+      url: kind === 'invoice'
+        ? buildOfficeInvoicePdfUrl({ token: session.token, orgId: session.orgId }, id)
+        : buildOfficeQuotePdfUrl({ token: session.token, orgId: session.orgId }, id),
+      fileName: `${kind}-${number}.pdf`,
+      mimeType: 'application/pdf',
+    };
+
+    await exportRemoteFileToDevice(remote);
+  }
+
+  async function handleShareBillingPdf(kind: 'invoice' | 'quote', id: string, number: string) {
+    if (!session?.token) return;
+
+    const remote = {
+      url: kind === 'invoice'
+        ? buildOfficeInvoicePdfUrl({ token: session.token, orgId: session.orgId }, id)
+        : buildOfficeQuotePdfUrl({ token: session.token, orgId: session.orgId }, id),
+      fileName: `${kind}-${number}.pdf`,
+      mimeType: 'application/pdf',
+    };
+
+    await shareRemoteFileFromDevice(remote);
+  }
+
+  async function handleSendInvoiceEmail() {
+    if (!session?.token || billingPreview?.kind !== 'invoice') {
+      return;
+    }
+
+    setInvoiceEmailSending(true);
+    setActionMessage('');
+
+    try {
+      const response = await sendOfficeInvoiceEmail(
+        { token: session.token, orgId: session.orgId },
+        {
+          invoice_id: billingPreview.invoice.id,
+          to_email: invoiceEmailTo.trim() || undefined,
+          message_optional: invoiceEmailMessage.trim() || undefined,
+        },
+      );
+      setInvoiceEmailTo(response.to_email);
+      setActionMessage(`تم إرسال الفاتورة ${billingPreview.invoice.number} إلى ${response.to_email}`);
+    } catch (nextError) {
+      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر إرسال الفاتورة بالبريد.');
+    } finally {
+      setInvoiceEmailSending(false);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -1229,8 +1389,30 @@ export function OfficeMoreScreen() {
             <Text style={styles.actionTileTitle}>فاتورة</Text>
             <Text style={styles.actionTileMeta}>إصدار جديد</Text>
           </Pressable>
+          <Pressable style={styles.actionTile} onPress={() => navigation.navigate('OfficeSettingsHome')}>
+            <Text style={styles.actionTileTitle}>إدارة المكتب</Text>
+            <Text style={styles.actionTileMeta}>الهوية، الفريق، والخطة الحالية</Text>
+          </Pressable>
         </View>
         {actionMessage ? <Text style={styles.formMessage}>{actionMessage}</Text> : null}
+      </Card>
+
+      <Card>
+        <SectionTitle title="إعدادات المكتب" subtitle="الوصول السريع إلى الهوية والفريق والخطة الحالية." />
+        <View style={styles.quickActionsGrid}>
+          <Pressable style={styles.actionTile} onPress={() => navigation.navigate('OfficeSettings', { section: 'identity' })}>
+            <Text style={styles.actionTileTitle}>الهوية</Text>
+            <Text style={styles.actionTileMeta}>الاسم والشعار</Text>
+          </Pressable>
+          <Pressable style={styles.actionTile} onPress={() => navigation.navigate('OfficeSettings', { section: 'team' })}>
+            <Text style={styles.actionTileTitle}>الفريق</Text>
+            <Text style={styles.actionTileMeta}>الأعضاء والدعوات</Text>
+          </Pressable>
+          <Pressable style={styles.actionTile} onPress={() => navigation.navigate('OfficeSettings', { section: 'subscription' })}>
+            <Text style={styles.actionTileTitle}>الخطة الحالية</Text>
+            <Text style={styles.actionTileMeta}>عرض فقط</Text>
+          </Pressable>
+        </View>
       </Card>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -1348,31 +1530,37 @@ export function OfficeMoreScreen() {
                   <Pressable
                     style={styles.inlineAction}
                     onPress={async () => {
-                      if (!session?.token || !document.latest_version?.storage_path) return;
                       try {
-                        const result = await requestOfficeDocumentDownloadUrl(
-                          { token: session.token, orgId: session.orgId },
-                          { document_id: document.id, storage_path: document.latest_version.storage_path },
-                        );
-                        await Linking.openURL(result.signedDownloadUrl);
-                        setActionMessage(`تم تجهيز تنزيل: ${document.title}`);
+                        await handleViewOfficeDocument(document);
+                        setActionMessage(`تم فتح المستند: ${document.title}`);
                       } catch (nextError) {
-                        setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر تجهيز التنزيل.');
+                        setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر فتح المستند.');
                       }
                     }}
                   >
-                    <Text style={styles.inlineActionText}>فتح</Text>
+                    <Text style={styles.inlineActionText}>عرض</Text>
                   </Pressable>
                   <Pressable
                     style={styles.inlineAction}
                     onPress={async () => {
-                      if (!session?.token) return;
                       try {
-                        const result = await shareOfficeDocument({ token: session.token, orgId: session.orgId }, { document_id: document.id, expires_in: '24h' });
-                        await Linking.openURL(result.shareUrl);
-                        setActionMessage(`تم إنشاء رابط مشاركة: ${document.title}`);
+                        await handleDownloadOfficeDocument(document);
+                        setActionMessage(`تم تجهيز تنزيل المستند: ${document.title}`);
                       } catch (nextError) {
-                        setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر إنشاء رابط المشاركة.');
+                        setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر تنزيل المستند.');
+                      }
+                    }}
+                  >
+                    <Text style={styles.inlineActionText}>تحميل</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.inlineAction}
+                    onPress={async () => {
+                      try {
+                        await handleShareOfficeDocument(document);
+                        setActionMessage(`تمت مشاركة المستند: ${document.title}`);
+                      } catch (nextError) {
+                        setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر مشاركة المستند.');
                       }
                     }}
                   >
@@ -1472,6 +1660,18 @@ export function OfficeMoreScreen() {
                 <Pressable
                   style={styles.inlineAction}
                   onPress={async () => {
+                    try {
+                      await handleViewBillingPdf('invoice', invoice.id, invoice.number);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر فتح PDF الفاتورة.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>PDF</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
                     if (!session?.token) return;
                     try {
                       const nextArchived = !(invoice.is_archived ?? false);
@@ -1533,6 +1733,18 @@ export function OfficeMoreScreen() {
                 >
                   <Text style={styles.inlineActionText}>عرض</Text>
                 </Pressable>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
+                    try {
+                      await handleViewBillingPdf('quote', quote.id, quote.number);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر فتح PDF العرض.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>PDF</Text>
+                </Pressable>
               </View>
             </View>
           ))}
@@ -1560,6 +1772,69 @@ export function OfficeMoreScreen() {
                 <Meta label="الضريبة" value={formatCurrency(billingPreview.invoice.tax, billingPreview.invoice.currency)} />
                 <Meta label="تاريخ الإصدار" value={formatDate(billingPreview.invoice.issued_at)} />
                 <Meta label="الاستحقاق" value={formatDate(billingPreview.invoice.due_at)} />
+              </View>
+              <View style={styles.inlineActionRow}>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
+                    try {
+                      await handleViewBillingPdf('invoice', billingPreview.invoice.id, billingPreview.invoice.number);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر فتح PDF الفاتورة.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>عرض PDF</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
+                    try {
+                      await handleDownloadBillingPdf('invoice', billingPreview.invoice.id, billingPreview.invoice.number);
+                      setActionMessage(`تم تجهيز تنزيل الفاتورة ${billingPreview.invoice.number}`);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر تنزيل الفاتورة.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>تحميل</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
+                    try {
+                      await handleShareBillingPdf('invoice', billingPreview.invoice.id, billingPreview.invoice.number);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر مشاركة الفاتورة.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>مشاركة</Text>
+                </Pressable>
+              </View>
+              <View style={styles.formBlock}>
+                <Text style={styles.formTitle}>إرسال الفاتورة بالبريد</Text>
+                <Field
+                  label="البريد الإلكتروني"
+                  value={invoiceEmailTo}
+                  onChangeText={setInvoiceEmailTo}
+                  placeholder="client@example.com"
+                  keyboardType="email-address"
+                />
+                <Text style={styles.fieldLabel}>رسالة إضافية</Text>
+                <TextInput
+                  value={invoiceEmailMessage}
+                  onChangeText={setInvoiceEmailMessage}
+                  placeholder="يمكن تركها فارغة لاستخدام الرسالة الاحترافية الافتراضية"
+                  placeholderTextColor={colors.textMuted}
+                  style={styles.multiline}
+                  multiline
+                />
+                <PrimaryButton
+                  title={invoiceEmailSending ? 'جارٍ الإرسال...' : 'إرسال الفاتورة للعميل'}
+                  onPress={() => void handleSendInvoiceEmail()}
+                  disabled={invoiceEmailSending}
+                />
               </View>
               {billingPreview.payments.length ? (
                 billingPreview.payments.map((payment) => (
@@ -1603,6 +1878,45 @@ export function OfficeMoreScreen() {
                 <Meta label="الضريبة" value={formatCurrency(billingPreview.quote.tax, billingPreview.quote.currency)} />
                 <Meta label="الحالة" value={billingPreview.quote.status} />
                 <Meta label="تاريخ الإنشاء" value={formatDate(billingPreview.quote.created_at)} />
+              </View>
+              <View style={styles.inlineActionRow}>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
+                    try {
+                      await handleViewBillingPdf('quote', billingPreview.quote.id, billingPreview.quote.number);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر فتح PDF العرض.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>عرض PDF</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
+                    try {
+                      await handleDownloadBillingPdf('quote', billingPreview.quote.id, billingPreview.quote.number);
+                      setActionMessage(`تم تجهيز تنزيل عرض السعر ${billingPreview.quote.number}`);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر تنزيل عرض السعر.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>تحميل</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.inlineAction}
+                  onPress={async () => {
+                    try {
+                      await handleShareBillingPdf('quote', billingPreview.quote.id, billingPreview.quote.number);
+                    } catch (nextError) {
+                      setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر مشاركة عرض السعر.');
+                    }
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>مشاركة</Text>
+                </Pressable>
               </View>
             </View>
           ) : null}
@@ -1648,6 +1962,40 @@ export function OfficeMoreScreen() {
         <Pressable onPress={() => void signOut()} style={styles.signOutButton}>
           <Text style={styles.signOutText}>تسجيل الخروج</Text>
         </Pressable>
+        <View style={styles.accountActionsRow}>
+          <PrimaryButton title="الدعم" onPress={() => void openSupportPage()} secondary />
+          <PrimaryButton title="الشروط" onPress={() => void openTermsOfService()} secondary />
+        </View>
+        <View style={styles.accountActionsRow}>
+          <PrimaryButton title="الخصوصية" onPress={() => void openPrivacyPolicy()} secondary />
+          <PrimaryButton
+            title={session?.role === 'owner' ? 'طلب حذف الحساب والبيانات' : 'طلب حذف الحساب'}
+            onPress={() =>
+              Alert.alert(
+                'طلب حذف الحساب',
+                'سيتم إرسال طلب حذف الحساب للمراجعة مع التحقق من الهوية قبل التنفيذ. هل تريد المتابعة؟',
+                [
+                  { text: 'إلغاء', style: 'cancel' },
+                  {
+                    text: 'إرسال الطلب',
+                    style: 'destructive',
+                    onPress: () => {
+                      if (!session?.token) return;
+                      void requestSignedInAccountDeletion(session.token)
+                        .then((response) => {
+                          setActionMessage(response.message || 'تم إرسال طلب حذف الحساب.');
+                        })
+                        .catch((nextError) => {
+                          setActionMessage(nextError instanceof Error ? nextError.message : 'تعذر إرسال الطلب.');
+                        });
+                    },
+                  },
+                ],
+              )
+            }
+            secondary
+          />
+        </View>
       </Card>
     </Page>
   );
@@ -2620,6 +2968,19 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'right',
   },
+  formBlock: {
+    gap: spacing.md,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  formTitle: {
+    color: colors.primary,
+    fontFamily: fonts.arabicBold,
+    fontSize: 15,
+    textAlign: 'right',
+  },
   formFooter: {
     gap: spacing.sm,
     paddingTop: spacing.sm,
@@ -2753,6 +3114,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  accountActionsRow: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   adminSwitchButton: {
     backgroundColor: colors.surfaceMuted,

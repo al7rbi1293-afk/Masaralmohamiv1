@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -28,19 +27,29 @@ import {
   buildClientPortalInvoicePdfUrl,
   buildClientPortalQuotePdfUrl,
   fetchClientPortalOverview,
+  requestClientPortalAccountDeletion,
   requestClientPortalDocumentDownloadUrl,
   submitClientPortalCommunication,
   submitClientPortalRequest,
   uploadClientPortalDocument,
 } from '../features/client/api';
 import type {
+  ClientPortalDocument,
+  ClientPortalInvoice,
   ClientPortalMatter,
   ClientPortalMatterCommunication,
   ClientPortalNotificationItem,
   ClientPortalOverview,
+  ClientPortalQuote,
   ClientPortalRequestItem,
 } from '../features/client/types';
+import {
+  exportRemoteFileToDevice,
+  openRemoteFileInApp,
+  shareRemoteFileFromDevice,
+} from '../lib/file-actions';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/format';
+import { openPrivacyPolicy, openSupportPage, openTermsOfService } from '../lib/legal-links';
 import { colors, fonts, radius, spacing } from '../theme';
 
 export type ClientStackParamList = {
@@ -517,23 +526,116 @@ export function ClientCenterScreen() {
     }
   }
 
-  async function handleOpenDocument(storagePath: string) {
-    if (!token) return;
+  async function resolveDocumentDownload(document: ClientPortalDocument) {
+    if (!token) {
+      throw new Error('انتهت جلسة الدخول. أعد تسجيل الدخول ثم حاول مرة أخرى.');
+    }
+    if (!document.latest_version?.storage_path) {
+      throw new Error('لا توجد نسخة قابلة للتنزيل لهذا المستند.');
+    }
 
+    const payload = await requestClientPortalDocumentDownloadUrl(token, document.latest_version.storage_path);
+    return {
+      url: payload.signedDownloadUrl,
+      fileName: document.latest_version.file_name || `${document.title}.pdf`,
+      mimeType: document.latest_version.mime_type,
+    };
+  }
+
+  async function handleViewDocument(document: ClientPortalDocument) {
     try {
-      const payload = await requestClientPortalDocumentDownloadUrl(token, storagePath);
-      await Linking.openURL(payload.signedDownloadUrl);
+      const remote = await resolveDocumentDownload(document);
+      await openRemoteFileInApp(remote);
+    } catch (nextError) {
+      Alert.alert('تعذر العرض', nextError instanceof Error ? nextError.message : 'تعذر عرض المستند الآن.');
+    }
+  }
+
+  async function handleDownloadDocument(document: ClientPortalDocument) {
+    try {
+      const remote = await resolveDocumentDownload(document);
+      await exportRemoteFileToDevice(remote);
+      Alert.alert('تم تجهيز الملف', 'يمكنك الآن حفظه أو نقله إلى تطبيقات الجهاز.');
     } catch (nextError) {
       Alert.alert('تعذر التنزيل', nextError instanceof Error ? nextError.message : 'تعذر تنزيل المستند الآن.');
     }
   }
 
-  async function handleOpenExternal(url: string) {
+  async function handleShareDocument(document: ClientPortalDocument) {
     try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert('تعذر الفتح', 'تعذر فتح الرابط حالياً.');
+      const remote = await resolveDocumentDownload(document);
+      await shareRemoteFileFromDevice(remote);
+    } catch (nextError) {
+      Alert.alert('تعذر المشاركة', nextError instanceof Error ? nextError.message : 'تعذر مشاركة المستند الآن.');
     }
+  }
+
+  async function handleViewPdf(url: string, fileName: string) {
+    try {
+      await openRemoteFileInApp({ url, fileName, mimeType: 'application/pdf' });
+    } catch (nextError) {
+      Alert.alert('تعذر الفتح', nextError instanceof Error ? nextError.message : 'تعذر فتح الملف حالياً.');
+    }
+  }
+
+  async function handleDownloadPdf(url: string, fileName: string) {
+    try {
+      await exportRemoteFileToDevice({ url, fileName, mimeType: 'application/pdf' });
+      Alert.alert('تم تجهيز الملف', 'يمكنك الآن حفظه أو نقله إلى تطبيقات الجهاز.');
+    } catch (nextError) {
+      Alert.alert('تعذر التنزيل', nextError instanceof Error ? nextError.message : 'تعذر تنزيل الملف حالياً.');
+    }
+  }
+
+  async function handleSharePdf(url: string, fileName: string) {
+    try {
+      await shareRemoteFileFromDevice({ url, fileName, mimeType: 'application/pdf' });
+    } catch (nextError) {
+      Alert.alert('تعذر المشاركة', nextError instanceof Error ? nextError.message : 'تعذر مشاركة الملف حالياً.');
+    }
+  }
+
+  function renderPdfActions(kind: 'invoice' | 'quote', item: ClientPortalInvoice | ClientPortalQuote) {
+    if (!token) return undefined;
+
+    const url = kind === 'invoice'
+      ? buildClientPortalInvoicePdfUrl(token, item.id)
+      : buildClientPortalQuotePdfUrl(token, item.id);
+    const fileName = `${kind === 'invoice' ? 'invoice' : 'quote'}-${item.number}.pdf`;
+
+    return (
+      <View style={styles.linkGroup}>
+        <Pressable onPress={() => void handleViewPdf(url, fileName)}>
+          <Text style={styles.linkButton}>عرض</Text>
+        </Pressable>
+        <Pressable onPress={() => void handleDownloadPdf(url, fileName)}>
+          <Text style={styles.linkButton}>تحميل</Text>
+        </Pressable>
+        <Pressable onPress={() => void handleSharePdf(url, fileName)}>
+          <Text style={styles.linkButton}>مشاركة</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  function renderDocumentActions(document: ClientPortalDocument) {
+    if (!document.latest_version?.storage_path) {
+      return undefined;
+    }
+
+    return (
+      <View style={styles.linkGroup}>
+        <Pressable onPress={() => void handleViewDocument(document)}>
+          <Text style={styles.linkButton}>عرض</Text>
+        </Pressable>
+        <Pressable onPress={() => void handleDownloadDocument(document)}>
+          <Text style={styles.linkButton}>تحميل</Text>
+        </Pressable>
+        <Pressable onPress={() => void handleShareDocument(document)}>
+          <Text style={styles.linkButton}>مشاركة</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   if (loading) {
@@ -574,13 +676,7 @@ export function ClientCenterScreen() {
               ].join(' · ')}
               status={document.source || 'مستند'}
               tone={document.source ? 'gold' : 'success'}
-              action={
-                document.latest_version?.storage_path ? (
-                  <Pressable onPress={() => void handleOpenDocument(document.latest_version!.storage_path)}>
-                    <Text style={styles.linkButton}>تنزيل</Text>
-                  </Pressable>
-                ) : undefined
-              }
+              action={renderDocumentActions(document)}
             />
           ))
         ) : (
@@ -621,13 +717,7 @@ export function ClientCenterScreen() {
               ].join(' · ')}
               status={invoice.status}
               tone={statusTone(invoice.status)}
-              action={
-                token ? (
-                  <Pressable onPress={() => void handleOpenExternal(buildClientPortalInvoicePdfUrl(token, invoice.id))}>
-                    <Text style={styles.linkButton}>PDF</Text>
-                  </Pressable>
-                ) : undefined
-              }
+              action={renderPdfActions('invoice', invoice)}
             />
           ))
         ) : (
@@ -648,13 +738,7 @@ export function ClientCenterScreen() {
               ].join(' · ')}
               status={quote.status}
               tone={statusTone(quote.status)}
-              action={
-                token ? (
-                  <Pressable onPress={() => void handleOpenExternal(buildClientPortalQuotePdfUrl(token, quote.id))}>
-                    <Text style={styles.linkButton}>PDF</Text>
-                  </Pressable>
-                ) : undefined
-              }
+              action={renderPdfActions('quote', quote)}
             />
           ))
         ) : (
@@ -717,6 +801,40 @@ export function ClientCenterScreen() {
         <SummaryRow title={data.bootstrap.client.name} subtitle={session?.email || data.bootstrap.client.email || '—'} />
         <SummaryRow title="الجوال" subtitle={data.bootstrap.client.phone || 'غير مسجل'} />
         <SummaryRow title="الهوية / السجل" subtitle={data.bootstrap.client.identity_no || data.bootstrap.client.commercial_no || 'غير متوفر'} />
+        <View style={styles.actionRow}>
+          <PrimaryButton title="الدعم" onPress={() => void openSupportPage()} secondary />
+          <PrimaryButton title="الشروط" onPress={() => void openTermsOfService()} secondary />
+        </View>
+        <View style={styles.actionRow}>
+          <PrimaryButton title="الخصوصية" onPress={() => void openPrivacyPolicy()} secondary />
+          <PrimaryButton
+            title="طلب حذف الحساب"
+            onPress={() =>
+              Alert.alert(
+                'طلب حذف الحساب',
+                'سيتم إرسال طلب حذف الحساب إلى المكتب مع التحقق من الهوية قبل التنفيذ. هل تريد المتابعة؟',
+                [
+                  { text: 'إلغاء', style: 'cancel' },
+                  {
+                    text: 'إرسال الطلب',
+                    style: 'destructive',
+                    onPress: () => {
+                      if (!token) return;
+                      void requestClientPortalAccountDeletion(token)
+                        .then((response) => {
+                          Alert.alert('تم الإرسال', response.message || 'تم إرسال طلب حذف الحساب.');
+                        })
+                        .catch((nextError) => {
+                          Alert.alert('تعذر الإرسال', nextError instanceof Error ? nextError.message : 'تعذر إرسال الطلب.');
+                        });
+                    },
+                  },
+                ],
+              )
+            }
+            secondary
+          />
+        </View>
         <Pressable onPress={() => void signOut()} style={styles.logout}>
           <Text style={styles.logoutText}>تسجيل الخروج</Text>
         </Pressable>
@@ -825,6 +943,10 @@ const styles = StyleSheet.create({
     color: colors.primarySoft,
     fontFamily: fonts.arabicBold,
     fontSize: 13,
+  },
+  linkGroup: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
   },
   search: {
     backgroundColor: colors.surface,

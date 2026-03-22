@@ -1,6 +1,8 @@
-import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Card, EmptyState, HeroCard, LoadingBlock, Page, SectionTitle, StatCard, StatusChip } from '../components/ui';
 import { formatCurrency, formatDate, formatDateTime, formatShortNumber } from '../lib/format';
+import { openPrivacyPolicy, openSupportPage, openTermsOfService } from '../lib/legal-links';
+import { requestSignedInAccountDeletion } from '../lib/api';
 import { colors, fonts, radius, spacing } from '../theme';
 import { useAuth } from '../context/auth-context';
 import { PartnerActionButton, PartnerActivityItem, PartnerKeyValue, PartnerProgressRow, PartnerSection } from '../features/partner/components';
@@ -287,7 +289,7 @@ export function PartnerCommissionsScreen() {
 
 export function PartnerProfileScreen() {
   const { data, loading, error, refresh } = usePartnerOverview();
-  const { signOut } = useAuth();
+  const { session, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -382,6 +384,40 @@ export function PartnerProfileScreen() {
           tone={data.partner.is_active ? 'success' : 'danger'}
           status={data.partner.is_active ? 'نشط' : 'موقوف'}
         />
+        <View style={styles.actionRow}>
+          <PartnerActionButton title="الدعم" onPress={() => void openSupportPage()} secondary />
+          <PartnerActionButton title="الشروط" onPress={() => void openTermsOfService()} secondary />
+        </View>
+        <View style={styles.actionRow}>
+          <PartnerActionButton title="الخصوصية" onPress={() => void openPrivacyPolicy()} secondary />
+          <PartnerActionButton
+            title="طلب حذف الحساب"
+            secondary
+            onPress={() =>
+              Alert.alert(
+                'طلب حذف الحساب',
+                'سيتم إرسال طلب حذف الحساب للمراجعة مع التحقق من الهوية قبل التنفيذ. هل تريد المتابعة؟',
+                [
+                  { text: 'إلغاء', style: 'cancel' },
+                  {
+                    text: 'إرسال الطلب',
+                    style: 'destructive',
+                    onPress: () => {
+                      if (!session?.token) return;
+                      void requestSignedInAccountDeletion(session.token)
+                        .then((response) => {
+                          Alert.alert('تم الإرسال', response.message || 'تم إرسال طلب حذف الحساب.');
+                        })
+                        .catch((nextError) => {
+                          Alert.alert('تعذر الإرسال', nextError instanceof Error ? nextError.message : 'تعذر إرسال الطلب.');
+                        });
+                    },
+                  },
+                ],
+              )
+            }
+          />
+        </View>
         <Pressable onPress={() => void signOut()} style={styles.signOutButton}>
           <Text style={styles.signOutText}>تسجيل الخروج</Text>
         </Pressable>

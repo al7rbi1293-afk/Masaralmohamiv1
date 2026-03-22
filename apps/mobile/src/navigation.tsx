@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { AuthScreen } from './screens/auth';
+import { AuthScreen, ClientAuthScreen } from './screens/auth';
 import {
   ClientCenterScreen,
   ClientHomeScreen,
@@ -25,7 +25,21 @@ import {
   OfficeMoreScreen,
   type OfficeStackParamList,
 } from './screens/office';
-import { AdminHomeScreen, type AdminStackParamList } from './screens/admin';
+import {
+  OfficeIdentitySettingsScreen,
+  OfficeSettingsHomeScreen,
+  OfficeSettingsScreen,
+  OfficeSubscriptionSettingsScreen,
+  OfficeTeamSettingsScreen,
+} from './screens/office-settings';
+import {
+  AdminAuditScreen,
+  AdminHomeScreen,
+  AdminOrgsScreen,
+  AdminRequestsScreen,
+  AdminUsersScreen,
+  type AdminStackParamList,
+} from './screens/admin';
 import {
   PartnerCommissionsScreen,
   PartnerHomeScreen,
@@ -220,6 +234,11 @@ function OfficeNavigator() {
       <OfficeStack.Screen name="OfficeTaskForm" component={OfficeTaskFormScreen} options={({ route }) => ({ title: route.params.mode === 'edit' ? 'تعديل مهمة' : 'مهمة جديدة' })} />
       <OfficeStack.Screen name="OfficeDocumentForm" component={OfficeDocumentFormScreen} options={{ title: 'مستند جديد' }} />
       <OfficeStack.Screen name="OfficeBillingForm" component={OfficeBillingFormScreen} options={({ route }) => ({ title: route.params.mode === 'quote' ? 'عرض سعر' : 'فاتورة جديدة' })} />
+      <OfficeStack.Screen name="OfficeSettingsHome" component={OfficeSettingsHomeScreen} options={{ title: 'إدارة المكتب' }} />
+      <OfficeStack.Screen name="OfficeIdentitySettings" component={OfficeIdentitySettingsScreen} options={{ title: 'هوية المكتب' }} />
+      <OfficeStack.Screen name="OfficeTeamSettings" component={OfficeTeamSettingsScreen} options={{ title: 'الفريق' }} />
+      <OfficeStack.Screen name="OfficeSubscriptionSettings" component={OfficeSubscriptionSettingsScreen} options={{ title: 'الاشتراك' }} />
+      <OfficeStack.Screen name="OfficeSettings" component={OfficeSettingsScreen} options={{ title: 'إعدادات المكتب' }} />
     </OfficeStack.Navigator>
   );
 }
@@ -234,6 +253,10 @@ function AdminNavigator() {
       }}
     >
       <AdminStack.Screen name="AdminHome" component={AdminHomeScreen} options={{ title: 'لوحة الإدارة' }} />
+      <AdminStack.Screen name="AdminRequests" component={AdminRequestsScreen} options={{ title: 'طلبات الاشتراك' }} />
+      <AdminStack.Screen name="AdminUsers" component={AdminUsersScreen} options={{ title: 'المستخدمون' }} />
+      <AdminStack.Screen name="AdminOrgs" component={AdminOrgsScreen} options={{ title: 'المكاتب' }} />
+      <AdminStack.Screen name="AdminAudit" component={AdminAuditScreen} options={{ title: 'سجل التدقيق' }} />
     </AdminStack.Navigator>
   );
 }
@@ -358,7 +381,10 @@ export function AppNavigation() {
     <NavigationContainer theme={navTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {!session ? (
-          <RootStack.Screen name="Auth" component={AuthScreen} />
+          <>
+            <RootStack.Screen name="Auth" component={AuthScreen} />
+            <RootStack.Screen name="ClientAuth" component={ClientAuthScreen} />
+          </>
         ) : session.portal === 'client' ? (
           <RootStack.Screen name="Client" component={ClientNavigator} />
         ) : session.portal === 'admin' ? (

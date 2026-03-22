@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
+import { LOGIN_OTP_EMAIL_HTML, LOGIN_OTP_EMAIL_SUBJECT, LOGIN_OTP_EMAIL_TEXT } from '@/lib/email-templates';
 
 export async function POST(request: Request) {
   try {
@@ -58,27 +59,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const html = `
-      <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h2 style="color: #0b2b4d;">رمز تسجيل الدخول</h2>
-        <p>مرحباً ${user.full_name || ''}،</p>
-        <p>لقد طلبت تسجيل الدخول إلى حسابك في منصة مسار المحامي.</p>
-        <p>الرمز السري المؤقت الخاص بك هو:</p>
-        <div style="background-color: #f4f6f8; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-          <h1 style="color: #00bf63; margin: 0; letter-spacing: 5px;">${otp}</h1>
-        </div>
-        <p>هذا الرمز صالح لمدة 10 دقائق فقط.</p>
-        <p>إذا لم تكن قد طلبت هذا الرمز، يرجى تجاهل هذه الرسالة.</p>
-        <br />
-        <p>مع تحيات،<br />فريق منصة مسار المحامي</p>
-      </div>
-    `;
-
     try {
       await sendEmail({
         to: email,
-        subject: 'رمز الدخول إلى مسار المحامي',
-        html,
+        subject: LOGIN_OTP_EMAIL_SUBJECT,
+        html: LOGIN_OTP_EMAIL_HTML({
+          name: user.full_name || '',
+          code: otp,
+          ttlMinutes: 10,
+        }),
+        text: LOGIN_OTP_EMAIL_TEXT({
+          name: user.full_name || '',
+          code: otp,
+          ttlMinutes: 10,
+        }),
       });
     } catch (emailError) {
       console.error('Failed to send OTP email:', emailError);

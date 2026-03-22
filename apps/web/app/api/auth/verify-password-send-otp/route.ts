@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
-import { LOGIN_OTP_EMAIL_HTML, LOGIN_OTP_EMAIL_SUBJECT } from '@/lib/email-templates';
+import { LOGIN_OTP_EMAIL_HTML, LOGIN_OTP_EMAIL_SUBJECT, LOGIN_OTP_EMAIL_TEXT } from '@/lib/email-templates';
 import { verifyPassword } from '@/lib/auth-custom';
 
 export async function POST(request: Request) {
@@ -95,6 +95,11 @@ export async function POST(request: Request) {
         to: email,
         subject: LOGIN_OTP_EMAIL_SUBJECT,
         html,
+        text: LOGIN_OTP_EMAIL_TEXT({
+          name: user.full_name || '',
+          code: otp,
+          ttlMinutes,
+        }),
       });
     } catch (emailError) {
       console.error('Failed to send OTP email:', emailError);

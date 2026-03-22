@@ -23,11 +23,11 @@ type InvoiceRowLike = Omit<InvoiceRow, 'is_archived'> & {
 };
 
 const QUOTE_SELECT =
-  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, created_by, created_at, client:clients(id, name), matter:matters(id, title)';
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, created_by, created_at, client:clients(id, name, email), matter:matters(id, title)';
 const INVOICE_SELECT =
-  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, is_archived, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, is_archived, issued_at, due_at, created_by, client:clients(id, name, email), matter:matters(id, title)';
 const INVOICE_SELECT_LEGACY =
-  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, issued_at, due_at, created_by, client:clients(id, name), matter:matters(id, title)';
+  'id, org_id, client_id, matter_id, number, items, subtotal, tax, total, currency, status, tax_enabled, tax_number, issued_at, due_at, created_by, client:clients(id, name, email), matter:matters(id, title)';
 const INVOICE_PAYMENT_SELECT =
   'id, org_id, invoice_id, amount, method, paid_at, note, created_by, created_at';
 

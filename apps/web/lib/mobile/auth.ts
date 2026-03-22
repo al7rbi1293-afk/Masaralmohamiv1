@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomInt, randomUUID } from 'node:crypto';
 import { generateSessionToken, verifyPassword, verifySessionToken } from '@/lib/auth-custom';
 import { sendEmail } from '@/lib/email';
+import { isSmtpConfigured } from '@/lib/env';
 import {
   LOGIN_OTP_EMAIL_HTML,
   LOGIN_OTP_EMAIL_SUBJECT,
@@ -399,6 +400,14 @@ export async function requestMobileAppUserOtp(params: { email: string }) {
       };
     }
 
+    if (!isSmtpConfigured()) {
+      return {
+        ok: false as const,
+        status: 503,
+        error: 'تعذر إرسال رمز التحقق حالياً لأن إعداد البريد الإلكتروني غير مكتمل.',
+      };
+    }
+
     const otpCode = generateMobileOtpCode();
 
     try {
@@ -454,6 +463,14 @@ export async function requestMobileAppUserOtpAfterPassword(params: {
         ok: false as const,
         status: 403,
         error: 'الحساب موجود ولكنه غير مفعل. يرجى إعادة إرسال رابط التفعيل أولاً.',
+      };
+    }
+
+    if (!isSmtpConfigured()) {
+      return {
+        ok: false as const,
+        status: 503,
+        error: 'تعذر إرسال رمز التحقق حالياً لأن إعداد البريد الإلكتروني غير مكتمل.',
       };
     }
 
@@ -578,6 +595,14 @@ export async function resendMobileAppUserActivation(params: { email: string; sit
         ok: true as const,
         status: 200,
         message: 'الحساب مفعل مسبقاً. يمكنك تسجيل الدخول الآن.',
+      };
+    }
+
+    if (!isSmtpConfigured()) {
+      return {
+        ok: false as const,
+        status: 503,
+        error: 'تعذر إرسال رابط التفعيل حالياً لأن إعداد البريد الإلكتروني غير مكتمل.',
       };
     }
 

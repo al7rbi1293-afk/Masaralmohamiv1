@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isSmtpConfigured } from '@/lib/env';
 import { sendEmail } from '@/lib/email';
 import { LOGIN_OTP_EMAIL_HTML, LOGIN_OTP_EMAIL_SUBJECT, LOGIN_OTP_EMAIL_TEXT } from '@/lib/email-templates';
 import { verifyPassword } from '@/lib/auth-custom';
@@ -52,6 +53,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'الحساب موجود ولكنه غير مفعل. يرجى مراجعة بريدك الإلكتروني لتفعيل الحساب.' },
         { status: 403 }
+      );
+    }
+
+    if (!isSmtpConfigured()) {
+      return NextResponse.json(
+        { error: 'تعذر إرسال رمز التحقق حالياً لأن إعداد البريد الإلكتروني غير مكتمل.' },
+        { status: 503 }
       );
     }
 

@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
-import { ShieldAlert, Users, Building, History, LayoutDashboard, Handshake, Cable } from 'lucide-react';
+import { ShieldAlert, Users, Building, History, LayoutDashboard, Handshake, Cable, ClipboardList } from 'lucide-react';
 import RequestsTab from './_components/RequestsTab';
 import UsersTab from './_components/UsersTab';
 import OrgsTab from './_components/OrgsTab';
@@ -72,6 +73,16 @@ export default function AdminHomePage() {
                             </button>
                         );
                     })}
+
+                    <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-800">
+                        <Link
+                            href="/admin/surveys/lawyers"
+                            className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 hover:text-brand-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                        >
+                            <ClipboardList className="h-4 w-4 text-slate-400 transition-colors group-hover:text-brand-emerald dark:text-slate-500 dark:group-hover:text-emerald-400" />
+                            ردود الاستبيان
+                        </Link>
+                    </div>
                 </nav>
             </aside>
 

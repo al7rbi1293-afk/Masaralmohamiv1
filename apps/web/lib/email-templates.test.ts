@@ -14,6 +14,12 @@ import {
   LOGIN_OTP_EMAIL_HTML,
   LOGIN_OTP_EMAIL_SUBJECT,
   LOGIN_OTP_EMAIL_TEXT,
+  TRIAL_ENDING_SOON_EMAIL_HTML,
+  TRIAL_ENDING_SOON_EMAIL_SUBJECT,
+  TRIAL_ENDING_SOON_EMAIL_TEXT,
+  TRIAL_EXPIRED_EMAIL_HTML,
+  TRIAL_EXPIRED_EMAIL_SUBJECT,
+  TRIAL_EXPIRED_EMAIL_TEXT,
   TASK_REMINDER_EMAIL_HTML,
   TASK_REMINDER_EMAIL_SUBJECT,
   TASK_REMINDER_EMAIL_TEXT,
@@ -131,4 +137,57 @@ test('login otp email uses the shared branded template and text copy', () => {
   assert.match(html, /تحقق ثنائي/);
   assert.match(text, /654321/);
   assert.match(text, /صلاحية الرمز: 10 دقائق/);
+});
+
+test('trial ending soon email includes office name, urgency, and upgrade link', () => {
+  const upgradeUrl = 'https://masar.example.com/upgrade';
+  const html = TRIAL_ENDING_SOON_EMAIL_HTML({
+    recipientName: 'مكتب الأفق للمحاماة',
+    orgName: 'مكتب الأفق للمحاماة',
+    daysLeft: 2,
+    endsAtLabel: '25 مارس 2026',
+    upgradeUrl,
+    supportEmail: 'support@example.com',
+  });
+  const text = TRIAL_ENDING_SOON_EMAIL_TEXT({
+    recipientName: 'مكتب الأفق للمحاماة',
+    orgName: 'مكتب الأفق للمحاماة',
+    daysLeft: 2,
+    endsAtLabel: '25 مارس 2026',
+    upgradeUrl,
+    supportEmail: 'support@example.com',
+  });
+
+  assert.match(TRIAL_ENDING_SOON_EMAIL_SUBJECT(2), /يومان/);
+  assert.match(html, /مكتب الأفق للمحاماة/);
+  assert.match(html, /25 مارس 2026/);
+  assert.match(html, /طلب التفعيل الآن/);
+  assert.match(html, /https:\/\/masar\.example\.com\/upgrade/);
+  assert.match(text, /لم يتبقَ عليها سوى يومان/);
+  assert.match(text, /support@example.com/);
+});
+
+test('trial expired email reassures data retention and points to activation flow', () => {
+  const upgradeUrl = 'https://masar.example.com/upgrade';
+  const html = TRIAL_EXPIRED_EMAIL_HTML({
+    recipientName: 'سارة',
+    orgName: 'مكتب سارة للمحاماة',
+    endedAtLabel: '27 مارس 2026',
+    upgradeUrl,
+    supportEmail: 'support@example.com',
+  });
+  const text = TRIAL_EXPIRED_EMAIL_TEXT({
+    recipientName: 'سارة',
+    orgName: 'مكتب سارة للمحاماة',
+    endedAtLabel: '27 مارس 2026',
+    upgradeUrl,
+    supportEmail: 'support@example.com',
+  });
+
+  assert.match(TRIAL_EXPIRED_EMAIL_SUBJECT, /انتهت التجربة/);
+  assert.match(html, /مكتب سارة للمحاماة/);
+  assert.match(html, /تم حفظ بياناتكم/);
+  assert.match(html, /استكمال التفعيل/);
+  assert.match(text, /بياناتكم ما تزال محفوظة/);
+  assert.match(text, /https:\/\/masar\.example\.com\/upgrade/);
 });

@@ -20,6 +20,8 @@ const templateLabel: Record<string, string> = {
   doc_share: 'مشاركة مستند',
   invoice: 'فاتورة',
   task_reminder: 'تذكير مهمة',
+  trial_reminder: 'تذكير قرب انتهاء التجربة',
+  trial_expired: 'انتهاء التجربة',
 };
 
 export default async function EmailSettingsPage() {

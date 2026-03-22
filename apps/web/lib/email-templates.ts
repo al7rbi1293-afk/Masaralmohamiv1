@@ -689,6 +689,176 @@ export const LAWYER_REPLY_EMAIL_HTML = (params: {
     `,
   });
 
+function formatDaysLeftLabel(daysLeft: number) {
+  if (daysLeft <= 1) return 'يوم واحد';
+  if (daysLeft === 2) return 'يومان';
+  return `${daysLeft} أيام`;
+}
+
+function buildTrialTimeRemainingLabel(daysLeft: number) {
+  if (daysLeft <= 1) return 'تبقّى يوم واحد';
+  if (daysLeft === 2) return 'تبقّى يومان';
+  return `تبقّى ${formatDaysLeftLabel(daysLeft)}`;
+}
+
+export const TRIAL_ENDING_SOON_EMAIL_SUBJECT = (daysLeft: number) =>
+  `${buildTrialTimeRemainingLabel(daysLeft)} قبل انتهاء التجربة | ${EMAIL_BRAND_NAME}`;
+
+export const TRIAL_ENDING_SOON_EMAIL_TEXT = (params: {
+  recipientName?: string | null;
+  orgName?: string | null;
+  daysLeft: number;
+  endsAtLabel?: string | null;
+  upgradeUrl: string;
+  supportEmail?: string | null;
+}) =>
+  [
+    `مرحباً ${params.recipientName?.trim() || 'عميلنا الكريم'}،`,
+    '',
+    `نود إشعاركم بأن الفترة التجريبية الخاصة بـ ${params.orgName?.trim() || EMAIL_BRAND_NAME} لم يتبقَ عليها سوى ${formatDaysLeftLabel(params.daysLeft)}.`,
+    params.endsAtLabel ? `تاريخ انتهاء التجربة: ${params.endsAtLabel}` : '',
+    '',
+    'لضمان استمرار الوصول إلى القضايا والمستندات وسير العمل دون انقطاع، نوصي بإرسال طلب التفعيل الآن.',
+    `رابط الترقية: ${params.upgradeUrl}`,
+    `للدعم المباشر: ${params.supportEmail?.trim() || SUPPORT_EMAIL}`,
+    '',
+    'مع خالص التقدير،',
+    EMAIL_BRAND_NAME,
+  ].filter(Boolean).join('\n');
+
+export const TRIAL_ENDING_SOON_EMAIL_HTML = (params: {
+  recipientName?: string | null;
+  orgName?: string | null;
+  daysLeft: number;
+  endsAtLabel?: string | null;
+  upgradeUrl: string;
+  supportEmail?: string | null;
+}) =>
+  renderEmailShell({
+    subject: TRIAL_ENDING_SOON_EMAIL_SUBJECT(params.daysLeft),
+    preheader: `${buildTrialTimeRemainingLabel(params.daysLeft)} قبل انتهاء التجربة الخاصة بـ ${params.orgName?.trim() || EMAIL_BRAND_NAME}.`,
+    eyebrow: 'تنبيه الاشتراك',
+    title: 'تجربتكم المجانية تقترب من نهايتها',
+    intro: 'هذه رسالة تذكير احترافية حتى تتمكنوا من استكمال العمل على المنصة دون أي توقف أو تعطيل لسير المكتب.',
+    bodyHtml: `
+      <p>مرحباً <strong>${escapeHtml(params.recipientName?.trim() || 'عميلنا الكريم')}</strong>،</p>
+      <p>
+        نحيطكم علماً بأن الفترة التجريبية الخاصة بـ
+        <strong>${escapeHtml(params.orgName?.trim() || EMAIL_BRAND_NAME)}</strong>
+        لم يتبقَ عليها سوى <strong>${escapeHtml(formatDaysLeftLabel(params.daysLeft))}</strong>.
+        ${params.endsAtLabel ? `موعد الانتهاء المتوقع هو <strong>${escapeHtml(params.endsAtLabel)}</strong>.` : ''}
+      </p>
+
+      <div class="panel">
+        <h2 class="panel-title">ملخص الحالة الحالية</h2>
+        <table role="presentation" class="meta-table">
+          <tr>
+            <td>الجهة</td>
+            <td>${escapeHtml(params.orgName?.trim() || EMAIL_BRAND_NAME)}</td>
+          </tr>
+          <tr>
+            <td>المدة المتبقية</td>
+            <td>${escapeHtml(formatDaysLeftLabel(params.daysLeft))}</td>
+          </tr>
+          ${params.endsAtLabel ? `
+          <tr>
+            <td>تاريخ الانتهاء</td>
+            <td>${escapeHtml(params.endsAtLabel)}</td>
+          </tr>
+          ` : ''}
+        </table>
+      </div>
+
+      <div class="panel panel-success">
+        <h2 class="panel-title">لماذا يفضل التفعيل الآن؟</h2>
+        <ul class="list">
+          <li>استمرار الوصول إلى القضايا والعملاء والمستندات دون انقطاع.</li>
+          <li>تفادي توقف الفريق عن المتابعة عند انتهاء الفترة التجريبية.</li>
+          <li>تسريع إجراءات التفعيل قبل آخر يوم وبدون ضغط تشغيلي.</li>
+        </ul>
+      </div>
+
+      <div class="cta">
+        <a class="btn" href="${escapeHtml(params.upgradeUrl)}">طلب التفعيل الآن</a>
+      </div>
+
+      <div class="panel panel-muted">
+        <h2 class="panel-title">تحتاجون مساعدة سريعة؟</h2>
+        <p style="margin:0;">
+          يمكنكم التواصل مباشرة عبر البريد:
+          <a href="mailto:${escapeHtml(params.supportEmail?.trim() || SUPPORT_EMAIL)}">${escapeHtml(params.supportEmail?.trim() || SUPPORT_EMAIL)}</a>
+        </p>
+      </div>
+    `,
+  });
+
+export const TRIAL_EXPIRED_EMAIL_SUBJECT = `انتهت التجربة المجانية | ${EMAIL_BRAND_NAME}`;
+
+export const TRIAL_EXPIRED_EMAIL_TEXT = (params: {
+  recipientName?: string | null;
+  orgName?: string | null;
+  endedAtLabel?: string | null;
+  upgradeUrl: string;
+  supportEmail?: string | null;
+}) =>
+  [
+    `مرحباً ${params.recipientName?.trim() || 'عميلنا الكريم'}،`,
+    '',
+    `نود إشعاركم بانتهاء الفترة التجريبية الخاصة بـ ${params.orgName?.trim() || EMAIL_BRAND_NAME}.`,
+    params.endedAtLabel ? `تاريخ انتهاء التجربة: ${params.endedAtLabel}` : '',
+    'بياناتكم ما تزال محفوظة، ويمكنكم إعادة تفعيل الوصول مباشرة عبر طلب الاشتراك.',
+    '',
+    `رابط التفعيل: ${params.upgradeUrl}`,
+    `للدعم المباشر: ${params.supportEmail?.trim() || SUPPORT_EMAIL}`,
+    '',
+    'مع خالص التقدير،',
+    EMAIL_BRAND_NAME,
+  ].filter(Boolean).join('\n');
+
+export const TRIAL_EXPIRED_EMAIL_HTML = (params: {
+  recipientName?: string | null;
+  orgName?: string | null;
+  endedAtLabel?: string | null;
+  upgradeUrl: string;
+  supportEmail?: string | null;
+}) =>
+  renderEmailShell({
+    subject: TRIAL_EXPIRED_EMAIL_SUBJECT,
+    preheader: `انتهت الفترة التجريبية الخاصة بـ ${params.orgName?.trim() || EMAIL_BRAND_NAME} ويمكن إعادة التفعيل مباشرة.`,
+    eyebrow: 'انتهاء التجربة',
+    title: 'انتهت الفترة التجريبية لحسابكم',
+    intro: 'تم حفظ بياناتكم كما هي، ويمكنكم استعادة الوصول الكامل إلى المنصة فور إرسال طلب التفعيل.',
+    bodyHtml: `
+      <p>مرحباً <strong>${escapeHtml(params.recipientName?.trim() || 'عميلنا الكريم')}</strong>،</p>
+      <p>
+        انتهت الفترة التجريبية الخاصة بـ <strong>${escapeHtml(params.orgName?.trim() || EMAIL_BRAND_NAME)}</strong>
+        ${params.endedAtLabel ? ` بتاريخ <strong>${escapeHtml(params.endedAtLabel)}</strong>` : ''}.
+        ولضمان عودة الوصول الكامل إلى المنصة، يمكنكم طلب التفعيل مباشرة من خلال الرابط أدناه.
+      </p>
+
+      <div class="panel">
+        <h2 class="panel-title">ما الذي يحدث الآن؟</h2>
+        <ul class="list">
+          <li>تم حفظ بيانات المكتب والقضايا والمستندات دون حذف.</li>
+          <li>يمكن استعادة الوصول بمجرد إكمال طلب الاشتراك.</li>
+          <li>فريقنا جاهز لمساعدتكم في اختيار الباقة المناسبة وتسريع التفعيل.</li>
+        </ul>
+      </div>
+
+      <div class="cta">
+        <a class="btn" href="${escapeHtml(params.upgradeUrl)}">استكمال التفعيل</a>
+      </div>
+
+      <div class="panel panel-muted">
+        <h2 class="panel-title">للتواصل المباشر</h2>
+        <p style="margin:0;">
+          يمكنكم الرد على هذه الرسالة أو التواصل عبر:
+          <a href="mailto:${escapeHtml(params.supportEmail?.trim() || SUPPORT_EMAIL)}">${escapeHtml(params.supportEmail?.trim() || SUPPORT_EMAIL)}</a>
+        </p>
+      </div>
+    `,
+  });
+
 export const LOGIN_OTP_EMAIL_SUBJECT = 'رمز التحقق لتسجيل الدخول | مسار المحامي';
 
 export const LOGIN_OTP_EMAIL_TEXT = (params: {

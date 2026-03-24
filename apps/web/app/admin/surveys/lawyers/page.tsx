@@ -1,14 +1,14 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ClipboardList, Download, FileSpreadsheet, MessageSquareText, MoveLeft } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import {
   getLawyerSurveyAnswerPairs,
-  getLawyerSurveyResponses,
   summarizeLawyerSurveyResponses,
+  type LawyerSurveyResponse,
 } from '@/lib/admin-lawyer-surveys';
-
-// Metadata removed due to being imported into a Client Component
 
 const summaryCards = [
   { key: 'total', label: 'إجمالي الردود', icon: ClipboardList },
@@ -17,9 +17,44 @@ const summaryCards = [
   { key: 'followUpCount', label: 'طلبوا تواصلًا', icon: MessageSquareText },
 ] as const;
 
-export default async function AdminLawyerSurveyPage() {
-  const responses = await getLawyerSurveyResponses();
+export default function AdminLawyerSurveyPage() {
+  const [responses, setResponses] = useState<LawyerSurveyResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadData() {
+    try {
+      setLoading(true);
+      const res = await fetch('/admin/api/surveys/lawyers');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'تعذر تحميل الردود.');
+      }
+      setResponses(data.responses || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر تحميل الردود.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const summary = summarizeLawyerSurveyResponses(responses);
+
+  if (loading) {
+    return <div className="p-8 text-center text-slate-500 animate-pulse">جارٍ تحميل الردود...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-600 bg-red-50 rounded-2xl border border-red-200">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -55,6 +90,7 @@ export default async function AdminLawyerSurveyPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {summaryCards.map((card) => {
             const Icon = card.icon;
+            const value = summary[card.key as keyof typeof summary] || 0;
             return (
               <article
                 key={card.key}
@@ -65,7 +101,7 @@ export default async function AdminLawyerSurveyPage() {
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{card.label}</p>
                 <p className="mt-2 text-2xl font-bold text-brand-navy dark:text-slate-100">
-                  {summary[card.key]}
+                  {value}
                 </p>
               </article>
             );

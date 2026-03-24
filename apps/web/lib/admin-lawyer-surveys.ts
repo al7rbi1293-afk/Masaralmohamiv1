@@ -1,4 +1,4 @@
-import 'server-only';
+// Removed 'server-only' to allow sharing types/logic with client components
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 

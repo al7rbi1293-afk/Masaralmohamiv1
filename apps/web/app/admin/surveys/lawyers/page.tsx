@@ -8,10 +8,7 @@ import {
   summarizeLawyerSurveyResponses,
 } from '@/lib/admin-lawyer-surveys';
 
-export const metadata: Metadata = {
-  title: 'ردود استبيان المحامين',
-  robots: { index: false, follow: false },
-};
+// Metadata removed due to being imported into a Client Component
 
 const summaryCards = [
   { key: 'total', label: 'إجمالي الردود', icon: ClipboardList },

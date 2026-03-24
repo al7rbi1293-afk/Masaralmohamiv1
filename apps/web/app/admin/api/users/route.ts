@@ -38,7 +38,12 @@ export async function GET(request: NextRequest) {
       memberships (
         org_id,
         role,
-        organizations (name, status)
+        organizations (
+          name, 
+          status,
+          org_subscriptions ( plan, status, current_period_end ),
+          trial_subscriptions ( ends_at, status )
+        )
       )
     `,
       { count: 'exact' },
@@ -85,11 +90,22 @@ export async function GET(request: NextRequest) {
       phone: user.phone ?? null,
       status: user.status ?? 'active',
       created_at: user.created_at,
-      memberships: (user.memberships as any[]).map((m) => ({
-        org_id: m.org_id,
-        role: m.role,
-        organizations: Array.isArray(m.organizations) ? m.organizations[0] : m.organizations,
-      })),
+      memberships: (user.memberships as any[]).map(m => {
+        const org = Array.isArray(m.organizations) ? m.organizations[0] : m.organizations;
+        const sub = org ? (Array.isArray(org.org_subscriptions) ? org.org_subscriptions[0] : org.org_subscriptions) : null;
+        const trial = org ? (Array.isArray(org.trial_subscriptions) ? org.trial_subscriptions[0] : org.trial_subscriptions) : null;
+        
+        return {
+          org_id: m.org_id,
+          role: m.role,
+          organizations: org ? {
+            name: org.name,
+            status: org.status,
+            subscription: sub ?? null,
+            trial: trial ?? null,
+          } : null
+        };
+      }),
     }));
 
   return NextResponse.json({

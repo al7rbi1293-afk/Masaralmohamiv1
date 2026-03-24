@@ -431,6 +431,25 @@ export default function AdminOrgsPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / limit));
 
+  function isExpired(org: Org) {
+    const now = new Date();
+
+    // Subscription check
+    if (org.subscription?.status === 'active' || org.subscription?.status === 'past_due') {
+      if (org.subscription.current_period_end) {
+        return new Date(org.subscription.current_period_end) < now;
+      }
+      return false;
+    }
+
+    // Trial check
+    if (org.trial?.ends_at) {
+      return org.trial.status === 'expired' || new Date(org.trial.ends_at) < now;
+    }
+
+    return false;
+  }
+
   if (loading) {
     return <div className="animate-pulse text-slate-500">جارٍ التحميل...</div>;
   }
@@ -515,15 +534,22 @@ export default function AdminOrgsPage() {
                   </td>
                   <td className="py-3">{org.subscription?.status ?? '—'}</td>
                   <td className="py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        org.status === 'suspended'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                      }`}
-                    >
-                      {org.status === 'suspended' ? 'معلّق' : 'نشط'}
-                    </span>
+                    <div className="flex flex-col items-start gap-1">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          org.status === 'suspended'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        }`}
+                      >
+                        {org.status === 'suspended' ? 'معلّق' : 'نشط'}
+                      </span>
+                      {isExpired(org) && org.status !== 'suspended' && (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                          منتهي الصلاحية
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3">
                     {org.subscription?.current_period_end
@@ -657,15 +683,22 @@ export default function AdminOrgsPage() {
                       <p className="mb-1 flex items-center gap-1 text-slate-500 dark:text-slate-400">
                         <Activity className="h-3.5 w-3.5" /> حالة المكتب
                       </p>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          selectedOrg.status === 'suspended'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                        }`}
-                      >
-                        {selectedOrg.status === 'suspended' ? 'معلّق' : 'نشط'}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            selectedOrg.status === 'suspended'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          }`}
+                        >
+                          {selectedOrg.status === 'suspended' ? 'معلّق' : 'نشط'}
+                        </span>
+                        {isExpired(selectedOrg) && selectedOrg.status !== 'suspended' && (
+                          <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                            منتهي الصلاحية
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

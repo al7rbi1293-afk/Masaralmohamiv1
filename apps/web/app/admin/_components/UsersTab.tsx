@@ -20,7 +20,19 @@ type User = {
   memberships: Array<{
     org_id: string;
     role: string;
-    organizations: { name: string; status: string } | null;
+    organizations: {
+      name: string;
+      status: string;
+      subscription: {
+        plan: string | null;
+        status: string;
+        current_period_end: string | null;
+      } | null;
+      trial: {
+        ends_at: string | null;
+        status: string;
+      } | null;
+    } | null;
   }>;
 };
 
@@ -149,6 +161,29 @@ export default function AdminUsersPage() {
       userIds.forEach(id => newSet.add(id));
     }
     setSelectedUserIds(newSet);
+  }
+
+  function isUserExpired(u: User) {
+    const m = Array.isArray(u.memberships) ? u.memberships[0] : null;
+    const org = m?.organizations;
+    if (!org) return false;
+
+    const now = new Date();
+
+    // Subscription check
+    if (org.subscription?.status === 'active' || org.subscription?.status === 'past_due') {
+      if (org.subscription.current_period_end) {
+        return new Date(org.subscription.current_period_end) < now;
+      }
+      return false;
+    }
+
+    // Trial check
+    if (org.trial?.ends_at) {
+      return org.trial.status === 'expired' || new Date(org.trial.ends_at) < now;
+    }
+
+    return false;
   }
 
   async function handleDeletePending(user: PendingUser) {
@@ -378,14 +413,21 @@ export default function AdminUsersPage() {
                       <td className="py-3">{m?.organizations?.name ?? '—'}</td>
                       <td className="py-3">{m?.role ?? '—'}</td>
                       <td className="py-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.status === 'suspended'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                            }`}
-                        >
-                          {u.status === 'suspended' ? 'معلّق' : 'نشط'}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.status === 'suspended'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                              }`}
+                          >
+                            {u.status === 'suspended' ? 'معلّق' : 'نشط'}
+                          </span>
+                          {isUserExpired(u) && u.status !== 'suspended' && (
+                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                              منتهي الصلاحية
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3">{new Date(u.created_at).toLocaleDateString('ar-SA')}</td>
                       <td className="py-3">
@@ -587,12 +629,32 @@ export default function AdminUsersPage() {
                               <p className="font-medium text-sm text-slate-900 dark:text-slate-100">{m.organizations?.name}</p>
                               <p className="text-xs text-slate-500">{m.role}</p>
                             </div>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${m.organizations?.status === 'active'
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                              : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                              }`}>
-                              {m.organizations?.status === 'active' ? 'مكتب نشط' : 'مكتب معلّق'}
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${m.organizations?.status === 'active'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                }`}>
+                                {m.organizations?.status === 'active' ? 'مكتب نشط' : 'مكتب معلّق'}
+                              </span>
+                              {m.organizations && (
+                                (() => {
+                                  const now = new Date();
+                                  const org = m.organizations;
+                                  let expired = false;
+                                  if (org.subscription?.status === 'active' || org.subscription?.status === 'past_due') {
+                                    if (org.subscription.current_period_end) {
+                                      expired = new Date(org.subscription.current_period_end) < now;
+                                    }
+                                  } else if (org.trial?.ends_at) {
+                                    expired = org.trial.status === 'expired' || new Date(org.trial.ends_at) < now;
+                                  }
+                                  
+                                  return expired ? (
+                                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400">انتهت الصلاحية</span>
+                                  ) : null;
+                                })()
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

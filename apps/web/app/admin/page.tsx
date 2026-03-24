@@ -9,8 +9,9 @@ import AuditTab from './_components/AuditTab';
 import OverviewTab from './_components/OverviewTab';
 import PartnersTab from './_components/PartnersTab';
 import NajizTab from './_components/NajizTab';
+import AdminLawyerSurveyPage from './surveys/lawyers/page';
 
-export type TabId = 'overview' | 'requests' | 'users' | 'orgs' | 'audit' | 'partners' | 'najiz';
+export type TabId = 'overview' | 'requests' | 'users' | 'orgs' | 'audit' | 'partners' | 'najiz' | 'surveys';
 
 const navItems = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard },
@@ -19,6 +20,7 @@ const navItems = [
     { id: 'orgs', label: 'المكاتب', icon: Building },
     { id: 'najiz', label: 'Najiz', icon: Cable },
     { id: 'partners', label: 'شركاء النجاح', icon: Handshake },
+    { id: 'surveys', label: 'ردود الاستبيان', icon: History },
     { id: 'audit', label: 'سجل التدقيق', icon: History },
 ] as const;
 
@@ -37,6 +39,8 @@ export default function AdminHomePage() {
                 return <PartnersTab />;
             case 'najiz':
                 return <NajizTab />;
+            case 'surveys':
+                return <AdminLawyerSurveyPage />;
             case 'audit':
                 return <AuditTab />;
             case 'overview':

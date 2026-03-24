@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { requireAdmin } from '@/lib/admin';
+import { getLawyerSurveyResponses } from '@/lib/admin-lawyer-surveys';
 import {
   buildLawyerSurveyExportRows,
-  getLawyerSurveyResponses,
   LAWYER_SURVEY_EXPORT_COLUMNS,
-} from '@/lib/admin-lawyer-surveys';
+} from '@/lib/survey-utils';
 
 export async function GET(request: NextRequest) {
   try {

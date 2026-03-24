@@ -8,7 +8,7 @@ import {
   getLawyerSurveyAnswerPairs,
   summarizeLawyerSurveyResponses,
   type LawyerSurveyResponse,
-} from '@/lib/admin-lawyer-surveys';
+} from '@/lib/survey-utils';
 
 const summaryCards = [
   { key: 'total', label: 'إجمالي الردود', icon: ClipboardList },

@@ -1,0 +1,1573 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Masar Play Store Assets</title>
+    <style>
+      :root {
+        --background: #f6f3ed;
+        --surface: #fffdf9;
+        --surface-muted: #f1ede6;
+        --surface-soft: #fbf8f3;
+        --primary: #0b2f25;
+        --primary-soft: #0f4e3c;
+        --gold: #c7a54a;
+        --gold-soft: #f7edd0;
+        --text: #14201d;
+        --muted: #61716d;
+        --border: #e5ddd1;
+        --success: #1f7a4d;
+        --success-soft: #deefe6;
+        --warning: #996a00;
+        --warning-soft: #fceec4;
+        --danger: #b14343;
+        --danger-soft: #f7dfdf;
+        --shadow: rgba(20, 32, 29, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--background);
+        color: var(--text);
+        font-family: "Tahoma", "Arial", sans-serif;
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      .screen {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .app-shell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        background:
+          radial-gradient(circle at top right, rgba(199, 165, 74, 0.16), transparent 28%),
+          linear-gradient(180deg, #f8f5ef 0%, var(--background) 16%, #f2eee7 100%);
+      }
+
+      .statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 28px 34px 12px;
+        color: var(--primary);
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .statusbar .icons {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .signal,
+      .wifi,
+      .battery {
+        border: 4px solid var(--primary);
+        border-radius: 999px;
+      }
+
+      .signal {
+        width: 28px;
+        height: 16px;
+        border-left-width: 0;
+        border-top-width: 0;
+      }
+
+      .wifi {
+        width: 24px;
+        height: 18px;
+        border-left-width: 0;
+        border-right-width: 0;
+        border-bottom-width: 0;
+        border-radius: 999px 999px 0 0;
+      }
+
+      .battery {
+        position: relative;
+        width: 34px;
+        height: 18px;
+        border-radius: 6px;
+      }
+
+      .battery::after {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        border-radius: 2px;
+        background: var(--primary);
+      }
+
+      .app-body {
+        flex: 1;
+        padding: 0 32px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        overflow: hidden;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 34px;
+        padding: 28px;
+        color: #fff7e2;
+        background: linear-gradient(135deg, var(--primary-soft) 0%, var(--primary) 72%);
+        box-shadow: 0 24px 40px rgba(11, 47, 37, 0.18);
+      }
+
+      .hero::before,
+      .hero::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .hero::before {
+        width: 240px;
+        height: 240px;
+        top: -120px;
+        left: -40px;
+      }
+
+      .hero::after {
+        width: 180px;
+        height: 180px;
+        bottom: -90px;
+        right: -40px;
+      }
+
+      .eyebrow {
+        color: #d5e8e0;
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 14px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hero h1 {
+        margin: 0;
+        position: relative;
+        z-index: 1;
+        font-size: 58px;
+        line-height: 1.18;
+      }
+
+      .hero p {
+        margin: 14px 0 0;
+        position: relative;
+        z-index: 1;
+        font-size: 28px;
+        line-height: 1.75;
+        color: #e3f1ec;
+      }
+
+      .badge {
+        position: absolute;
+        top: 24px;
+        left: 24px;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 148px;
+        padding: 12px 18px;
+        border-radius: 999px;
+        font-size: 22px;
+        font-weight: 700;
+        background: rgba(247, 237, 208, 0.92);
+        color: #7c5d14;
+        backdrop-filter: blur(8px);
+      }
+
+      .card,
+      .panel {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 30px;
+        padding: 24px;
+        box-shadow: 0 16px 28px var(--shadow);
+      }
+
+      .panel {
+        background: linear-gradient(180deg, #fffdfa 0%, #f7f2ea 100%);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1.2;
+      }
+
+      .section-head p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 23px;
+        line-height: 1.6;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 16px;
+        border-radius: 999px;
+        font-size: 20px;
+        font-weight: 700;
+        background: #eef3f0;
+        color: var(--primary);
+        white-space: nowrap;
+      }
+
+      .chip.gold {
+        background: var(--gold-soft);
+        color: #7c5d14;
+      }
+
+      .chip.success {
+        background: var(--success-soft);
+        color: var(--success);
+      }
+
+      .chip.warning {
+        background: var(--warning-soft);
+        color: var(--warning);
+      }
+
+      .chip.danger {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+
+      .stats-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stat {
+        border-radius: 26px;
+        padding: 22px;
+        background: #f8f5ef;
+        border: 1px solid var(--border);
+      }
+
+      .stat.gold {
+        background: linear-gradient(180deg, #fbf3dd 0%, #fff7e8 100%);
+      }
+
+      .stat.success {
+        background: linear-gradient(180deg, #e6f5ec 0%, #f3fbf6 100%);
+      }
+
+      .stat.warning {
+        background: linear-gradient(180deg, #fff2cf 0%, #fff9ea 100%);
+      }
+
+      .stat .label {
+        font-size: 22px;
+        color: var(--muted);
+      }
+
+      .stat .value {
+        margin-top: 12px;
+        font-size: 42px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      .pill-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .pill {
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 16px;
+        text-align: center;
+      }
+
+      .pill .value {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      .pill .label {
+        margin-top: 8px;
+        font-size: 20px;
+        color: var(--muted);
+      }
+
+      .tiles-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .tile {
+        border-radius: 24px;
+        padding: 18px;
+        background: #f8f4ed;
+        border: 1px solid var(--border);
+        min-height: 116px;
+      }
+
+      .tile .title {
+        font-size: 27px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      .tile .meta {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 21px;
+        line-height: 1.5;
+      }
+
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 20px 22px;
+        border-radius: 22px;
+        background: #fbf9f4;
+        border: 1px solid var(--border);
+      }
+
+      .row-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      .row-meta {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 22px;
+        line-height: 1.55;
+      }
+
+      .row-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 22px;
+        border-radius: 22px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.88);
+        color: var(--muted);
+        font-size: 23px;
+      }
+
+      .search::before {
+        content: "⌕";
+        font-size: 26px;
+        color: var(--muted);
+      }
+
+      .segmented {
+        display: grid;
+        gap: 12px;
+      }
+
+      .segmented-row {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .segmented-row.six {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .segment {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        min-height: 78px;
+        border-radius: 20px;
+        background: #f5efe5;
+        color: var(--primary);
+        border: 1px solid transparent;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .segment.active {
+        background: var(--primary);
+        color: #fff7e2;
+        border-color: var(--primary);
+      }
+
+      .segment small {
+        display: block;
+        margin-top: 4px;
+        font-size: 17px;
+        opacity: 0.75;
+      }
+
+      .forms {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .field {
+        padding: 18px 20px;
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        background: #fff;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 21px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .field .value {
+        color: #6a7874;
+        font-size: 24px;
+      }
+
+      .button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 82px;
+        border-radius: 22px;
+        font-size: 26px;
+        font-weight: 800;
+      }
+
+      .button.primary {
+        background: var(--primary);
+        color: #fff9ef;
+      }
+
+      .button.secondary {
+        background: #efe7d8;
+        color: var(--primary);
+      }
+
+      .logo-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 140px;
+      }
+
+      .logo-wrap img {
+        width: 280px;
+        height: auto;
+      }
+
+      .links-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 22px;
+        color: var(--primary);
+        font-weight: 700;
+      }
+
+      .calendar-day {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        border-radius: 24px;
+        background: #fbf9f4;
+        border: 1px solid var(--border);
+        padding: 20px;
+      }
+
+      .calendar-day-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .calendar-day-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      .calendar-entry {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        padding-top: 14px;
+        border-top: 1px dashed #d8d0c4;
+      }
+
+      .calendar-entry:first-of-type {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .calendar-entry .meta {
+        color: var(--muted);
+        font-size: 21px;
+        line-height: 1.55;
+      }
+
+      .tabbar {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        padding: 18px 24px 28px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        background: linear-gradient(180deg, var(--primary-soft), var(--primary));
+      }
+
+      .tab {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #b9cbc5;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .tab .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.7;
+      }
+
+      .tab.active {
+        color: #f0d78f;
+      }
+
+      .tab.active .dot {
+        opacity: 1;
+      }
+
+      .tablet .statusbar {
+        padding: 32px 48px 16px;
+        font-size: 32px;
+      }
+
+      .tablet .app-body {
+        padding: 0 46px 34px;
+        gap: 26px;
+      }
+
+      .tablet .hero {
+        padding: 34px 36px;
+      }
+
+      .tablet .hero h1 {
+        font-size: 64px;
+      }
+
+      .tablet .hero p,
+      .tablet .section-head p {
+        font-size: 25px;
+      }
+
+      .tablet-grid {
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        gap: 20px;
+        min-height: 0;
+      }
+
+      .tablet-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-height: 0;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .feature-shell {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at top left, rgba(199, 165, 74, 0.3), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.12), transparent 24%),
+          linear-gradient(140deg, #0b2f25 0%, #0e4638 52%, #12342b 100%);
+        color: #fff8ea;
+      }
+
+      .feature-shell::before,
+      .feature-shell::after {
+        content: "";
+        position: absolute;
+        inset: auto;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .feature-shell::before {
+        width: 420px;
+        height: 420px;
+        top: -120px;
+        right: -90px;
+      }
+
+      .feature-shell::after {
+        width: 300px;
+        height: 300px;
+        bottom: -110px;
+        left: -60px;
+      }
+
+      .feature-content {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 22px;
+        height: 100%;
+        padding: 44px 54px;
+      }
+
+      .feature-copy {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .feature-copy .eyebrow {
+        margin-bottom: 12px;
+        color: #d2eadf;
+        font-size: 22px;
+      }
+
+      .feature-copy h1 {
+        margin: 0;
+        font-size: 62px;
+        line-height: 1.15;
+      }
+
+      .feature-copy p {
+        margin: 18px 0 0;
+        color: #e7f2ed;
+        font-size: 24px;
+        line-height: 1.7;
+        max-width: 480px;
+      }
+
+      .feature-previews {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .mini-phone {
+        position: absolute;
+        width: 220px;
+        height: 426px;
+        border-radius: 34px;
+        padding: 14px;
+        background: #0d261f;
+        box-shadow: 0 28px 48px rgba(0, 0, 0, 0.28);
+      }
+
+      .mini-phone .mini-screen {
+        width: 100%;
+        height: 100%;
+        border-radius: 24px;
+        overflow: hidden;
+        background: var(--background);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .mini-phone.left {
+        transform: translateX(-110px) rotate(-8deg);
+      }
+
+      .mini-phone.center {
+        width: 238px;
+        height: 456px;
+        transform: translateY(2px);
+        z-index: 2;
+      }
+
+      .mini-phone.right {
+        transform: translateX(112px) rotate(8deg);
+      }
+
+      .mini-inner {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .mini-status {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 14px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .mini-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 14px 14px;
+      }
+
+      .mini-hero {
+        border-radius: 18px;
+        background: linear-gradient(135deg, var(--primary-soft), var(--primary));
+        color: #fff7e2;
+        padding: 14px;
+        min-height: 106px;
+      }
+
+      .mini-hero .t1 {
+        font-size: 10px;
+        color: #cde1da;
+      }
+
+      .mini-hero .t2 {
+        margin-top: 8px;
+        font-size: 19px;
+        font-weight: 800;
+      }
+
+      .mini-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .mini-card,
+      .mini-row {
+        border: 1px solid var(--border);
+        background: #fffdf9;
+        border-radius: 16px;
+      }
+
+      .mini-card {
+        min-height: 72px;
+        padding: 10px;
+      }
+
+      .mini-card .l {
+        font-size: 9px;
+        color: var(--muted);
+      }
+
+      .mini-card .v {
+        margin-top: 8px;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      .mini-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 10px;
+        min-height: 58px;
+      }
+
+      .mini-row .t {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .mini-row .m {
+        margin-top: 6px;
+        font-size: 9px;
+        color: var(--muted);
+      }
+
+      .mini-chip {
+        align-self: start;
+        padding: 5px 8px;
+        border-radius: 999px;
+        font-size: 9px;
+        font-weight: 800;
+        background: var(--gold-soft);
+        color: #7c5d14;
+      }
+
+      .tablet .tabbar {
+        padding: 22px 38px 32px;
+      }
+
+      .hide-overflow {
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="screen"></div>
+    <script>
+      const root = document.getElementById("root");
+      const params = new URLSearchParams(window.location.search);
+      const screen = params.get("screen") || "phone-home";
+
+      function hero(eyebrow, title, subtitle, badge) {
+        return `
+          <section class="hero">
+            <div class="badge">${badge}</div>
+            <div class="eyebrow">${eyebrow}</div>
+            <h1>${title}</h1>
+            <p>${subtitle}</p>
+          </section>
+        `;
+      }
+
+      function sectionHead(title, subtitle, chip) {
+        return `
+          <div class="section-head">
+            <div>
+              <h2>${title}</h2>
+              ${subtitle ? `<p>${subtitle}</p>` : ""}
+            </div>
+            ${chip || ""}
+          </div>
+        `;
+      }
+
+      function chip(label, tone = "") {
+        return `<span class="chip ${tone}">${label}</span>`;
+      }
+
+      function stat(label, value, tone = "") {
+        return `
+          <div class="stat ${tone}">
+            <div class="label">${label}</div>
+            <div class="value">${value}</div>
+          </div>
+        `;
+      }
+
+      function tile(title, meta) {
+        return `
+          <div class="tile">
+            <div class="title">${title}</div>
+            <div class="meta">${meta}</div>
+          </div>
+        `;
+      }
+
+      function row(title, meta, tags = []) {
+        return `
+          <div class="row">
+            <div>
+              <div class="row-title">${title}</div>
+              <div class="row-meta">${meta}</div>
+            </div>
+            <div class="row-actions">${tags.join("")}</div>
+          </div>
+        `;
+      }
+
+      function pill(value, label) {
+        return `
+          <div class="pill">
+            <div class="value">${value}</div>
+            <div class="label">${label}</div>
+          </div>
+        `;
+      }
+
+      function tabbar(active) {
+        const tabs = [
+          "الرئيسية",
+          "التقويم",
+          "القضايا",
+          "العملاء",
+          "التحكم",
+        ];
+        return `
+          <footer class="tabbar">
+            ${tabs
+              .map(
+                (label) => `
+                  <div class="tab ${active === label ? "active" : ""}">
+                    <span class="dot"></span>
+                    <span>${label}</span>
+                  </div>
+                `
+              )
+              .join("")}
+          </footer>
+        `;
+      }
+
+      function statusbar() {
+        return `
+          <div class="statusbar">
+            <div class="icons">
+              <span class="signal"></span>
+              <span class="wifi"></span>
+              <span class="battery"></span>
+            </div>
+            <span>9:41</span>
+          </div>
+        `;
+      }
+
+      function phoneLogin() {
+        return `
+          <div class="app-shell">
+            ${statusbar()}
+            <main class="app-body">
+              ${hero(
+                "مسار المحامي",
+                "تسجيل الدخول",
+                "أصحاب المكاتب وشركاء النجاح والإدارة",
+                "بوابة الفريق"
+              )}
+              <section class="card">
+                <div class="segmented">
+                  <div class="segmented-row">
+                    <div class="segment active">بوابة الفريق</div>
+                    <div class="segment">بوابة العملاء</div>
+                  </div>
+                </div>
+                <div class="logo-wrap">
+                  <img src="./masar-logo.png" alt="Masar Logo" />
+                </div>
+                <div class="forms">
+                  <div class="field">
+                    <label>البريد الإلكتروني</label>
+                    <div class="value">lawyerzeez@gmail.com</div>
+                  </div>
+                  <div class="field">
+                    <label>كلمة المرور</label>
+                    <div class="value">••••••••••</div>
+                  </div>
+                  <div class="field">
+                    <label>رمز التحقق</label>
+                    <div class="value">483921</div>
+                  </div>
+                  <div class="button primary">تأكيد الدخول</div>
+                  <div class="button secondary">إعادة إرسال OTP</div>
+                  <div class="button secondary">إعادة إرسال رسالة التفعيل</div>
+                </div>
+              </section>
+              <section class="card">
+                <div class="links-row">
+                  <span>الدعم</span>
+                  <span>الشروط</span>
+                  <span>الخصوصية</span>
+                </div>
+              </section>
+            </main>
+          </div>
+        `;
+      }
+
+      function phoneHome() {
+        return `
+          <div class="app-shell">
+            ${statusbar()}
+            <main class="app-body">
+              ${hero(
+                "مكتب مسار للمحاماة",
+                "أهلاً عبدالعزيز",
+                "نظرة سريعة على العمل اليومي. التقويم والتنبيهات الآن في تبويبات مستقلة وواضحة.",
+                "محام"
+              )}
+              <section class="card">
+                ${sectionHead("بدء سريع", "اذهب مباشرة إلى أهم إجراءات المكتب.")}
+                <div class="tiles-grid">
+                  ${tile("عميل جديد", "إنشاء ملف موكل")}
+                  ${tile("قضية جديدة", "ربطها بعميل")}
+                  ${tile("مهمة جديدة", "واجب متابعة")}
+                  ${tile("مستند جديد", "رفع أو تسجيل نسخة")}
+                  ${tile("عرض سعر", "نموذج جاهز")}
+                  ${tile("فاتورة", "إصدار جديد")}
+                </div>
+              </section>
+              <section class="stats-grid">
+                ${stat("العملاء", "148")}
+                ${stat("القضايا المفتوحة", "37", "success")}
+                ${stat("المهام المفتوحة", "22")}
+                ${stat("الفواتير غير المسددة", "11", "gold")}
+              </section>
+              <section class="pill-strip">
+                ${pill("64", "المستندات")}
+                ${pill("15", "العروض")}
+                ${pill("9", "القادم هذا الأسبوع")}
+                ${pill("12", "الإشعارات")}
+              </section>
+              <section class="card">
+                ${sectionHead("أولويات اليوم", "أقرب عناصر العمل التي تحتاج متابعة سريعة.")}
+                <div class="list">
+                  ${row("مراجعة مذكرة الرد", "قضية نزاع تجاري · الاستحقاق 2026-03-27", [chip("عالي", "warning")])}
+                  ${row("رفع نسخة تنفيذية", "شركة ألف · مستندات العقد", [chip("جاري", "success")])}
+                  ${row("إرسال الفاتورة النهائية", "فاتورة INV-2048 · 7,500 ر.س", [chip("غير مسدد", "gold")])}
+                </div>
+              </section>
+            </main>
+            ${tabbar("الرئيسية")}
+          </div>
+        `;
+      }
+
+      function phoneCalendar() {
+        return `
+          <div class="app-shell">
+            ${statusbar()}
+            <main class="app-body">
+              ${hero(
+                "التقويم",
+                "مواعيد المكتب",
+                "تقويم فعلي داخل التطبيق مع نطاقات زمنية أوسع، وليس مجرد ملخص للأسبوع الحالي فقط.",
+                "30 يومًا"
+              )}
+              <section class="stats-grid">
+                ${stat("كل العناصر", "28")}
+                ${stat("الجلسات", "6", "warning")}
+                ${stat("الاجتماعات", "9", "success")}
+                ${stat("المهام", "13")}
+              </section>
+              <section class="card">
+                ${sectionHead("النطاق الزمني", "بدّل بين الأسابيع والشهور حسب ما تريد مراجعته الآن.")}
+                <div class="segmented-row">
+                  <div class="segment">7 أيام</div>
+                  <div class="segment">14 يومًا</div>
+                  <div class="segment active">30 يومًا</div>
+                  <div class="segment">90 يومًا</div>
+                </div>
+              </section>
+              <section class="card">
+                ${sectionHead("تصفية سريعة", "اختر نوع العنصر الذي تريد مراجعته.")}
+                <div class="segmented-row six">
+                  <div class="segment active">الكل<small>28</small></div>
+                  <div class="segment">الجلسات<small>6</small></div>
+                  <div class="segment">الاجتماعات<small>9</small></div>
+                  <div class="segment">الأحداث<small>3</small></div>
+                  <div class="segment">المهام<small>13</small></div>
+                  <div class="segment">الفواتير<small>4</small></div>
+                </div>
+              </section>
+              <section class="card hide-overflow">
+                ${sectionHead("العناصر القادمة", "مرتبة حسب اليوم لتسهيل القراءة السريعة على الهاتف.")}
+                <div class="list">
+                  <div class="calendar-day">
+                    <div class="calendar-day-head">
+                      <div class="calendar-day-title">الأحد 29 مارس</div>
+                      ${chip("3 عناصر")}
+                    </div>
+                    <div class="calendar-entry">
+                      <div>
+                        <div class="row-title">جلسة أولى - محكمة التنفيذ</div>
+                        <div class="meta">قضية مطالبة مالية · 10:30 ص - 11:15 ص</div>
+                      </div>
+                      ${chip("جلسة", "warning")}
+                    </div>
+                    <div class="calendar-entry">
+                      <div>
+                        <div class="row-title">مراجعة مسودة العقد</div>
+                        <div class="meta">شركة المدار · 1:00 م</div>
+                      </div>
+                      ${chip("مهمة", "gold")}
+                    </div>
+                  </div>
+                  <div class="calendar-day">
+                    <div class="calendar-day-head">
+                      <div class="calendar-day-title">الاثنين 30 مارس</div>
+                      ${chip("2 عناصر")}
+                    </div>
+                    <div class="calendar-entry">
+                      <div>
+                        <div class="row-title">اجتماع عميل - شركة ألف</div>
+                        <div class="meta">قاعة الاجتماعات · 11:00 ص</div>
+                      </div>
+                      ${chip("اجتماع", "success")}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </main>
+            ${tabbar("التقويم")}
+          </div>
+        `;
+      }
+
+      function phoneMatters() {
+        return `
+          <div class="app-shell">
+            ${statusbar()}
+            <main class="app-body">
+              <section class="card">
+                ${sectionHead("أوامر سريعة", "ابدأ من هنا إذا كنت تريد إضافة أو تعديلًا سريعًا.")}
+                <div class="tiles-grid">
+                  ${tile("قضية جديدة", "إضافة ملف")}
+                  ${tile("مهمة جديدة", "متابعة ملف")}
+                  ${tile("مستند جديد", "رفع ورقة")}
+                  ${tile("جلسة", "تذكير ومتابعة")}
+                  ${tile("ملخص AI", "تحليل سريع")}
+                  ${tile("ناجز", "ربط القضايا")}
+                </div>
+              </section>
+              <div class="search">ابحث في القضايا أو أسماء الموكلين أو رقم ناجز</div>
+              <section class="card hide-overflow">
+                ${sectionHead("القضايا النشطة", "متابعة منظمة للحالة والموكل وآخر تحديث.")}
+                <div class="list">
+                  ${row("نزاع تجاري - شركة ألف", "تجاري · آخر تحديث 26 مارس 2026", [chip("خاص", "gold"), chip("in_progress", "success")])}
+                  ${row("مطالبة عمالية - فهد سالم", "عمالي · آخر تحديث 24 مارس 2026", [chip("review", "warning")])}
+                  ${row("تنفيذ سند لأمر", "تنفيذي · آخر تحديث 22 مارس 2026", [chip("on_hold", "danger")])}
+                  ${row("خلاف شراكة", "تجاري · آخر تحديث 20 مارس 2026", [chip("new")])}
+                  ${row("استرداد دفعة مقدمة", "عقدي · آخر تحديث 18 مارس 2026", [chip("hearing_scheduled", "gold")])}
+                </div>
+              </section>
+            </main>
+            ${tabbar("القضايا")}
+          </div>
+        `;
+      }
+
+      function tabletHome() {
+        return `
+          <div class="app-shell tablet">
+            ${statusbar()}
+            <main class="app-body">
+              ${hero(
+                "مكتب مسار للمحاماة",
+                "لوحة المكتب",
+                "إدارة القضايا والعملاء والفوترة من مكان واحد مع وضوح أكبر على الشاشات الكبيرة.",
+                "إدارة المكتب"
+              )}
+              <section class="tablet-grid">
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("بدء سريع", "اذهب مباشرة إلى الإجراءات الأهم في المكتب.")}
+                    <div class="tiles-grid">
+                      ${tile("عميل جديد", "إنشاء ملف")}
+                      ${tile("قضية جديدة", "ربط بعميل")}
+                      ${tile("مهمة جديدة", "تكليف ومتابعة")}
+                      ${tile("مستند", "رفع نسخة")}
+                      ${tile("عرض سعر", "مسودة جاهزة")}
+                      ${tile("فاتورة", "إصدار جديد")}
+                    </div>
+                  </section>
+                  <section class="panel">
+                    ${sectionHead("ملخص تشغيلي", "أرقام اليوم في لمحة واحدة.")}
+                    <div class="stats-grid">
+                      ${stat("العملاء", "148")}
+                      ${stat("القضايا المفتوحة", "37", "success")}
+                      ${stat("المهام المفتوحة", "22")}
+                      ${stat("الفواتير غير المسددة", "11", "gold")}
+                    </div>
+                    <div style="height: 16px"></div>
+                    <div class="pill-strip">
+                      ${pill("64", "المستندات")}
+                      ${pill("15", "العروض")}
+                      ${pill("9", "القادم")}
+                      ${pill("12", "الإشعارات")}
+                    </div>
+                  </section>
+                </div>
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("أولويات اليوم", "أقرب عناصر العمل التي تحتاج متابعة سريعة.", chip("مباشر", "success"))}
+                    <div class="list">
+                      ${row("مراجعة مذكرة الرد", "نزاع تجاري · الاستحقاق 27 مارس", [chip("عالي", "warning")])}
+                      ${row("اجتماع مع شركة المدار", "تجديد عقد الخدمات · 11:00 ص", [chip("اجتماع", "success")])}
+                      ${row("إرسال الفاتورة النهائية", "INV-2048 · 7,500 ر.س", [chip("غير مسدد", "gold")])}
+                    </div>
+                  </section>
+                  <section class="panel">
+                    ${sectionHead("الملفات والفوترة", "آخر المستندات والفواتير على المكتب.")}
+                    <div class="list">
+                      ${row("وكالة محدثة", "شركة ألف · نسخة PDF 2.1", [chip("مستند")])}
+                      ${row("عقد خدمات استشارية", "شركة المدار · نسخة DOCX", [chip("مستند")])}
+                      ${row("فاتورة INV-2048", "شركة ألف · 7,500 ر.س", [chip("partial", "gold")])}
+                      ${row("فاتورة INV-2050", "فهد سالم · 2,300 ر.س", [chip("paid", "success")])}
+                    </div>
+                  </section>
+                </div>
+              </section>
+            </main>
+            ${tabbar("الرئيسية")}
+          </div>
+        `;
+      }
+
+      function tabletClients() {
+        return `
+          <div class="app-shell tablet">
+            ${statusbar()}
+            <main class="app-body">
+              ${hero(
+                "إدارة العملاء",
+                "ملفات الموكلين",
+                "الوصول السريع إلى بيانات العملاء، هوياتهم، وسائل التواصل، وحالة ملفاتهم من التطبيق نفسه.",
+                "148 عميلًا"
+              )}
+              <section class="tablet-grid">
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("إجراءات سريعة", "ابدأ من هنا إذا أردت ملفًا جديدًا أو ربط عميل بقضية.")}
+                    <div class="two-col">
+                      ${tile("عميل جديد", "ملف موكل جديد")}
+                      ${tile("قضية جديدة", "ابدأها من العميل")}
+                      ${tile("دعوة عميل", "بوابة العميل")}
+                      ${tile("تحديث بيانات", "العنوان والهوية")}
+                    </div>
+                  </section>
+                  <div class="search">ابحث باسم العميل أو بريده أو جواله أو رقم الهوية</div>
+                  <section class="panel">
+                    ${sectionHead("العملاء", "قائمة واضحة بحالة كل عميل وقنوات الوصول إليه.")}
+                    <div class="list">
+                      ${row("شركة ألف التجارية", "شركة · info@alef.sa · 0555001122", [chip("نشط", "success")])}
+                      ${row("فهد سالم", "فرد · fahad@example.com · 0558123456", [chip("نشط", "success")])}
+                      ${row("مؤسسة المدار", "شركة · contracts@madar.sa · 0554112233", [chip("مراجعة", "warning")])}
+                      ${row("سارة العمري", "فرد · sara@example.com · 0556234123", [chip("مؤرشف", "danger")])}
+                    </div>
+                  </section>
+                </div>
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("بطاقة عميل", "عرض سريع للبيانات الأهم دون مغادرة الشاشة.", chip("شركة", "gold"))}
+                    <div class="stats-grid">
+                      ${stat("القضايا", "8")}
+                      ${stat("المستندات", "17", "success")}
+                      ${stat("العروض", "3")}
+                      ${stat("الفواتير", "5", "gold")}
+                    </div>
+                    <div style="height: 18px"></div>
+                    <div class="list">
+                      ${row("الاسم التجاري", "شركة ألف التجارية", [])}
+                      ${row("السجل التجاري", "1010922245", [])}
+                      ${row("البريد", "info@alef.sa", [])}
+                      ${row("الجوال", "0555001122", [])}
+                    </div>
+                  </section>
+                  <section class="panel">
+                    ${sectionHead("آخر نشاط", "ملخص لما تم مؤخرًا على هذا العميل.")}
+                    <div class="list">
+                      ${row("قضية نزاع تجاري", "آخر تحديث 26 مارس 2026", [chip("جارية", "success")])}
+                      ${row("فاتورة INV-2048", "المتبقي 2,500 ر.س", [chip("partial", "gold")])}
+                      ${row("وكالة محدثة", "تم رفع نسخة جديدة", [chip("مستند")])}
+                    </div>
+                  </section>
+                </div>
+              </section>
+            </main>
+            ${tabbar("العملاء")}
+          </div>
+        `;
+      }
+
+      function tabletMatters() {
+        return `
+          <div class="app-shell tablet">
+            ${statusbar()}
+            <main class="app-body">
+              ${hero(
+                "القضايا",
+                "إدارة الملفات القانونية",
+                "منظور أوضح للقضايا والحالات والمستندات المرتبطة بها مع بحث سريع وتحديثات مستمرة.",
+                "37 قضية"
+              )}
+              <section class="tablet-grid">
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("أوامر سريعة", "إضافة ملف جديد أو إنشاء متابعة مرتبطة بقضية.")}
+                    <div class="tiles-grid">
+                      ${tile("قضية جديدة", "إضافة ملف")}
+                      ${tile("مهمة جديدة", "متابعة ملف")}
+                      ${tile("مستند جديد", "رفع ورقة")}
+                      ${tile("ناجز", "ربط القضية")}
+                      ${tile("ملخص ذكي", "تحليل سريع")}
+                      ${tile("جلسة", "تذكير ومتابعة")}
+                    </div>
+                  </section>
+                  <div class="search">ابحث في القضايا أو أسماء الموكلين أو رقم ناجز</div>
+                  <section class="panel">
+                    ${sectionHead("القضايا النشطة", "حالة كل ملف ودرجة حساسيته وآخر تحديث.")}
+                    <div class="list">
+                      ${row("نزاع تجاري - شركة ألف", "تجاري · آخر تحديث 26 مارس 2026", [chip("خاص", "gold"), chip("in_progress", "success")])}
+                      ${row("مطالبة عمالية - فهد سالم", "عمالي · آخر تحديث 24 مارس 2026", [chip("review", "warning")])}
+                      ${row("تنفيذ سند لأمر", "تنفيذي · آخر تحديث 22 مارس 2026", [chip("on_hold", "danger")])}
+                      ${row("خلاف شراكة", "تجاري · آخر تحديث 20 مارس 2026", [chip("new")])}
+                    </div>
+                  </section>
+                </div>
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("ملف القضية", "قراءة سريعة للملف المحدد.", chip("خاص", "gold"))}
+                    <div class="list">
+                      ${row("العنوان", "نزاع تجاري - شركة ألف", [])}
+                      ${row("الموكل", "شركة ألف التجارية", [])}
+                      ${row("نوع القضية", "تجاري", [])}
+                      ${row("رقم ناجز", "4528-12-2026", [])}
+                    </div>
+                    <div style="height: 18px"></div>
+                    <div class="stats-grid">
+                      ${stat("المهام", "6")}
+                      ${stat("المستندات", "14", "success")}
+                      ${stat("الأحداث", "9")}
+                      ${stat("المراسلات", "18", "gold")}
+                    </div>
+                  </section>
+                  <section class="panel">
+                    ${sectionHead("آخر المتابعات", "الأشياء التي تحتاج انتباهًا على هذا الملف.")}
+                    <div class="list">
+                      ${row("جلسة تنفيذ قادمة", "الأحد 29 مارس · 10:30 ص", [chip("جلسة", "warning")])}
+                      ${row("مذكرة جوابية", "بانتظار الاعتماد النهائي", [chip("مراجعة", "gold")])}
+                      ${row("وكالة محدثة", "تمت إضافتها للمستندات", [chip("مستند", "success")])}
+                    </div>
+                  </section>
+                </div>
+              </section>
+            </main>
+            ${tabbar("القضايا")}
+          </div>
+        `;
+      }
+
+      function tabletOps() {
+        return `
+          <div class="app-shell tablet">
+            ${statusbar()}
+            <main class="app-body">
+              ${hero(
+                "مركز العمليات",
+                "الوحدات التشغيلية",
+                "المهام، المستندات، الفوترة، والنشاط في عرض واحد واضح ومناسب للشاشات الأكبر.",
+                "مربوط بالموقع"
+              )}
+              <section class="panel">
+                ${sectionHead("إجراءات سريعة", "تنفيذ مباشر بدل القراءة فقط.")}
+                <div class="tiles-grid">
+                  ${tile("مهمة جديدة", "إنشاء من البداية")}
+                  ${tile("مستند جديد", "رفع مباشر")}
+                  ${tile("عميل جديد", "ملف موكل")}
+                  ${tile("قضية جديدة", "ربط بعميل")}
+                  ${tile("عرض سعر", "مسودة جاهزة")}
+                  ${tile("فاتورة", "إصدار جديد")}
+                </div>
+              </section>
+              <section class="tablet-grid">
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("المهام الحالية", "تكليفات اليوم والأسبوع الحالي.", chip("6 مهام", "warning"))}
+                    <div class="list">
+                      ${row("مراجعة لائحة الدعوى", "قضية نزاع تجاري · اليوم", [chip("عالي", "warning")])}
+                      ${row("إعداد عرض سعر جديد", "شركة المدار · غدًا", [chip("مسودة", "gold")])}
+                      ${row("إرسال مستندات إضافية", "تنفيذ سند لأمر", [chip("متابعة", "success")])}
+                    </div>
+                  </section>
+                  <section class="panel">
+                    ${sectionHead("المستندات", "آخر الملفات المرفوعة أو المعدلة.")}
+                    <div class="list">
+                      ${row("وكالة محدثة", "PDF · 2.1 MB", [chip("نسخة جديدة", "success")])}
+                      ${row("عقد خدمات", "DOCX · 380 KB", [chip("جاهز")])}
+                      ${row("محضر جلسة", "PDF · 1.2 MB", [chip("مؤرشف", "gold")])}
+                    </div>
+                  </section>
+                </div>
+                <div class="tablet-stack">
+                  <section class="panel">
+                    ${sectionHead("الفوترة", "ملف واضح للعروض والفواتير والمدفوعات.", chip("هذا الأسبوع", "gold"))}
+                    <div class="stats-grid">
+                      ${stat("الفواتير", "11", "gold")}
+                      ${stat("العروض", "15")}
+                      ${stat("المدفوع", "18,400", "success")}
+                      ${stat("المتبقي", "9,800")}
+                    </div>
+                    <div style="height: 18px"></div>
+                    <div class="list">
+                      ${row("فاتورة INV-2048", "شركة ألف · 7,500 ر.س", [chip("partial", "gold")])}
+                      ${row("عرض سعر Q-106", "مؤسسة المدار · 4,200 ر.س", [chip("sent", "warning")])}
+                    </div>
+                  </section>
+                  <section class="panel">
+                    ${sectionHead("النشاط", "آخر ما حدث داخل المكتب.")}
+                    <div class="list">
+                      ${row("تمت إضافة عضو جديد للفريق", "قبل 20 دقيقة", [chip("فريق", "success")])}
+                      ${row("تم ربط قضية جديدة مع ناجز", "قبل ساعة", [chip("تكامل", "gold")])}
+                      ${row("تم إرسال فاتورة بالبريد", "قبل ساعتين", [chip("فواتير")])}
+                    </div>
+                  </section>
+                </div>
+              </section>
+            </main>
+            ${tabbar("التحكم")}
+          </div>
+        `;
+      }
+
+      function miniPhone(kind) {
+        const middleBadge =
+          kind === "home"
+            ? chip("محام", "gold")
+            : kind === "calendar"
+              ? chip("30 يومًا", "success")
+              : chip("37 قضية", "gold");
+
+        const rows =
+          kind === "home"
+            ? [
+                row("مذكرة الرد", "نزاع تجاري · اليوم", [chip("عالي", "warning")]),
+                row("فاتورة INV-2048", "7,500 ر.س", [chip("partial", "gold")]),
+              ]
+            : kind === "calendar"
+              ? [
+                  row("جلسة تنفيذ", "29 مارس · 10:30 ص", [chip("جلسة", "warning")]),
+                  row("اجتماع عميل", "30 مارس · 11:00 ص", [chip("اجتماع", "success")]),
+                ]
+              : [
+                  row("نزاع تجاري - شركة ألف", "آخر تحديث 26 مارس", [chip("جارية", "success")]),
+                  row("تنفيذ سند لأمر", "آخر تحديث 22 مارس", [chip("مراجعة", "gold")]),
+                ];
+
+        return `
+          <div class="mini-inner">
+            <div class="mini-status">
+              <span>9:41</span>
+              <span>5G</span>
+            </div>
+            <div class="mini-body">
+              <div class="mini-hero">
+                <div class="t1">مسار المحامي</div>
+                <div class="t2">${kind === "calendar" ? "مواعيد المكتب" : kind === "matters" ? "إدارة القضايا" : "لوحة المكتب"}</div>
+              </div>
+              <div class="mini-grid">
+                <div class="mini-card">
+                  <div class="l">العملاء</div>
+                  <div class="v">148</div>
+                </div>
+                <div class="mini-card">
+                  <div class="l">القضايا</div>
+                  <div class="v">37</div>
+                </div>
+              </div>
+              <div class="mini-row">
+                <div>
+                  <div class="t">${kind === "home" ? "نظرة سريعة" : kind === "calendar" ? "نطاق زمني" : "بحث سريع"}</div>
+                  <div class="m">${kind === "home" ? "مهام ومستندات وفواتير" : kind === "calendar" ? "أيام وأسابيع وشهور" : "قضايا، موكلون، ناجز"}</div>
+                </div>
+                <div class="mini-chip">${middleBadge.replace(/<[^>]+>/g, "")}</div>
+              </div>
+              ${rows
+                .map(
+                  (entry) => `
+                    <div class="mini-row">
+                      <div>
+                        <div class="t">${entry.match(/row-title">([^<]+)/)?.[1] || ""}</div>
+                        <div class="m">${entry.match(/row-meta">([^<]+)/)?.[1] || ""}</div>
+                      </div>
+                      <div class="mini-chip">${entry.match(/chip [^"]*">([^<]+)/)?.[1] || "جاهز"}</div>
+                    </div>
+                  `
+                )
+                .join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      function featureGraphic() {
+        return `
+          <div class="feature-shell">
+            <div class="feature-content">
+              <div class="feature-copy">
+                <div class="eyebrow">تطبيق مسار المحامي</div>
+                <h1>إدارة المكتب القانوني من شاشة واحدة</h1>
+                <p>قضايا، عملاء، مواعيد، مستندات، وفوترة بواجهة عربية أنيقة ومتصلة مباشرة بنفس بيانات المكتب.</p>
+              </div>
+              <div class="feature-previews">
+                <div class="mini-phone left">
+                  <div class="mini-screen">${miniPhone("calendar")}</div>
+                </div>
+                <div class="mini-phone center">
+                  <div class="mini-screen">${miniPhone("home")}</div>
+                </div>
+                <div class="mini-phone right">
+                  <div class="mini-screen">${miniPhone("matters")}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      const screens = {
+        "phone-login": phoneLogin,
+        "phone-home": phoneHome,
+        "phone-calendar": phoneCalendar,
+        "phone-matters": phoneMatters,
+        "tablet-home": tabletHome,
+        "tablet-clients": tabletClients,
+        "tablet-matters": tabletMatters,
+        "tablet-ops": tabletOps,
+        feature: featureGraphic,
+      };
+
+      root.innerHTML = (screens[screen] || screens["phone-home"])();
+    </script>
+  </body>
+</html>

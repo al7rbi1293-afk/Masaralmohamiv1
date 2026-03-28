@@ -20,6 +20,8 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
+inhibit_all_warnings!
+
 target 'MasarAlMuhami' do
   use_expo_modules!
 
@@ -59,5 +61,12 @@ target 'MasarAlMuhami' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+        build_config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
+      end
+    end
   end
 end

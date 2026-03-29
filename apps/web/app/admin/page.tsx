@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ShieldAlert, Users, Building, History, LayoutDashboard, Handshake, Cable } from 'lucide-react';
+import { ShieldAlert, Users, Building, History, LayoutDashboard, Handshake, Cable, Megaphone } from 'lucide-react';
 import RequestsTab from './_components/RequestsTab';
 import UsersTab from './_components/UsersTab';
 import OrgsTab from './_components/OrgsTab';
@@ -9,15 +9,17 @@ import AuditTab from './_components/AuditTab';
 import OverviewTab from './_components/OverviewTab';
 import PartnersTab from './_components/PartnersTab';
 import NajizTab from './_components/NajizTab';
+import BulkMessagingTab from './_components/BulkMessagingTab';
 import AdminLawyerSurveyPage from './surveys/lawyers/page';
 
-export type TabId = 'overview' | 'requests' | 'users' | 'orgs' | 'audit' | 'partners' | 'najiz' | 'surveys';
+export type TabId = 'overview' | 'requests' | 'users' | 'orgs' | 'audit' | 'partners' | 'najiz' | 'surveys' | 'bulk-email';
 
 const navItems = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'requests', label: 'طلبات الاشتراك', icon: ShieldAlert },
     { id: 'users', label: 'المستخدمون', icon: Users },
     { id: 'orgs', label: 'المكاتب', icon: Building },
+    { id: 'bulk-email', label: 'الارسال الجماعي', icon: Megaphone },
     { id: 'najiz', label: 'Najiz', icon: Cable },
     { id: 'partners', label: 'شركاء النجاح', icon: Handshake },
     { id: 'surveys', label: 'ردود الاستبيان', icon: History },
@@ -35,6 +37,8 @@ export default function AdminHomePage() {
                 return <UsersTab />;
             case 'orgs':
                 return <OrgsTab />;
+            case 'bulk-email':
+                return <BulkMessagingTab />;
             case 'partners':
                 return <PartnersTab />;
             case 'najiz':

@@ -22,6 +22,7 @@ const templateLabel: Record<string, string> = {
   task_reminder: 'تذكير مهمة',
   trial_reminder: 'تذكير قرب انتهاء التجربة',
   trial_expired: 'انتهاء التجربة',
+  admin_announcement: 'إعلان جماعي',
 };
 
 export default async function EmailSettingsPage() {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getPublicSiteUrl, getSignupAlertEmails } from '@/lib/env';
+import { sendEmail } from '@/lib/email';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { checkRateLimit, getRequestIp, RATE_LIMIT_MESSAGE_AR, type RateLimitResult } from '@/lib/rateLimit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -127,6 +129,49 @@ export async function POST(request: NextRequest) {
         ip: requestIp,
         topic: parsed.data.topic ?? null,
     });
+
+    const normalizedTopic = String(parsed.data.topic ?? '').trim().toLowerCase();
+    if (normalizedTopic === 'lawyer_survey_v1') {
+        const recipients = getSignupAlertEmails();
+        if (recipients.length) {
+            const submittedAt = new Date().toISOString();
+            const adminUrl = `${getPublicSiteUrl()}/admin/surveys/lawyers`;
+            const safeMessage = parsed.data.message?.trim() || '—';
+
+            try {
+                await sendEmail({
+                    to: recipients.join(','),
+                    subject: 'رد جديد على استبيان المحامين - مسار المحامي',
+                    text: [
+                        'تم استلام رد جديد على استبيان المحامين.',
+                        `الاسم: ${parsed.data.name}`,
+                        `البريد: ${parsed.data.email.toLowerCase()}`,
+                        `الجوال: ${emptyToNull(parsed.data.phone) || 'غير مذكور'}`,
+                        `المكتب: ${emptyToNull(parsed.data.firm_name) || 'غير مذكور'}`,
+                        `وقت الإرسال: ${submittedAt}`,
+                        `الرابط المرجعي: ${emptyToNull(parsed.data.referrer) || 'غير مذكور'}`,
+                        '',
+                        'ملخص الإجابات:',
+                        safeMessage,
+                        '',
+                        `لوحة الإدارة: ${adminUrl}`,
+                    ].join('\n'),
+                });
+
+                logInfo('lead_survey_admin_notified', {
+                    requestId,
+                    ip: requestIp,
+                    emails: recipients,
+                });
+            } catch (notifyError) {
+                logWarn('lead_survey_admin_notify_failed', {
+                    requestId,
+                    ip: requestIp,
+                    error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+                });
+            }
+        }
+    }
 
     return jsonResponse(
         {

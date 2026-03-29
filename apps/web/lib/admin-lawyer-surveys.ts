@@ -34,6 +34,42 @@ export async function getLawyerSurveyResponses() {
   return ((data as LawyerSurveyLeadRow[] | null) ?? []).map(mapLeadToSurveyResponse);
 }
 
+export async function deleteLawyerSurveyResponse(id: string) {
+  const responseId = id.trim();
+  if (!responseId) {
+    throw new Error('معرّف الرد غير صالح.');
+  }
+
+  const adminClient = createSupabaseServerClient();
+
+  const { data: existing, error: existingError } = await adminClient
+    .from('leads')
+    .select('id')
+    .eq('id', responseId)
+    .eq('topic', LAWYER_SURVEY_TOPIC)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
+
+  if (!existing) {
+    throw new Error('رد الاستبيان غير موجود.');
+  }
+
+  const { error: deleteError } = await adminClient
+    .from('leads')
+    .delete()
+    .eq('id', responseId)
+    .eq('topic', LAWYER_SURVEY_TOPIC);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  return { id: responseId };
+}
+
 function mapLeadToSurveyResponse(row: LawyerSurveyLeadRow): LawyerSurveyResponse {
   return {
     id: row.id,

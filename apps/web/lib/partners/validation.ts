@@ -56,7 +56,7 @@ export const referralCaptureSchema = z.object({
 
 export const adminApplicationActionSchema = z.object({
   id: z.string().uuid('المعرّف غير صالح.'),
-  action: z.enum(['approve', 'reject', 'needs_review']),
+  action: z.enum(['approve', 'reject', 'needs_review', 'delete']),
   admin_notes: z.string().trim().max(2000).optional(),
 });
 

@@ -164,7 +164,12 @@ export default function PartnersTab() {
     });
   }
 
-  async function applyApplicationAction(id: string, action: 'approve' | 'reject' | 'needs_review') {
+  async function applyApplicationAction(id: string, action: 'approve' | 'reject' | 'needs_review' | 'delete') {
+    if (action === 'delete') {
+      const proceed = window.confirm('سيتم حذف طلب الشريك نهائيًا. هل تريد المتابعة؟');
+      if (!proceed) return;
+    }
+
     const notes = action === 'reject' || action === 'needs_review'
       ? prompt('ملاحظات الإدارة (اختياري):') || undefined
       : undefined;
@@ -177,7 +182,11 @@ export default function PartnersTab() {
         action,
         admin_notes: notes,
       });
-      setApplications((current) => applyApplicationResult(current, payload.result, applicationStatus, id, notes));
+      if (action === 'delete') {
+        setApplications((current) => current.filter((application) => application.id !== id));
+      } else {
+        setApplications((current) => applyApplicationResult(current, payload.result, applicationStatus, id, notes));
+      }
       await loadCurrentView();
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'تعذر تحديث الطلب.');
@@ -405,6 +414,13 @@ export default function PartnersTab() {
                         className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-50"
                       >
                         reject
+                      </button>
+                      <button
+                        disabled={actionBusy === application.id}
+                        onClick={() => applyApplicationAction(application.id, 'delete')}
+                        className="rounded bg-red-700 px-2 py-1 text-xs text-white disabled:opacity-50"
+                      >
+                        حذف
                       </button>
                     </div>
                   </td>
@@ -651,7 +667,7 @@ export default function PartnersTab() {
 
 function applyApplicationResult(
   current: PartnerApplication[],
-  result: { applicationId?: string; status?: PartnerApplication['status'] } | undefined,
+  result: { applicationId?: string; status?: PartnerApplication['status'] | 'deleted' } | undefined,
   currentFilter: (typeof APPLICATION_STATUS_OPTIONS)[number],
   fallbackId: string,
   notes?: string,
@@ -661,6 +677,10 @@ function applyApplicationResult(
 
   if (!nextStatus) {
     return current;
+  }
+
+  if (nextStatus === 'deleted') {
+    return current.filter((application) => application.id !== applicationId);
   }
 
   const nextRows = current.map((application) => (

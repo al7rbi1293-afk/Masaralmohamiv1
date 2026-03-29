@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -59,11 +59,7 @@ export function NajizPacketsClient({ matterId, matterTitle, caseNumber }: NajizP
   const [draftStatuses, setDraftStatuses] = useState<Record<string, PacketStatus>>({});
   const [savingPacketIds, setSavingPacketIds] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    void loadPackets();
-  }, [matterId]);
-
-  async function loadPackets() {
+  const loadPackets = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -85,7 +81,11 @@ export function NajizPacketsClient({ matterId, matterTitle, caseNumber }: NajizP
     } finally {
       setLoading(false);
     }
-  }
+  }, [matterId]);
+
+  useEffect(() => {
+    void loadPackets();
+  }, [loadPackets]);
 
   function updateItem(index: number, patch: Partial<PacketItemDraft>) {
     setItems((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));

@@ -49,6 +49,11 @@ type RequestsPayload = {
 };
 
 type RequestsTab = 'subscription' | 'activation' | 'leads';
+type RequestDeleteKind = SubRequest['request_kind'] | 'full_version_request' | 'lead';
+
+function actionKey(id: string, kind: RequestDeleteKind) {
+    return `${kind}:${id}`;
+}
 
 export default function AdminRequestsPage() {
     const [requests, setRequests] = useState<SubRequest[]>([]);
@@ -83,14 +88,52 @@ export default function AdminRequestsPage() {
 
     async function handleAction(id: string, requestKind: SubRequest['request_kind'], action: 'approve' | 'reject') {
         const notes = action === 'reject' ? prompt('سبب الرفض (اختياري):') : null;
-        setActionId(id);
-        await fetch('/admin/api/requests', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, action, notes, request_kind: requestKind }),
-        });
-        await fetchRequests();
-        setActionId(null);
+        const key = actionKey(id, requestKind);
+        setActionId(key);
+        setLoadError(null);
+        try {
+            const response = await fetch('/admin/api/requests', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, action, notes, request_kind: requestKind }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error((payload as any).error ?? 'تعذر تحديث الطلب.');
+            }
+            await fetchRequests();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'تعذر تحديث الطلب.';
+            setLoadError(message);
+        } finally {
+            setActionId(null);
+        }
+    }
+
+    async function handleDelete(id: string, kind: RequestDeleteKind) {
+        const proceed = window.confirm('سيتم حذف هذا الطلب نهائيًا. هل تريد المتابعة؟');
+        if (!proceed) return;
+
+        const key = actionKey(id, kind);
+        setActionId(key);
+        setLoadError(null);
+        try {
+            const response = await fetch('/admin/api/requests', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, kind }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error((payload as any).error ?? 'تعذر حذف الطلب.');
+            }
+            await fetchRequests();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'تعذر حذف الطلب.';
+            setLoadError(message);
+        } finally {
+            setActionId(null);
+        }
     }
 
     const statusBadge = (s: string) => {
@@ -187,26 +230,35 @@ export default function AdminRequestsPage() {
                                         </td>
                                         <td className="py-3">{new Date(req.requested_at).toLocaleDateString('ar-SA')}</td>
                                         <td className="py-3">
-                                            {req.status === 'pending' ? (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        disabled={actionId === req.id}
-                                                        onClick={() => handleAction(req.id, req.request_kind, 'approve')}
-                                                        className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
-                                                    >
-                                                        قبول
-                                                    </button>
-                                                    <button
-                                                        disabled={actionId === req.id}
-                                                        onClick={() => handleAction(req.id, req.request_kind, 'reject')}
-                                                        className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
-                                                    >
-                                                        رفض
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-400">{req.notes ?? '—'}</span>
-                                            )}
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {req.status === 'pending' ? (
+                                                    <>
+                                                        <button
+                                                            disabled={actionId === actionKey(req.id, req.request_kind)}
+                                                            onClick={() => handleAction(req.id, req.request_kind, 'approve')}
+                                                            className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                                                        >
+                                                            قبول
+                                                        </button>
+                                                        <button
+                                                            disabled={actionId === actionKey(req.id, req.request_kind)}
+                                                            onClick={() => handleAction(req.id, req.request_kind, 'reject')}
+                                                            className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                                                        >
+                                                            رفض
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">{req.notes ?? '—'}</span>
+                                                )}
+                                                <button
+                                                    disabled={actionId === actionKey(req.id, req.request_kind)}
+                                                    onClick={() => void handleDelete(req.id, req.request_kind)}
+                                                    className="rounded bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-800 disabled:opacity-50"
+                                                >
+                                                    حذف
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -231,6 +283,7 @@ export default function AdminRequestsPage() {
                                     <th className="py-3 text-start font-medium">المصدر</th>
                                     <th className="py-3 text-start font-medium">الرسالة</th>
                                     <th className="py-3 text-start font-medium">التاريخ</th>
+                                    <th className="py-3 text-start font-medium">إجراءات</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -243,6 +296,15 @@ export default function AdminRequestsPage() {
                                         <td className="py-3">{req.source}</td>
                                         <td className="py-3">{compactText(req.message)}</td>
                                         <td className="py-3">{new Date(req.created_at).toLocaleDateString('ar-SA')}</td>
+                                        <td className="py-3">
+                                            <button
+                                                disabled={actionId === actionKey(req.id, 'full_version_request')}
+                                                onClick={() => void handleDelete(req.id, 'full_version_request')}
+                                                className="rounded bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-800 disabled:opacity-50"
+                                            >
+                                                حذف
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -266,6 +328,7 @@ export default function AdminRequestsPage() {
                                     <th className="py-3 text-start font-medium">الهاتف</th>
                                     <th className="py-3 text-start font-medium">الرسالة</th>
                                     <th className="py-3 text-start font-medium">التاريخ</th>
+                                    <th className="py-3 text-start font-medium">إجراءات</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -278,6 +341,15 @@ export default function AdminRequestsPage() {
                                         <td className="py-3">{lead.phone ?? '—'}</td>
                                         <td className="py-3">{compactText(lead.message)}</td>
                                         <td className="py-3">{new Date(lead.created_at).toLocaleDateString('ar-SA')}</td>
+                                        <td className="py-3">
+                                            <button
+                                                disabled={actionId === actionKey(lead.id, 'lead')}
+                                                onClick={() => void handleDelete(lead.id, 'lead')}
+                                                className="rounded bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-800 disabled:opacity-50"
+                                            >
+                                                حذف
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

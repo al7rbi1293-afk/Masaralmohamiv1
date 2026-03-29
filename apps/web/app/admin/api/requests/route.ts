@@ -7,6 +7,7 @@ import { sendSubscriptionInvoiceEmail } from '@/lib/subscription-invoice-email';
 export const dynamic = 'force-dynamic';
 
 type RequestKind = 'subscription_request' | 'payment_request';
+type RequestDeleteKind = RequestKind | 'full_version_request' | 'lead';
 
 type SubscriptionRequestRow = {
   id: string;
@@ -108,6 +109,15 @@ function isMissingRelationError(message?: string) {
 
 function monthsFromBillingPeriod(period: string | null | undefined) {
   return String(period ?? '').toLowerCase() === 'yearly' ? 12 : 1;
+}
+
+function normalizeDeleteKind(value: unknown): RequestDeleteKind | null {
+  if (typeof value !== 'string') return null;
+  if (value === 'subscription_request') return 'subscription_request';
+  if (value === 'payment_request') return 'payment_request';
+  if (value === 'full_version_request') return 'full_version_request';
+  if (value === 'lead') return 'lead';
+  return null;
 }
 
 async function activatePaidSubscription(params: {
@@ -589,4 +599,137 @@ export async function PATCH(request: NextRequest) {
   }
 
   return NextResponse.json({ error: 'تعذر تنفيذ العملية.' }, { status: 500 });
+}
+
+export async function DELETE(request: NextRequest) {
+  let adminId: string;
+  try {
+    adminId = await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const payload = body as { id?: unknown; kind?: unknown };
+  const id = typeof payload.id === 'string' ? payload.id.trim() : '';
+  const kind = normalizeDeleteKind(payload.kind);
+
+  if (!id || !kind) {
+    return NextResponse.json({ error: 'بيانات غير صالحة.' }, { status: 400 });
+  }
+
+  const adminClient = createSupabaseServerClient();
+
+  if (kind === 'subscription_request' || kind === 'payment_request') {
+    const sourceTable = kind === 'subscription_request' ? 'subscription_requests' : 'payment_requests';
+    const { data: existing, error: existingError } = await adminClient
+      .from(sourceTable)
+      .select('id, org_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError) {
+      if (isMissingRelationError(existingError.message)) {
+        return NextResponse.json({ error: 'مصدر الطلب غير متوفر.' }, { status: 404 });
+      }
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+
+    if (!existing) {
+      return NextResponse.json({ error: 'الطلب غير موجود.' }, { status: 404 });
+    }
+
+    const { error: deleteError } = await adminClient
+      .from(sourceTable)
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
+    const orgId = typeof (existing as { org_id?: unknown }).org_id === 'string' ? (existing as { org_id: string }).org_id : null;
+    if (orgId) {
+      await adminClient.from('audit_logs').insert({
+        org_id: orgId,
+        user_id: adminId,
+        action: 'admin_request_deleted',
+        entity_type: kind,
+        entity_id: id,
+        meta: { request_kind: kind },
+      });
+    }
+
+    return NextResponse.json({ success: true, kind, id });
+  }
+
+  if (kind === 'full_version_request') {
+    const { data: existing, error: existingError } = await adminClient
+      .from('full_version_requests')
+      .select('id, org_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError) {
+      if (isMissingRelationError(existingError.message)) {
+        return NextResponse.json({ error: 'طلبات التفعيل غير متوفرة.' }, { status: 404 });
+      }
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+
+    if (!existing) {
+      return NextResponse.json({ error: 'الطلب غير موجود.' }, { status: 404 });
+    }
+
+    const { error: deleteError } = await adminClient
+      .from('full_version_requests')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
+    const orgId = typeof (existing as { org_id?: unknown }).org_id === 'string' ? (existing as { org_id: string }).org_id : null;
+    if (orgId) {
+      await adminClient.from('audit_logs').insert({
+        org_id: orgId,
+        user_id: adminId,
+        action: 'admin_request_deleted',
+        entity_type: 'full_version_request',
+        entity_id: id,
+        meta: { request_kind: 'full_version_request' },
+      });
+    }
+
+    return NextResponse.json({ success: true, kind, id });
+  }
+
+  const { data: existingLead, error: existingLeadError } = await adminClient
+    .from('leads')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (existingLeadError) {
+    if (isMissingRelationError(existingLeadError.message)) {
+      return NextResponse.json({ error: 'طلبات التسويق غير متوفرة.' }, { status: 404 });
+    }
+    return NextResponse.json({ error: existingLeadError.message }, { status: 500 });
+  }
+
+  if (!existingLead) {
+    return NextResponse.json({ error: 'الطلب غير موجود.' }, { status: 404 });
+  }
+
+  const { error: deleteLeadError } = await adminClient
+    .from('leads')
+    .delete()
+    .eq('id', id);
+
+  if (deleteLeadError) {
+    return NextResponse.json({ error: deleteLeadError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true, kind, id });
 }

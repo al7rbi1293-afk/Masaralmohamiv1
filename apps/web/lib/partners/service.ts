@@ -137,7 +137,7 @@ export async function addPartnerAuditLog(params: {
 
 export async function reviewPartnerApplication(params: {
   applicationId: string;
-  action: 'approve' | 'reject' | 'needs_review';
+  action: 'approve' | 'reject' | 'needs_review' | 'delete';
   adminUserId: string;
   adminNotes?: string;
 }) {
@@ -157,6 +157,31 @@ export async function reviewPartnerApplication(params: {
   }
 
   const now = nowIso();
+
+  if (params.action === 'delete') {
+    const { error: deleteError } = await db
+      .from('partner_applications')
+      .delete()
+      .eq('id', params.applicationId);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+
+    await addPartnerAuditLog({
+      actorUserId: params.adminUserId,
+      action: 'partner_application_deleted',
+      targetType: 'partner_application',
+      targetId: params.applicationId,
+      details: {
+        full_name: application.full_name,
+        email: application.email,
+        status: application.status,
+      },
+    });
+
+    return { applicationId: params.applicationId, status: 'deleted', partner: null };
+  }
 
   if (params.action === 'approve') {
     const { data: existingPartner, error: existingPartnerError } = await db

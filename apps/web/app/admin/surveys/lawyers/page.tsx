@@ -21,6 +21,7 @@ export default function AdminLawyerSurveyPage() {
   const [responses, setResponses] = useState<LawyerSurveyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function loadData() {
     try {
@@ -41,6 +42,32 @@ export default function AdminLawyerSurveyPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  async function handleDeleteResponse(id: string) {
+    const proceed = window.confirm('سيتم حذف هذا الرد نهائيًا. هل تريد المتابعة؟');
+    if (!proceed) {
+      return;
+    }
+
+    setDeletingId(id);
+    setError(null);
+    try {
+      const res = await fetch('/admin/api/surveys/lawyers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'تعذر حذف الرد.');
+      }
+      setResponses((current) => current.filter((response) => response.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر حذف الرد.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const summary = summarizeLawyerSurveyResponses(responses);
 
@@ -140,8 +167,22 @@ export default function AdminLawyerSurveyPage() {
                       </p>
                     </div>
 
-                    <div className="text-sm text-slate-500 dark:text-slate-400">
-                      {new Date(response.createdAt).toLocaleString('ar-SA')}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        {new Date(response.createdAt).toLocaleString('ar-SA')}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={deletingId === response.id}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleDeleteResponse(response.id);
+                        }}
+                        className="rounded bg-red-700 px-3 py-1 text-xs font-medium text-white hover:bg-red-800 disabled:opacity-50"
+                      >
+                        {deletingId === response.id ? 'جارٍ الحذف...' : 'حذف الرد'}
+                      </button>
                     </div>
                   </div>
                 </summary>

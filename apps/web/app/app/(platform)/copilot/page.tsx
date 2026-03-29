@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listMatters } from '@/lib/matters';
 import { isCopilotEnabled } from '@/lib/env';
+import { isUserAppAdmin } from '@/lib/admin';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 
 type CopilotLandingPageProps = {
   searchParams?: {
@@ -28,6 +30,25 @@ export default async function CopilotLandingPage({ searchParams }: CopilotLandin
         </div>
         <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
           يمكنك متابعة إدارة القضايا والمستندات والمهام بشكل كامل حتى تفعيل الخدمة.
+        </div>
+      </Card>
+    );
+  }
+
+  const currentUser = await getCurrentAuthUser();
+  const canUseCopilot = currentUser ? await isUserAppAdmin(currentUser.id).catch(() => false) : false;
+
+  if (!canUseCopilot) {
+    return (
+      <Card className="p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">الذكاء الاصطناعي</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              الوصول إلى هذه الميزة محصور بحساب الإدارة فقط.
+            </p>
+          </div>
+          <Badge variant="warning">إدارة فقط</Badge>
         </div>
       </Card>
     );

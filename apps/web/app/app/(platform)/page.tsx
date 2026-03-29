@@ -37,12 +37,14 @@ function trialLabel(status: 'active' | 'expired' | 'none') {
 
 export default async function DashboardPage() {
   const currentUser = await getCurrentAuthUser();
+  let isAdminUser = false;
   if (currentUser) {
     const [orgId, linkedPartner, isAdmin] = await Promise.all([
       getCurrentOrgIdForUser(),
       getLinkedPartnerForUserId(currentUser.id),
       isUserAppAdmin(currentUser.id),
     ]);
+    isAdminUser = isAdmin;
 
     if (isPartnerOnlyUser({
       hasLinkedPartner: Boolean(linkedPartner),
@@ -176,10 +178,12 @@ export default async function DashboardPage() {
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">فاتورة جديدة</span>
           </Link>
 
-          <Link href="/app/copilot" className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-center transition-all hover:-translate-y-1 hover:border-brand-emerald hover:shadow-glow dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-500/50">
-            <Bot className="h-6 w-6 text-slate-400 dark:text-slate-500" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">الذكاء الاصطناعي (قريباً)</span>
-          </Link>
+          {isAdminUser ? (
+            <Link href="/app/copilot" className="flex flex-col items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 text-center transition-all hover:-translate-y-1 hover:border-brand-emerald hover:shadow-glow dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-500/50">
+              <Bot className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">الذكاء الاصطناعي</span>
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMatterById } from '@/lib/matters';
+import { isUserAppAdmin } from '@/lib/admin';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCopilotEnv, getOpenAiApiKey, isCopilotEnabled, isMissingEnvError } from '@/lib/env';
 import { logError } from '@/lib/logger';
 import {
@@ -103,6 +103,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const isAdmin = await isUserAppAdmin(user.id).catch(() => false);
+  if (!isAdmin) {
+    return NextResponse.json(
+      defaultFailureResponse({
+        model: env.midModel,
+        latencyMs: Date.now() - startedAt,
+        message: 'ميزة الذكاء الاصطناعي متاحة فقط لحساب الإدارة.',
+      }),
+      { status: 403 },
+    );
+  }
+
   let orgId = '';
   try {
     orgId = await requireOrgIdForUser();
@@ -129,17 +141,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let rls: Awaited<ReturnType<typeof createSupabaseRlsUserClient>>;
-  try {
-    rls = await createSupabaseRlsUserClient(user.id);
-  } catch (error) {
-    if (isMissingEnvError(error) && error.envVarName === 'SUPABASE_JWT_SECRET') {
-      logError('copilot_rls_jwt_secret_missing_fallback_service', { requestId });
-      rls = createSupabaseServerClient();
-    } else {
-      throw error;
-    }
-  }
+  const rls = await createSupabaseRlsUserClient(user.id);
   const parsed = payload.data;
 
   let matterLookupResult = await rls
@@ -154,13 +156,7 @@ export async function POST(request: NextRequest) {
       requestId,
       message: matterLookupResult.error?.message ?? 'unknown',
     });
-    rls = createSupabaseServerClient();
-    matterLookupResult = await rls
-      .from('matters')
-      .select('id, title, is_private, case_type')
-      .eq('org_id', orgId)
-      .eq('id', parsed.case_id)
-      .maybeSingle();
+    throw new Error('supabase_rls_jwt_invalid');
   }
 
   const { data: matterByRls, error: matterError } = matterLookupResult;
@@ -243,8 +239,31 @@ export async function POST(request: NextRequest) {
       requestId,
       message: error instanceof Error ? error.message : String(error),
     });
-    return { allowed: true, currentCount: 0, resetAt: new Date(Date.now() + 60_000).toISOString() };
+    return null;
   });
+
+  if (!rate) {
+    const response = defaultFailureResponse({
+      model: env.midModel,
+      latencyMs: Date.now() - startedAt,
+      message: 'تعذر التحقق من حد الطلبات حاليًا. حاول مرة أخرى خلال لحظات.',
+    });
+    await safeAudit(rls, {
+      requestId,
+      orgId,
+      userId: user.id,
+      caseId: parsed.case_id,
+      status: 'error',
+      model: env.midModel,
+      cached: false,
+      inputTokens: 0,
+      outputTokens: 0,
+      latencyMs: Date.now() - startedAt,
+      errorCode: 'rate_limit_unavailable',
+      errorMessage: 'consume_copilot_rate_limit_failed',
+    });
+    return NextResponse.json(response, { status: 503 });
+  }
 
   if (!rate.allowed) {
     const response = defaultFailureResponse({
@@ -279,13 +298,31 @@ export async function POST(request: NextRequest) {
       requestId,
       message: error instanceof Error ? error.message : String(error),
     });
-    return {
-      allowed: true,
-      requestsUsed: 0,
-      tokensUsed: 0,
-      monthStart: new Date().toISOString(),
-    };
+    return null;
   });
+
+  if (!quota) {
+    const response = defaultFailureResponse({
+      model: env.midModel,
+      latencyMs: Date.now() - startedAt,
+      message: 'تعذر التحقق من الحصة الشهرية حاليًا. حاول مرة أخرى خلال لحظات.',
+    });
+    await safeAudit(rls, {
+      requestId,
+      orgId,
+      userId: user.id,
+      caseId: parsed.case_id,
+      status: 'error',
+      model: env.midModel,
+      cached: false,
+      inputTokens: 0,
+      outputTokens: 0,
+      latencyMs: Date.now() - startedAt,
+      errorCode: 'quota_unavailable',
+      errorMessage: 'consume_copilot_quota_failed',
+    });
+    return NextResponse.json(response, { status: 503 });
+  }
 
   if (!quota.allowed) {
     const response = defaultFailureResponse({
@@ -452,7 +489,7 @@ export async function POST(request: NextRequest) {
       orgId,
       caseId: parsed.case_id,
       query: normalizedQuery,
-      caseType: typeof (matter as any).case_type === 'string' ? String((matter as any).case_type) : null,
+      caseType: matter.case_type ?? null,
       embedding,
       caseTopK: env.caseTopK,
       kbTopK: env.kbTopK,
@@ -493,7 +530,7 @@ export async function POST(request: NextRequest) {
   const budgetedSources = fitSourcesIntoBudget({
     sources: retrieval.sources,
     modelBudget: getBudgetForModel(routedModel, env.midModel),
-    promptOverheadTokens: 900,
+    promptOverheadTokens: 1100,
   }).slice(0, env.maxSources);
 
   const basePrompt = buildCopilotUserPrompt({
@@ -501,6 +538,9 @@ export async function POST(request: NextRequest) {
     sources: budgetedSources,
     caseBrief: retrieval.caseBrief,
     sourceCap: env.maxSources,
+    caseType: matter.case_type,
+    intent,
+    customStyleProfile: env.styleProfile,
   });
 
   let inputTokens = 0;
@@ -923,6 +963,14 @@ function mapCopilotInternalErrorToMessage(error: unknown): string {
 
   if (raw.includes('إعدادات البيئة غير مكتملة') || raw.includes('missing required environment variable')) {
     return 'تهيئة خدمة الذكاء غير مكتملة في بيئة الإنتاج. يرجى استكمال متغيرات البيئة وإعادة المحاولة.';
+  }
+
+  if (
+    raw.includes('supabase_rls_jwt_invalid') ||
+    raw.includes('no suitable key or wrong key type') ||
+    (raw.includes('jwt') && raw.includes('key'))
+  ) {
+    return 'تهيئة RLS في Supabase غير صحيحة للمساعد القانوني. تأكد من قيمة SUPABASE_JWT_SECRET المطابقة للمشروع ثم أعد النشر.';
   }
 
   if (raw.includes('openai') || raw.includes('api key') || raw.includes('authentication')) {

@@ -107,8 +107,9 @@ export function getOpenAiApiKey() {
 export function getCopilotEnv() {
   return {
     embeddingModel: process.env.OPENAI_MODEL_EMBEDDING?.trim() || 'text-embedding-3-small',
-    midModel: process.env.OPENAI_MODEL_MID?.trim() || 'gpt-4.1-mini',
-    strongModel: process.env.OPENAI_MODEL_STRONG?.trim() || 'gpt-4.1',
+    midModel: process.env.OPENAI_MODEL_MID?.trim() || 'gpt-5-nano',
+    strongModel: process.env.OPENAI_MODEL_STRONG?.trim() || 'gpt-5-nano',
+    styleProfile: process.env.COPILOT_STYLE_PROFILE?.trim() || '',
     requestsMonthlyDefault: Math.max(1, Number(process.env.COPILOT_REQUESTS_MONTHLY_DEFAULT ?? '500') || 500),
     tokensMonthlyDefault: Math.max(1, Number(process.env.COPILOT_TOKENS_MONTHLY_DEFAULT ?? '1000000') || 1000000),
     rateLimitPerMinute: Math.max(1, Number(process.env.COPILOT_RATE_LIMIT_PER_MINUTE ?? '20') || 20),

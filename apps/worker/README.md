@@ -16,7 +16,7 @@ This worker runs document ingestion for Legal Copilot:
 ## Optional Environment Variables
 
 - `OPENAI_MODEL_EMBEDDING` (default: `text-embedding-3-small`)
-- `OPENAI_MODEL_MID` (default: `gpt-4.1-mini`)
+- `OPENAI_MODEL_MID` (default: `gpt-5-nano`)
 - `COPILOT_DOCS_BUCKET` (default: `documents`)
 - `COPILOT_WORKER_CONCURRENCY` (default: `3`)
 - `COPILOT_WORKER_POLL_INTERVAL_MS` (default: `3000`)

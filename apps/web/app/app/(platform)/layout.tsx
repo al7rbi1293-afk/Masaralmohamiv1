@@ -44,7 +44,7 @@ const navItemsBase = [
   { href: '/app/calendar', label: 'التقويم', icon: Calendar },
   { href: '/app/clients', label: 'العملاء', icon: Users },
   { href: '/app/matters', label: 'القضايا', icon: Briefcase },
-  { href: '/app/copilot', label: 'الذكاء الاصطناعي (قريباً)', icon: Bot },
+  { href: '/app/copilot', label: 'الذكاء الاصطناعي', icon: Bot },
   { href: '/app/documents', label: 'المستندات', icon: FileText },
   { href: '/app/tasks', label: 'المهام', icon: CheckSquare },
   { href: '/app/billing/invoices', label: 'الفوترة', icon: Receipt },
@@ -100,7 +100,9 @@ export default async function PlatformLayout({ children }: PlatformLayoutProps) 
 
   const navItems: { href: string; label: string; icon: any }[] = partnerOnly
     ? [{ href: '/app/partners', label: 'بوابة الشريك', icon: LayoutDashboard }]
-    : [...navItemsBase];
+    : navItemsBase
+        .filter((item) => (item.href === '/app/copilot' ? isAdmin : true))
+        .map((item) => ({ ...item }));
 
   if (partnerUser && !partnerOnly) {
     navItems.unshift({ href: '/app/partners', label: 'بوابة الشريك', icon: LayoutDashboard });

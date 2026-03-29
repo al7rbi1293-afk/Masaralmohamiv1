@@ -17,7 +17,7 @@ test('copilot response schema validates strict contract', () => {
     ],
     confidence: 'medium',
     meta: {
-      model: 'gpt-4.1-mini',
+      model: 'gpt-5-nano',
       latency_ms: 120,
       cached: false,
     },

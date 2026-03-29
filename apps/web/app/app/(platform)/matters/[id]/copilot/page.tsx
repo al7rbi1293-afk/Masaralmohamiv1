@@ -4,6 +4,8 @@ import { buttonVariants } from '@/components/ui/button';
 import { CopilotChat } from '@/components/copilot/copilot-chat';
 import { getMatterById } from '@/lib/matters';
 import { isCopilotEnabled } from '@/lib/env';
+import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { isUserAppAdmin } from '@/lib/admin';
 
 type MatterCopilotPageProps = {
   params: {
@@ -23,6 +25,25 @@ export default async function MatterCopilotPage({ params }: MatterCopilotPagePro
         </div>
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
           خدمة الذكاء الاصطناعي موقوفة مؤقتًا للتحكم بالتكاليف، وستعود قريبًا بإصدار أفضل.
+        </p>
+      </Card>
+    );
+  }
+
+  const currentUser = await getCurrentAuthUser();
+  const canUseCopilot = currentUser ? await isUserAppAdmin(currentUser.id).catch(() => false) : false;
+
+  if (!canUseCopilot) {
+    return (
+      <Card className="p-6">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h1 className="text-xl font-bold text-brand-navy dark:text-slate-100">المساعد القانوني</h1>
+          <Link href={`/app/matters/${params.id}`} className={buttonVariants('outline', 'sm')}>
+            العودة للقضية
+          </Link>
+        </div>
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+          الوصول إلى المساعد القانوني محصور بحساب الإدارة فقط.
         </p>
       </Card>
     );

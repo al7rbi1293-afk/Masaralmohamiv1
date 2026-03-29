@@ -102,6 +102,7 @@ Apply these after existing migrations:
 - `supabase/migrations/20260303120000_copilot_init.sql`
 - `supabase/migrations/20260303121000_copilot_rls.sql`
 - `supabase/migrations/20260303122000_copilot_rpc.sql`
+- `supabase/migrations/20260329161000_enqueue_case_documents_from_versions.sql`
 
 ## Run locally
 
@@ -149,8 +150,9 @@ SUPABASE_JWT_SECRET=YOUR_SUPABASE_PROJECT_JWT_SECRET
 COPILOT_ENABLED=0
 OPENAI_API_KEY=YOUR_OPENAI_API_KEY
 OPENAI_MODEL_EMBEDDING=text-embedding-3-small
-OPENAI_MODEL_MID=gpt-4.1-mini
-OPENAI_MODEL_STRONG=gpt-4.1
+OPENAI_MODEL_MID=gpt-5-nano
+OPENAI_MODEL_STRONG=gpt-5-nano
+COPILOT_STYLE_PROFILE=
 COPILOT_REQUESTS_MONTHLY_DEFAULT=500
 COPILOT_TOKENS_MONTHLY_DEFAULT=1000000
 COPILOT_RATE_LIMIT_PER_MINUTE=20
@@ -159,6 +161,14 @@ COPILOT_CACHE_TTL_ANSWER_SEC=45
 COPILOT_WORKER_CONCURRENCY=3
 COPILOT_WORKER_POLL_INTERVAL_MS=3000
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+### Copilot style profile (optional)
+
+You can customize tone/output shape without fine-tuning by setting:
+
+```bash
+COPILOT_STYLE_PROFILE=اعتمد أسلوب مهني موجز، ابدأ بالخلاصة، ثم التحليل، ثم الإجراء المقترح، وختم بتنبيه مهني.
 ```
 
 ### Integrations encryption (required for Najiz)
@@ -202,6 +212,7 @@ SMTP_FROM=
    - `supabase/migrations/20260303120000_copilot_init.sql`
    - `supabase/migrations/20260303121000_copilot_rls.sql`
    - `supabase/migrations/20260303122000_copilot_rpc.sql`
+   - `supabase/migrations/20260329161000_enqueue_case_documents_from_versions.sql`
 3. Run the query.
 
 ### Option 2: Supabase CLI

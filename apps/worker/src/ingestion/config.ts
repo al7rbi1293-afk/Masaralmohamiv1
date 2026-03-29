@@ -51,7 +51,7 @@ export function getIngestionConfig(): IngestionConfig {
     supabaseServiceRoleKey: envRequired('SUPABASE_SERVICE_ROLE_KEY'),
     openAiApiKey: envRequired('OPENAI_API_KEY'),
     embeddingModel: process.env.OPENAI_MODEL_EMBEDDING?.trim() || 'text-embedding-3-small',
-    draftingModel: process.env.OPENAI_MODEL_MID?.trim() || 'gpt-4.1-mini',
+    draftingModel: process.env.OPENAI_MODEL_MID?.trim() || 'gpt-5-nano',
     bucketDefault: process.env.COPILOT_DOCS_BUCKET?.trim() || 'documents',
     concurrency: envInt('COPILOT_WORKER_CONCURRENCY', 3, 1, 20),
     pollIntervalMs: envInt('COPILOT_WORKER_POLL_INTERVAL_MS', 3000, 500, 60000),

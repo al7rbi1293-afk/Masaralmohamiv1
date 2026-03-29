@@ -17,6 +17,7 @@ import { getMatterById, type MatterStatus } from '@/lib/matters';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { listTasks, type TaskPriority, type TaskStatus } from '@/lib/tasks';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
+import { isUserAppAdmin } from '@/lib/admin';
 import { archiveDocumentAction, deleteDocumentAction, restoreDocumentAction } from '../../documents/actions';
 import { NajizCaseDetailsClient } from '@/components/najiz/najiz-case-details-client';
 import { getOrgPlanLimits } from '@/lib/plan-limits';
@@ -111,7 +112,10 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
   }
 
   const currentUser = await getCurrentAuthUser();
-  const { limits: matterPlanLimits } = await getOrgPlanLimits(matter.org_id).catch(() => ({ limits: { najiz_integration: false } }));
+  const [{ limits: matterPlanLimits }, canUseCopilot] = await Promise.all([
+    getOrgPlanLimits(matter.org_id).catch(() => ({ limits: { najiz_integration: false } })),
+    currentUser ? isUserAppAdmin(currentUser.id).catch(() => false) : Promise.resolve(false),
+  ]);
   const showNajiz = matterPlanLimits.najiz_integration;
 
   const success = searchParams?.success ? safeDecode(searchParams.success) : '';
@@ -192,12 +196,14 @@ export default async function MatterDetailsPage({ params, searchParams }: Matter
         >
           أسئلة الموكل
         </Link>
-        <Link
-          href={`/app/matters/${matter.id}/copilot`}
-          className={`${buttonVariants('outline', 'sm')}`}
-        >
-          المساعد القانوني (قريباً)
-        </Link>
+        {canUseCopilot ? (
+          <Link
+            href={`/app/matters/${matter.id}/copilot`}
+            className={`${buttonVariants('outline', 'sm')}`}
+          >
+            المساعد القانوني
+          </Link>
+        ) : null}
       </div>
 
       {success ? (

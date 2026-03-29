@@ -11,12 +11,25 @@ export async function consumeCopilotRateLimit(params: {
   orgId: string;
   limit: number;
   windowSeconds?: number;
+  userId?: string;
 }): Promise<RateLimitResult> {
-  const { data, error } = await params.supabase.rpc('consume_copilot_rate_limit', {
-    p_org_id: params.orgId,
-    p_limit: params.limit,
-    p_window_seconds: params.windowSeconds ?? 60,
-  });
+  const rpcName = params.userId
+    ? 'consume_copilot_rate_limit_for_user'
+    : 'consume_copilot_rate_limit';
+  const rpcParams = params.userId
+    ? {
+        p_org_id: params.orgId,
+        p_user_id: params.userId,
+        p_limit: params.limit,
+        p_window_seconds: params.windowSeconds ?? 60,
+      }
+    : {
+        p_org_id: params.orgId,
+        p_limit: params.limit,
+        p_window_seconds: params.windowSeconds ?? 60,
+      };
+
+  const { data, error } = await params.supabase.rpc(rpcName, rpcParams);
 
   if (error) {
     throw error;

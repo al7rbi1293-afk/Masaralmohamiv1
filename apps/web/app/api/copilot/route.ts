@@ -143,12 +143,14 @@ export async function POST(request: NextRequest) {
   }
 
   let rls: Awaited<ReturnType<typeof createSupabaseRlsUserClient>>;
+  let isServiceFallback = false;
   try {
     rls = await createSupabaseRlsUserClient(user.id);
   } catch (error) {
     if (isMissingEnvError(error) && error.envVarName === 'SUPABASE_JWT_SECRET') {
       logError('copilot_rls_missing_jwt_secret_using_service', { requestId });
       rls = createSupabaseServerClient();
+      isServiceFallback = true;
     } else {
       throw error;
     }
@@ -168,6 +170,7 @@ export async function POST(request: NextRequest) {
       message: matterLookupResult.error?.message ?? 'unknown',
     });
     rls = createSupabaseServerClient();
+    isServiceFallback = true;
     matterLookupResult = await rls
       .from('matters')
       .select('id, title, is_private, case_type')
@@ -246,11 +249,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(forbiddenResponse, { status: 403 });
   }
 
-  const rate = await consumeCopilotRateLimit({
+  let rate = await consumeCopilotRateLimit({
     supabase: rls,
     orgId,
     limit: env.rateLimitPerMinute,
     windowSeconds: 60,
+    userId: isServiceFallback ? user.id : undefined,
   }).catch((error) => {
     logError('copilot_rate_limit_error', {
       requestId,
@@ -260,26 +264,16 @@ export async function POST(request: NextRequest) {
   });
 
   if (!rate) {
-    const response = defaultFailureResponse({
-      model: env.midModel,
-      latencyMs: Date.now() - startedAt,
-      message: 'تعذر التحقق من حد الطلبات حاليًا. حاول مرة أخرى خلال لحظات.',
-    });
-    await safeAudit(rls, {
+    logError('copilot_rate_limit_soft_bypass_unavailable', {
       requestId,
-      orgId,
       userId: user.id,
-      caseId: parsed.case_id,
-      status: 'error',
-      model: env.midModel,
-      cached: false,
-      inputTokens: 0,
-      outputTokens: 0,
-      latencyMs: Date.now() - startedAt,
-      errorCode: 'rate_limit_unavailable',
-      errorMessage: 'consume_copilot_rate_limit_failed',
+      serviceFallback: isServiceFallback,
     });
-    return NextResponse.json(response, { status: 503 });
+    rate = {
+      allowed: true,
+      currentCount: 0,
+      resetAt: new Date(Date.now() + 60_000).toISOString(),
+    };
   }
 
   if (!rate.allowed) {
@@ -305,11 +299,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response, { status: 429 });
   }
 
-  const quota = await consumeRequestQuota({
+  let quota = await consumeRequestQuota({
     supabase: rls,
     orgId,
     requestsLimit: env.requestsMonthlyDefault,
     tokensLimit: env.tokensMonthlyDefault,
+    userId: isServiceFallback ? user.id : undefined,
   }).catch((error) => {
     logError('copilot_quota_error', {
       requestId,
@@ -319,26 +314,17 @@ export async function POST(request: NextRequest) {
   });
 
   if (!quota) {
-    const response = defaultFailureResponse({
-      model: env.midModel,
-      latencyMs: Date.now() - startedAt,
-      message: 'تعذر التحقق من الحصة الشهرية حاليًا. حاول مرة أخرى خلال لحظات.',
-    });
-    await safeAudit(rls, {
+    logError('copilot_quota_soft_bypass_unavailable', {
       requestId,
-      orgId,
       userId: user.id,
-      caseId: parsed.case_id,
-      status: 'error',
-      model: env.midModel,
-      cached: false,
-      inputTokens: 0,
-      outputTokens: 0,
-      latencyMs: Date.now() - startedAt,
-      errorCode: 'quota_unavailable',
-      errorMessage: 'consume_copilot_quota_failed',
+      serviceFallback: isServiceFallback,
     });
-    return NextResponse.json(response, { status: 503 });
+    quota = {
+      allowed: true,
+      requestsUsed: 0,
+      tokensUsed: 0,
+      monthStart: new Date().toISOString().slice(0, 10),
+    };
   }
 
   if (!quota.allowed) {
@@ -645,6 +631,7 @@ export async function POST(request: NextRequest) {
       supabase: rls,
       orgId,
       tokenInc: inputTokens + outputTokens,
+      userId: isServiceFallback ? user.id : undefined,
     }).catch(() => undefined);
 
     await safeAudit(rls, {
@@ -703,6 +690,7 @@ export async function POST(request: NextRequest) {
     supabase: rls,
     orgId,
     tokenInc: inputTokens + outputTokens,
+    userId: isServiceFallback ? user.id : undefined,
   }).catch(() => undefined);
 
   await upsertCachePayload({

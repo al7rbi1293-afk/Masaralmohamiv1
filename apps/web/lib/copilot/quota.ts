@@ -12,6 +12,7 @@ export async function consumeRequestQuota(params: {
   orgId: string;
   requestsLimit: number;
   tokensLimit: number;
+  userId?: string;
 }): Promise<CopilotQuotaState> {
   return consumeQuota({
     supabase: params.supabase,
@@ -20,6 +21,7 @@ export async function consumeRequestQuota(params: {
     tokenInc: 0,
     requestsLimit: params.requestsLimit,
     tokensLimit: params.tokensLimit,
+    userId: params.userId,
   });
 }
 
@@ -27,6 +29,7 @@ export async function addTokenUsage(params: {
   supabase: SupabaseClient;
   orgId: string;
   tokenInc: number;
+  userId?: string;
 }): Promise<void> {
   await consumeQuota({
     supabase: params.supabase,
@@ -35,6 +38,7 @@ export async function addTokenUsage(params: {
     tokenInc: Math.max(0, params.tokenInc),
     requestsLimit: 2_147_483_647,
     tokensLimit: Number.MAX_SAFE_INTEGER,
+    userId: params.userId,
   });
 }
 
@@ -45,14 +49,28 @@ async function consumeQuota(params: {
   tokenInc: number;
   requestsLimit: number;
   tokensLimit: number;
+  userId?: string;
 }): Promise<CopilotQuotaState> {
-  const { data, error } = await params.supabase.rpc('consume_copilot_quota', {
-    p_org_id: params.orgId,
-    p_request_inc: params.requestInc,
-    p_token_inc: params.tokenInc,
-    p_request_limit: params.requestsLimit,
-    p_token_limit: params.tokensLimit,
-  });
+  const rpcName = params.userId
+    ? 'consume_copilot_quota_for_user'
+    : 'consume_copilot_quota';
+  const rpcParams = params.userId
+    ? {
+        p_org_id: params.orgId,
+        p_user_id: params.userId,
+        p_request_inc: params.requestInc,
+        p_token_inc: params.tokenInc,
+        p_request_limit: params.requestsLimit,
+        p_token_limit: params.tokensLimit,
+      }
+    : {
+        p_org_id: params.orgId,
+        p_request_inc: params.requestInc,
+        p_token_inc: params.tokenInc,
+        p_request_limit: params.requestsLimit,
+        p_token_limit: params.tokensLimit,
+      };
+  const { data, error } = await params.supabase.rpc(rpcName, rpcParams);
 
   if (error) {
     throw error;

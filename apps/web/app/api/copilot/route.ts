@@ -7,7 +7,7 @@ import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCopilotEnv, getOpenAiApiKey, isCopilotEnabled, isMissingEnvError } from '@/lib/env';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
 import {
   buildFallbackCitations,
   copilotRequestSchema,
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     rls = await createSupabaseRlsUserClient(user.id);
   } catch (error) {
     if (isMissingEnvError(error) && error.envVarName === 'SUPABASE_JWT_SECRET') {
-      logError('copilot_rls_missing_jwt_secret_using_service', { requestId });
+      logWarn('copilot_rls_missing_jwt_secret_using_service', { requestId });
       rls = createSupabaseServerClient();
       isServiceFallback = true;
     } else {
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (isSupabaseJwtKeyError(matterLookupResult.error)) {
-    logError('copilot_rls_jwt_invalid_fallback_service', {
+    logWarn('copilot_rls_jwt_invalid_fallback_service', {
       requestId,
       message: matterLookupResult.error?.message ?? 'unknown',
     });
@@ -779,10 +779,15 @@ export async function POST(request: NextRequest) {
     throw openAiPathError;
   }
   } catch (error) {
+    const rawMessage = error instanceof Error ? error.message : String(error);
     const safeMessage = mapCopilotInternalErrorToMessage(error);
+    logWarn('copilot_unhandled_error_debug', {
+      requestId,
+      message: rawMessage,
+    });
     logError('copilot_unhandled_error', {
       requestId,
-      message: error instanceof Error ? error.message : String(error),
+      message: rawMessage,
     });
 
     const response = NextResponse.json(
@@ -937,7 +942,8 @@ function isOpenAiProviderError(error: unknown): boolean {
     raw.includes('rate limit') ||
     raw.includes('insufficient_quota') ||
     raw.includes('model_not_found') ||
-    raw.includes('invalid_request_error')
+    raw.includes('invalid_request_error') ||
+    raw.includes('does not have access to model')
   );
 }
 
@@ -989,6 +995,10 @@ function mapCopilotInternalErrorToMessage(error: unknown): string {
 
   if (raw.includes('openai') || raw.includes('api key') || raw.includes('authentication')) {
     return 'تعذر الاتصال بخدمة OpenAI. يرجى التحقق من المفاتيح أو المحاولة لاحقًا.';
+  }
+
+  if (raw.includes('does not have access to model')) {
+    return 'الحساب الحالي لا يملك صلاحية استخدام نموذج OpenAI المحدد. حدّث OPENAI_MODEL_MID وOPENAI_MODEL_STRONG (وأي نموذج بديل) إلى نموذج متاح ثم أعد النشر.';
   }
 
   if (raw.includes('quota') || raw.includes('rate limit') || raw.includes('429')) {

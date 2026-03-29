@@ -465,17 +465,26 @@ export async function POST(request: NextRequest) {
   }).catch(() => null);
 
   if (!embedding) {
-    embedding = await createEmbedding(openai, env.embeddingModel, normalizedQuery);
-    await upsertCachePayload({
-      supabase: rls,
-      orgId,
-      userId: user.id,
-      caseId: parsed.case_id,
-      cacheType: 'embedding',
-      cacheKey: embeddingCacheKey,
-      payload: embedding,
-      ttlSeconds: env.retrievalCacheTtlSec,
-    }).catch(() => undefined);
+    try {
+      embedding = await createEmbedding(openai, env.embeddingModel, normalizedQuery);
+      await upsertCachePayload({
+        supabase: rls,
+        orgId,
+        userId: user.id,
+        caseId: parsed.case_id,
+        cacheType: 'embedding',
+        cacheKey: embeddingCacheKey,
+        payload: embedding,
+        ttlSeconds: env.retrievalCacheTtlSec,
+      }).catch(() => undefined);
+    } catch (embeddingError) {
+      embedding = null;
+      logError('copilot_embedding_unavailable_fallback', {
+        requestId,
+        model: env.embeddingModel,
+        message: embeddingError instanceof Error ? embeddingError.message : String(embeddingError),
+      });
+    }
   }
 
   let retrieval = await getCachePayload<CachedRetrievalPayload>({
@@ -493,7 +502,7 @@ export async function POST(request: NextRequest) {
       caseId: parsed.case_id,
       query: normalizedQuery,
       caseType: matter.case_type ?? null,
-      embedding,
+      embedding: embedding ?? null,
       caseTopK: env.caseTopK,
       kbTopK: env.kbTopK,
       builtInKbTopK: env.kbTopK,

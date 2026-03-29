@@ -31,32 +31,37 @@ export async function retrieveSources(params: {
   caseId: string;
   query: string;
   caseType?: string | null;
-  embedding: number[];
+  embedding?: number[] | null;
   caseTopK: number;
   kbTopK: number;
   builtInKbTopK?: number;
   minSimilarity?: number;
   keywordTerms?: string[];
 }): Promise<{ sources: CopilotSource[]; caseBrief: string | null }> {
-  const embeddingVector = toPgVector(params.embedding);
+  const embeddingVector =
+    params.embedding && params.embedding.length > 0 ? toPgVector(params.embedding) : null;
   const keywordTerms = params.keywordTerms?.length ? params.keywordTerms : null;
 
   const [caseRes, kbRes, briefRes] = await Promise.all([
-    params.supabase.rpc('match_case_chunks', {
-      p_org_id: params.orgId,
-      p_case_id: params.caseId,
-      p_query_embedding: embeddingVector,
-      p_match_count: params.caseTopK,
-      p_min_similarity: params.minSimilarity ?? null,
-      p_keyword_terms: keywordTerms,
-    }),
-    params.supabase.rpc('match_kb_chunks', {
-      p_org_id: params.orgId,
-      p_query_embedding: embeddingVector,
-      p_match_count: params.kbTopK,
-      p_min_similarity: params.minSimilarity ?? null,
-      p_keyword_terms: keywordTerms,
-    }),
+    embeddingVector
+      ? params.supabase.rpc('match_case_chunks', {
+          p_org_id: params.orgId,
+          p_case_id: params.caseId,
+          p_query_embedding: embeddingVector,
+          p_match_count: params.caseTopK,
+          p_min_similarity: params.minSimilarity ?? null,
+          p_keyword_terms: keywordTerms,
+        })
+      : Promise.resolve({ data: [], error: null }),
+    embeddingVector
+      ? params.supabase.rpc('match_kb_chunks', {
+          p_org_id: params.orgId,
+          p_query_embedding: embeddingVector,
+          p_match_count: params.kbTopK,
+          p_min_similarity: params.minSimilarity ?? null,
+          p_keyword_terms: keywordTerms,
+        })
+      : Promise.resolve({ data: [], error: null }),
     params.supabase
       .from('case_briefs')
       .select('brief_markdown')

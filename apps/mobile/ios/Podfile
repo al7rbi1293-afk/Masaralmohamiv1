@@ -67,6 +67,16 @@ target 'MasarAlMuhami' do
         build_config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
         build_config.build_settings['SWIFT_SUPPRESS_WARNINGS'] = 'YES'
       end
+
+      # Fix EXConstants script when project path contains spaces/non-latin chars.
+      # The default script is unquoted and fails with:
+      # "bash: /path/with space: No such file or directory"
+      if target.name == 'EXConstants'
+        target.shell_script_build_phases.each do |phase|
+          next unless phase.name == '[CP-User] Generate app.config for prebuilt Constants.manifest'
+          phase.shell_script = 'bash -l -c "\"$PODS_TARGET_SRCROOT/../scripts/get-app-config-ios.sh\""'
+        end
+      end
     end
   end
 end

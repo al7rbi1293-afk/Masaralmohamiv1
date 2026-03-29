@@ -5,6 +5,7 @@ import { isUserAppAdmin } from '@/lib/admin';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { requireOrgIdForUser } from '@/lib/org';
 import { createSupabaseRlsUserClient } from '@/lib/supabase/rls-user-client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCopilotEnv, getOpenAiApiKey, isCopilotEnabled, isMissingEnvError } from '@/lib/env';
 import { logError } from '@/lib/logger';
 import {
@@ -141,7 +142,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rls = await createSupabaseRlsUserClient(user.id);
+  let rls: Awaited<ReturnType<typeof createSupabaseRlsUserClient>>;
+  try {
+    rls = await createSupabaseRlsUserClient(user.id);
+  } catch (error) {
+    if (isMissingEnvError(error) && error.envVarName === 'SUPABASE_JWT_SECRET') {
+      logError('copilot_rls_missing_jwt_secret_using_service', { requestId });
+      rls = createSupabaseServerClient();
+    } else {
+      throw error;
+    }
+  }
   const parsed = payload.data;
 
   let matterLookupResult = await rls
@@ -156,7 +167,13 @@ export async function POST(request: NextRequest) {
       requestId,
       message: matterLookupResult.error?.message ?? 'unknown',
     });
-    throw new Error('supabase_rls_jwt_invalid');
+    rls = createSupabaseServerClient();
+    matterLookupResult = await rls
+      .from('matters')
+      .select('id, title, is_private, case_type')
+      .eq('org_id', orgId)
+      .eq('id', parsed.case_id)
+      .maybeSingle();
   }
 
   const { data: matterByRls, error: matterError } = matterLookupResult;

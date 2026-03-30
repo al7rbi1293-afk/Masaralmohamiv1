@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('admin.integrations.read');
     const summary = await getNajizAdminSummary();
     return NextResponse.json(summary, { status: 200 });
   } catch (error) {

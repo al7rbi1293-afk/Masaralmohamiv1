@@ -21,7 +21,7 @@ type OrgMembershipRow = {
 };
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminAppContext(request);
+  const auth = await requireAdminAppContext(request, 'admin.orgs.read');
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminAppContext(request);
+  const auth = await requireAdminAppContext(request, 'admin.orgs.write');
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

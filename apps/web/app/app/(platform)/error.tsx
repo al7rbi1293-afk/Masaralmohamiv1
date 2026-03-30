@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import * as Sentry from '@sentry/nextjs';
 import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 
@@ -16,9 +15,6 @@ export default function PlatformError({ error, reset }: PlatformErrorProps) {
     // Intentionally lightweight; server logs already capture most endpoint errors.
     // eslint-disable-next-line no-console
     console.error('platform_error', error);
-
-    // Capture client-side rendering/runtime errors (PII scrubbed by Sentry config).
-    Sentry.captureException(error);
   }, [error]);
 
   return (

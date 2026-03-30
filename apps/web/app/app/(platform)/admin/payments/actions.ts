@@ -3,24 +3,13 @@
 import { getPlanDisplayLabel } from '@/lib/billing/plans';
 import { approvePaymentRequest, rejectPaymentRequest } from '@/lib/payments';
 import { revalidatePath } from 'next/cache';
-import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { renderInvoicePdfBuffer } from '@/lib/invoice-pdf';
 import { sendInvoiceEmail } from '@/lib/email';
-
-// TODO: Replace with real RBAC or Env var check
-const ADMIN_EMAILS = ['admin@masar.sa', 'masar.almohami@outlook.sa']; // Add your admin email here
-
-async function checkAdmin() {
-    const user = await getCurrentAuthUser();
-    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
-        throw new Error('Unauthorized: Admin access required');
-    }
-    return user.id;
-}
+import { requireAdmin } from '@/lib/admin';
 
 export async function approveRequestAction(requestId: string) {
     try {
-        const adminId = await checkAdmin();
+        const adminId = await requireAdmin('admin.payments.write');
         // 1. Approve & Update DB
         const request = await approvePaymentRequest(requestId, adminId);
 
@@ -79,7 +68,7 @@ export async function approveRequestAction(requestId: string) {
 
 export async function rejectRequestAction(requestId: string, reason: string) {
     try {
-        const adminId = await checkAdmin();
+        const adminId = await requireAdmin('admin.payments.write');
         await rejectPaymentRequest(requestId, adminId, reason);
         revalidatePath('/app/admin/payments');
     } catch (error) {

@@ -1,6 +1,5 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 
 type GlobalErrorProps = {
@@ -10,8 +9,9 @@ type GlobalErrorProps = {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    // Keep the fallback lightweight and let Sentry handle reporting.
-    Sentry.captureException(error);
+    // Keep the fallback lightweight and log client-side for diagnostics.
+    // eslint-disable-next-line no-console
+    console.error('global_error', error);
   }, [error]);
 
   return (

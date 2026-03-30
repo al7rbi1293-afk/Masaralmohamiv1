@@ -202,11 +202,11 @@ async function activatePaidSubscription(params: {
 }
 
 export async function GET() {
-  try {
-    await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
-  }
+    try {
+        await requireAdmin('admin.requests.read');
+    } catch {
+        return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
+    }
 
   const adminClient = createSupabaseServerClient();
 
@@ -391,12 +391,12 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  let adminId: string;
-  try {
-    adminId = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
-  }
+    let adminId: string;
+    try {
+        adminId = await requireAdmin('admin.requests.write');
+    } catch {
+        return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
+    }
 
   const body = await request.json();
   const { id, action, notes, request_kind } = body as {
@@ -602,12 +602,12 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  let adminId: string;
-  try {
-    adminId = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
-  }
+    let adminId: string;
+    try {
+        adminId = await requireAdmin('admin.requests.write');
+    } catch {
+        return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
+    }
 
   const body = await request.json().catch(() => ({}));
   const payload = body as { id?: unknown; kind?: unknown };

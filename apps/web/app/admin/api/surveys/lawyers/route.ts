@@ -4,7 +4,7 @@ import { deleteLawyerSurveyResponse, getLawyerSurveyResponses } from '@/lib/admi
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('admin.surveys.read');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('admin.surveys.write');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }

@@ -5,26 +5,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { AuthScreen, ClientAuthScreen } from './screens/auth';
 import {
-  ClientCenterScreen,
   ClientHomeScreen,
   ClientMattersScreen,
   ClientMatterDetailsScreen,
   type ClientStackParamList,
 } from './screens/client';
+import { ClientCenterScreen } from './screens/client-center';
 import {
   OfficeClientsScreen,
   OfficeCalendarScreen,
   OfficeHomeScreen,
   OfficeMattersScreen,
-  OfficeMatterDetailsScreen,
   OfficeClientFormScreen,
   OfficeMatterFormScreen,
   OfficeTaskFormScreen,
   OfficeDocumentFormScreen,
   OfficeBillingFormScreen,
-  OfficeMoreScreen,
   type OfficeStackParamList,
 } from './screens/office';
+import { OfficeMatterDetailsScreen } from './screens/office-matter-details';
+import { OfficeMoreScreen } from './screens/office-more';
 import {
   OfficeIdentitySettingsScreen,
   OfficeSettingsHomeScreen,

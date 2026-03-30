@@ -36,6 +36,26 @@ npm run ios
 npm run android
 ```
 
+## نشر iPhone / TestFlight
+
+من جذر المشروع:
+
+```bash
+npm run mobile:ios:build
+npm run mobile:ios:submit
+```
+
+أو من داخل `apps/mobile`:
+
+```bash
+npm run ios:store
+npm run ios:submit
+```
+
+تفاصيل إعداد App Store Connect وملاحظات المراجعة موجودة في:
+
+- `apps/mobile/IOS_RELEASE.md`
+
 ## ماذا يستخدم التطبيق؟
 
 - دخول فريق المكتب عبر `POST /api/mobile/auth/signin`

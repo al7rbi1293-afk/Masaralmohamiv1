@@ -20,6 +20,7 @@ export const footerLinks = [
   { href: '/success-partners', label: 'شركاء النجاح' },
   { href: '/privacy', label: 'سياسة الخصوصية' },
   { href: '/terms', label: 'الشروط والأحكام' },
+  { href: '/account-deletion', label: 'حذف الحساب والبيانات' },
   { href: '/security', label: 'الأمان والخصوصية' },
   { href: '/contact', label: 'تواصل معنا' },
 ];

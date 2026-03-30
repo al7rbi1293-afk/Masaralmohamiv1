@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
-import { Analytics as VercelAnalytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
 import { IBM_Plex_Sans_Arabic, Inter } from 'next/font/google';
 import { Footer } from '@/components/layout/footer';
 import { Navbar } from '@/components/layout/navbar';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 import { MarketingAnalytics } from '@/components/analytics/analytics';
 import { ReferralCapture } from '@/components/analytics/referral-capture';
+import { VercelTelemetry } from '@/components/analytics/vercel-telemetry';
 import { getPublicSiteUrl } from '@/lib/env';
 import { siteConfig } from '@/lib/site';
 import './globals.css';
@@ -112,8 +111,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-        {isVercelDeployment ? <VercelAnalytics /> : null}
-        {isVercelDeployment ? <SpeedInsights /> : null}
+        {isVercelDeployment ? <VercelTelemetry /> : null}
       </body>
     </html>
   );

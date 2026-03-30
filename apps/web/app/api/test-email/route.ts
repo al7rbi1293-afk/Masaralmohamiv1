@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await requireAdmin();
+    await requireAdmin('admin.tools.email_test');
   } catch {
     return NextResponse.json({ error: 'لا تملك صلاحية تنفيذ هذا الإجراء.' }, { status: 403 });
   }

@@ -5,7 +5,7 @@ import { requireAdminAppContext } from '@/lib/mobile/auth';
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminAppContext(request);
+  const auth = await requireAdminAppContext(request, 'admin.users.read');
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminAppContext(request);
+  const auth = await requireAdminAppContext(request, 'admin.users.write');
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

@@ -172,7 +172,7 @@ type AnnouncementPlan = {
 export async function POST(request: Request) {
   let adminId: string;
   try {
-    adminId = await requireAdmin();
+    adminId = await requireAdmin('admin.bulk_email.send');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }

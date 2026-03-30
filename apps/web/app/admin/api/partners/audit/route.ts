@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin('admin.audit.read');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }

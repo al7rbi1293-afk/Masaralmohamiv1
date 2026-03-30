@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('admin.users.read');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   let adminId: string;
   try {
-    adminId = await requireAdmin();
+    adminId = await requireAdmin('admin.users.write');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }

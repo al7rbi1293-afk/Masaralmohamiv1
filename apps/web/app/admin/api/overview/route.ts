@@ -13,7 +13,7 @@ type OverviewOrgRow = {
 
 export async function GET() {
     try {
-        await requireAdmin();
+        await requireAdmin('admin.overview.read');
         const supabase = createSupabaseServerRlsClient();
 
         // 1. Fetch Organization Stats

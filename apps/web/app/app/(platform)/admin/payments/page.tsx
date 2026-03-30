@@ -3,20 +3,14 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { approveRequestAction, rejectRequestAction } from './actions';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
-import { redirect } from 'next/navigation';
+import { isAppAdmin } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPaymentsPage() {
-    // Simple Admin Check
     const user = await getCurrentAuthUser();
-
-    // TODO: Use Env var or DB role
-    const ADMIN_EMAILS = ['admin@masar.sa', 'masar.almohami@outlook.sa'];
-    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
-        // Optional: Redirect or Show Error
-        // return redirect('/app');
-        // keeping it accessible for dev if needed, or show strict error
+    const canAccess = await isAppAdmin();
+    if (!user || !canAccess) {
         return (
             <div className="p-8 text-center text-red-600">
                 <h1>وصول غير مصرح به (Admin Only)</h1>

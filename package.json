@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspace @masar/web",
-    "build:all": "npm run build --workspaces",
+    "build:all": "npm run build --workspaces --if-present",
     "mobile:start": "npm run start --workspace @masar/mobile",
     "mobile:android": "npm run android --workspace @masar/mobile",
     "mobile:ios": "npm run ios --workspace @masar/mobile",

@@ -9,7 +9,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('admin.surveys.read');
   } catch {
     return NextResponse.json({ message: 'غير مصرح.' }, { status: 403 });
   }

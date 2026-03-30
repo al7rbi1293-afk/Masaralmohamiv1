@@ -70,11 +70,6 @@ function sanitizeData(data: LogData) {
   return sanitizeValue(data, 0) as LogData;
 }
 
-function shouldCaptureInSentry() {
-  const dsn = process.env.SENTRY_DSN?.trim() || process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
-  return Boolean(dsn);
-}
-
 function emit(level: LogLevel, event: string, data: LogData = {}) {
   const payload = {
     timestamp: new Date().toISOString(),
@@ -87,20 +82,6 @@ function emit(level: LogLevel, event: string, data: LogData = {}) {
 
   if (level === 'error') {
     console.error(line);
-
-    // Best-effort error tracking (no request bodies, no PII; logger sanitizes already).
-    if (shouldCaptureInSentry()) {
-      void import('@sentry/nextjs')
-        .then((Sentry) => {
-          Sentry.captureMessage(event, {
-            level: 'error',
-            extra: payload,
-          });
-        })
-        .catch(() => {
-          // ignore
-        });
-    }
     return;
   }
 

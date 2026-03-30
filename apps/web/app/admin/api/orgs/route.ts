@@ -26,7 +26,7 @@ type OrgMembershipRow = {
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    await requireAdmin('admin.orgs.read');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   let adminId: string;
   try {
-    adminId = await requireAdmin();
+    adminId = await requireAdmin('admin.orgs.write');
   } catch {
     return NextResponse.json({ error: 'غير مصرح.' }, { status: 403 });
   }

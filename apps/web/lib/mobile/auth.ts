@@ -13,6 +13,12 @@ import {
   WELCOME_EMAIL_HTML,
   WELCOME_EMAIL_SUBJECT,
 } from '@/lib/email-templates';
+import {
+  fetchAppAdminContextForUser,
+  hasAdminPermissions,
+  type AppAdminPermission,
+  type AppAdminRole,
+} from '@/lib/admin-rbac';
 import { ensureTrialProvisionForUser } from '@/lib/onboarding';
 import type { OrgRole } from '@/lib/org';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -71,6 +77,8 @@ export type MobileAppSessionContext = {
   } | null;
   role: OrgRole | null;
   isAdmin: boolean;
+  adminRole: AppAdminRole | null;
+  adminPermissions: AppAdminPermission[];
   partner: {
     id: string;
     full_name: string | null;
@@ -263,18 +271,14 @@ async function loadAppUserContext(params: {
   email: string;
   requestedOrgId?: string | null;
 }): Promise<AppUserContext | null> {
-  const [userRes, adminRes, membershipsRes, partnerRes] = await Promise.all([
+  const [userRes, adminContext, membershipsRes, partnerRes] = await Promise.all([
     params.db
       .from('app_users')
       .select('id, email, full_name, status')
       .eq('id', params.userId)
       .eq('email', params.email)
       .maybeSingle(),
-    params.db
-      .from('app_admins')
-      .select('user_id')
-      .eq('user_id', params.userId)
-      .maybeSingle(),
+    fetchAppAdminContextForUser(params.db, params.userId),
     params.db
       .from('memberships')
       .select('org_id, role, created_at')
@@ -309,7 +313,7 @@ async function loadAppUserContext(params: {
     organization = (orgRes.data as OrganizationRow | null) ?? null;
   }
 
-  const isAdmin = Boolean(adminRes.data);
+  const isAdmin = Boolean(adminContext);
   const partner = (partnerRes.data as PartnerRow | null) ?? null;
   const hasOfficeAccess = Boolean(selectedMembership?.org_id);
   const hasPartnerAccess = Boolean(partner);
@@ -364,6 +368,8 @@ async function loadAppUserContext(params: {
       : null,
     role: selectedMembership?.role ?? null,
     isAdmin,
+    adminRole: adminContext?.role ?? null,
+    adminPermissions: adminContext?.permissions ?? [],
     partner: partner
       ? {
           id: partner.id,
@@ -791,7 +797,10 @@ export async function requirePartnerAppContext(request: NextRequest | Request) {
   return auth;
 }
 
-export async function requireAdminAppContext(request: NextRequest | Request) {
+export async function requireAdminAppContext(
+  request: NextRequest | Request,
+  requiredPermissions?: AppAdminPermission | AppAdminPermission[],
+) {
   const auth = await authenticateMobileAppUser(request);
   if (!auth.ok) {
     return auth;
@@ -799,6 +808,10 @@ export async function requireAdminAppContext(request: NextRequest | Request) {
 
   if (!auth.context.isAdmin) {
     return { ok: false as const, status: 403, error: 'هذا الحساب لا يملك وصولاً إلى لوحة الإدارة.' };
+  }
+
+  if (requiredPermissions && !hasAdminPermissions(auth.context.adminPermissions, requiredPermissions)) {
+    return { ok: false as const, status: 403, error: 'لا تملك صلاحية تنفيذ هذا الإجراء.' };
   }
 
   return auth;

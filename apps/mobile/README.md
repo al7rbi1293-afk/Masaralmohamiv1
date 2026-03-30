@@ -41,6 +41,7 @@ npm run android
 من جذر المشروع:
 
 ```bash
+npm run mobile:ios:setup
 npm run mobile:ios:build
 npm run mobile:ios:submit
 ```
@@ -48,6 +49,7 @@ npm run mobile:ios:submit
 أو من داخل `apps/mobile`:
 
 ```bash
+npm run ios:setup
 npm run ios:store
 npm run ios:submit
 ```

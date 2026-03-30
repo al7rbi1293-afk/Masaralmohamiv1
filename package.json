@@ -12,6 +12,8 @@
     "mobile:android": "npm run android --workspace @masar/mobile",
     "mobile:ios": "npm run ios --workspace @masar/mobile",
     "mobile:web": "npm run web --workspace @masar/mobile",
+    "mobile:clean": "npm run clean --workspace @masar/mobile",
+    "mobile:ios:setup": "npm run ios:setup --workspace @masar/mobile",
     "mobile:ios:build": "npm run ios:store --workspace @masar/mobile",
     "mobile:ios:submit": "npm run ios:submit --workspace @masar/mobile",
     "mobile:testflight": "npm run mobile:ios:build",

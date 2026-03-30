@@ -5,9 +5,11 @@
   "scripts": {
     "start": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start",
     "start:clear": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --clear",
+    "clean": "rm -rf .expo dist android/.gradle android/.kotlin android/app/.cxx android/app/build android/build ios/Pods ios/build ios/build-* ios/DerivedData ios/*.xcworkspace/xcuserdata ios/*.xcodeproj/xcuserdata",
     "android": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:android",
     "ios": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:ios",
     "web": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --web",
+    "ios:setup": "EXPO_NO_METRO_WORKSPACE_ROOT=1 npx eas-cli build --platform ios --profile storeIos",
     "ios:store": "EXPO_NO_METRO_WORKSPACE_ROOT=1 npx eas-cli build --platform ios --profile storeIos --non-interactive",
     "ios:submit": "EXPO_NO_METRO_WORKSPACE_ROOT=1 npx eas-cli submit --platform ios --profile storeIos"
   },

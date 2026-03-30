@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Container } from '@/components/ui/container';
+import { isTrialSubscriptionStatus, planHasUnlimitedSeats } from '@/lib/billing/plans';
 import { requireOwner } from '@/lib/org';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { HealthCheck } from '@/components/diagnostics/health-check';
@@ -14,9 +15,21 @@ export const dynamic = 'force-dynamic';
 type SubscriptionRow = {
   plan_code: string;
   status: string;
-  seats: number;
+  seats: number | null;
   current_period_end: string | null;
 };
+
+function subscriptionSeatsLabel(subscription: SubscriptionRow | null) {
+  if (!subscription) {
+    return '—';
+  }
+
+  if (isTrialSubscriptionStatus(subscription.status) || planHasUnlimitedSeats(subscription.plan_code)) {
+    return 'غير محدود';
+  }
+
+  return subscription.seats ?? '—';
+}
 
 type AuditRow = {
   id: string;
@@ -161,7 +174,7 @@ export default async function DiagnosticsPage() {
           <div>
             <dt className="text-slate-500 dark:text-slate-400">المقاعد</dt>
             <dd className="mt-1 font-medium text-slate-800 dark:text-slate-100">
-              {subscription?.seats ?? '—'}
+              {subscriptionSeatsLabel(subscription)}
             </dd>
           </div>
           <div className="sm:col-span-2">

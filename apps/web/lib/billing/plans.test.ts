@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveEffectivePlanCode } from './plans';
+import { getPlanSeatLimit, resolveEffectivePlanCode } from './plans';
 
 test('trial subscription rows are treated as the TRIAL plan even when plan_code was stored as SOLO', () => {
   assert.equal(
@@ -30,4 +30,8 @@ test('active trial records without a paid subscription resolve to TRIAL', () => 
     }),
     'TRIAL',
   );
+});
+
+test('trial plan uses open seats', () => {
+  assert.equal(getPlanSeatLimit('TRIAL'), null);
 });

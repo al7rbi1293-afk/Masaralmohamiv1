@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { FullVersionRequestForm } from '@/components/sections/full-version-request-form';
-import { getPlanDisplayLabel } from '@/lib/billing/plans';
+import { getPlanDisplayLabel, isTrialSubscriptionStatus, planHasUnlimitedSeats } from '@/lib/billing/plans';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { ensureSubscriptionRowExists } from '@/lib/subscriptions';
 import { getPricingPlanCardByCode, SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
@@ -36,6 +36,14 @@ function statusLabel(status: string) {
 
 function planLabel(planCode: string) {
   return getPricingPlanCardByCode(planCode)?.title ?? getPlanDisplayLabel(planCode);
+}
+
+function seatsLabel(subscription: { plan_code: string; status: string; seats: number | null }) {
+  if (isTrialSubscriptionStatus(subscription.status) || planHasUnlimitedSeats(subscription.plan_code)) {
+    return 'غير محدود';
+  }
+
+  return subscription.seats ?? '—';
 }
 
 function formatDate(value: string | null) {
@@ -173,7 +181,7 @@ export default async function SubscriptionSettingsPage({ searchParams }: Subscri
             <div>
               <dt className="text-slate-500 dark:text-slate-400">المقاعد</dt>
               <dd className="mt-1 font-medium text-slate-800 dark:text-slate-100">
-                {subscription.seats}
+                {seatsLabel(subscription)}
               </dd>
             </div>
             <div>

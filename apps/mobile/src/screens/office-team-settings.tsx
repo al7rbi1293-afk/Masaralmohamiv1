@@ -276,23 +276,34 @@ export function OfficeTeamSettingsScreen() {
     );
   }
 
+  const seatLimitLabel = overview?.seat_summary.seat_limit === null ? 'مفتوح' : String(overview?.seat_summary.seat_limit || 0);
+  const remainingSeatsLabel = overview?.seat_summary.remaining_seats === null ? 'مفتوح' : String(overview?.seat_summary.remaining_seats || 0);
+  const seatSummaryLabel =
+    overview?.seat_summary.seat_limit === null
+      ? `${overview?.seat_summary.member_count || 0}/مفتوح`
+      : `${overview?.seat_summary.member_count || 0}/${overview?.seat_summary.seat_limit || 0} مقعد`;
+
   return (
     <Page>
       <HeroCard
         eyebrow="الفريق"
         title="إدارة أعضاء المكتب"
         subtitle="الأعضاء، الدعوات، والإضافة المباشرة كلها من التطبيق نفسه."
-        aside={<StatusChip label={`${overview?.seat_summary.member_count || 0}/${overview?.seat_summary.seat_limit || 0} مقعد`} tone="gold" />}
+        aside={<StatusChip label={seatSummaryLabel} tone="gold" />}
       />
 
       <Card>
         <SectionTitle title="سعة الفريق" subtitle="مرتبطة مباشرة بخطة الاشتراك الحالية." />
         <View style={styles.statsRow}>
           <StatCard label="المستخدم" value={String(overview?.seat_summary.member_count || 0)} tone="success" />
-          <StatCard label="المتاح" value={String(overview?.seat_summary.remaining_seats || 0)} tone="gold" />
-          <StatCard label="الحد" value={String(overview?.seat_summary.seat_limit || 0)} tone="default" />
+          <StatCard label="المتاح" value={remainingSeatsLabel} tone="gold" />
+          <StatCard label="الحد" value={seatLimitLabel} tone="default" />
         </View>
-        {overview?.seat_summary.remaining_seats === 0 ? (
+        {overview?.seat_summary.seat_limit === null ? (
+          <Text style={styles.cardMeta}>
+            الحساب التجريبي يسمح حاليًا بإضافة أعضاء بدون حد ثابت.
+          </Text>
+        ) : overview?.seat_summary.remaining_seats === 0 ? (
           <Text style={styles.cardMeta}>
             المقاعد الحالية ممتلئة على باقة {overview.seat_summary.plan_label || overview.seat_summary.plan_code || 'المكتب'}.
             افتح الاشتراك للترقية ثم أعد إرسال الدعوات أو إضافة الأعضاء.

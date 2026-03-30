@@ -3,7 +3,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getDefaultSeatLimit, getPlanDisplayLabel, resolveEffectivePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
+import { getPlanDisplayLabel, getPlanSeatLimit, resolveEffectivePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
 import { getPublicSiteUrl } from '@/lib/env';
 import { hashPassword } from '@/lib/auth-custom';
 import { type MobileAppSessionContext, requireMobileOfficeOwnerContext } from '@/lib/mobile/auth';
@@ -208,7 +208,7 @@ async function getSeatSummary(context: MobileAppSessionContext) {
   }
 
   const memberCount = membersCountRes.count ?? 0;
-  const seatLimit = activePlanCode ? getDefaultSeatLimit(activePlanCode) : null;
+  const seatLimit = activePlanCode ? getPlanSeatLimit(activePlanCode) : null;
 
   return {
     plan_code: activePlanCode,
@@ -216,7 +216,7 @@ async function getSeatSummary(context: MobileAppSessionContext) {
     seat_limit: seatLimit,
     member_count: memberCount,
     remaining_seats: seatLimit === null ? null : Math.max(0, seatLimit - memberCount),
-    can_add_more_members: seatLimit === null ? false : memberCount < seatLimit,
+    can_add_more_members: seatLimit === null ? true : memberCount < seatLimit,
   };
 }
 

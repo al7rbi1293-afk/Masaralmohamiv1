@@ -52,6 +52,10 @@ function subscriptionPlanLabel(overview: OfficeSubscriptionOverview | null) {
   return overview?.current_plan_card?.title || overview?.subscription?.plan_code || 'خطة المكتب';
 }
 
+function seatUsageLabel(value: number | null | undefined) {
+  return value === null ? 'غير محدود' : String(value || 0);
+}
+
 export function OfficeSettingsHomeScreen({ navigation }: SettingsHubProps) {
   const { session } = useAuth();
   const isOwner = session?.kind === 'office' && session.portal === 'office' && session.role === 'owner';
@@ -280,9 +284,9 @@ export function OfficeSubscriptionSettingsScreen() {
       <Card>
         <SectionTitle title="الوضع الحالي" subtitle="هذه المعلومات مرتبطة بنفس خطة الموقع." />
         <View style={styles.statsRow}>
-          <StatCard label="المقاعد" value={String(overview?.seat_usage.limit || 0)} tone="gold" />
+          <StatCard label="المقاعد" value={seatUsageLabel(overview?.seat_usage.limit)} tone="gold" />
           <StatCard label="المستخدم" value={String(overview?.seat_usage.used || 0)} tone="success" />
-          <StatCard label="المتاح" value={String(overview?.seat_usage.available || 0)} tone="default" />
+          <StatCard label="المتاح" value={seatUsageLabel(overview?.seat_usage.available)} tone="default" />
         </View>
         <Text style={styles.cardMeta}>الخطة الحالية: {subscriptionPlanLabel(overview)}</Text>
         <Text style={styles.cardMeta}>نهاية الفترة: {formatDate(overview?.subscription?.current_period_end || null)}</Text>

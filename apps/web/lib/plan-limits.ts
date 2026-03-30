@@ -21,7 +21,7 @@ type PlanLimits = {
 
 export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
     TRIAL: {
-        max_users: 2,
+        max_users: Number.MAX_SAFE_INTEGER,
         max_matters: 10,
         max_storage_mb: 100,
         templates_enabled: true,

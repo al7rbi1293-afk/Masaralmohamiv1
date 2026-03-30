@@ -937,8 +937,8 @@ export type OfficeSubscriptionOverview = {
   pricing_cards: OfficePricingPlanCard[];
   seat_usage: {
     used: number;
-    limit: number;
-    available: number;
+    limit: number | null;
+    available: number | null;
   };
   payment_requests: Array<{
     id: string;

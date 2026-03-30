@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getDefaultSeatLimit, isTrialSubscriptionStatus, normalizePlanCode } from '@/lib/billing/plans';
+import { getPlanSeatLimit, isTrialSubscriptionStatus, normalizePlanCode } from '@/lib/billing/plans';
 import { sendAdminBankTransferRequestAlert } from '@/lib/subscription-admin-alert-email';
 import { getPricingPlanCardByCode, SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
 import type { MobileAppSessionContext } from '@/lib/mobile/auth';
@@ -98,8 +98,8 @@ export type MobileOfficeSubscriptionOverview = {
   pricing_cards: typeof SUBSCRIPTION_PRICING_CARDS;
   seat_usage: {
     used: number;
-    limit: number;
-    available: number;
+    limit: number | null;
+    available: number | null;
   };
   payment_requests: MobileOfficeSubscriptionRequest[];
   latest_payment_request: MobileOfficeSubscriptionRequest | null;
@@ -110,6 +110,8 @@ export type MobileOfficeSubscriptionOverview = {
 
 const OFFICE_SUBSCRIPTION_SELECT =
   'id, org_id, plan_code, status, seats, current_period_start, current_period_end, cancel_at_period_end, provider, provider_customer_id, provider_subscription_id, created_at';
+
+const TRIAL_PLACEHOLDER_SEATS = 1;
 
 function isUserIdForeignKeyError(message?: string) {
   const normalized = String(message ?? '').toLowerCase();
@@ -139,7 +141,6 @@ function normalizeOfficeSubscription(subscription: SubscriptionRow): Subscriptio
   return {
     ...subscription,
     plan_code: 'TRIAL',
-    seats: getDefaultSeatLimit('TRIAL'),
   };
 }
 
@@ -220,7 +221,7 @@ async function loadOrCreateSubscription(db: SupabaseClient, orgId: string) {
       org_id: orgId,
       plan_code: 'TRIAL',
       status: 'trial',
-      seats: getDefaultSeatLimit('TRIAL'),
+      seats: TRIAL_PLACEHOLDER_SEATS,
     })
     .select(OFFICE_SUBSCRIPTION_SELECT)
     .single();
@@ -387,7 +388,7 @@ export async function getMobileOfficeSubscriptionOverview(
     loadRecentRequests(context.db, orgId),
   ]);
 
-  const limit = Math.max(1, Number(subscription.seats ?? 0) || getDefaultSeatLimit(subscription.plan_code));
+  const limit = getPlanSeatLimit(subscription.plan_code);
   const used = Math.max(0, memberCount);
 
   return {
@@ -397,7 +398,7 @@ export async function getMobileOfficeSubscriptionOverview(
     seat_usage: {
       used,
       limit,
-      available: Math.max(limit - used, 0),
+      available: limit === null ? null : Math.max(limit - used, 0),
     },
     payment_requests: requests.paymentRequests,
     latest_payment_request: requests.paymentRequests[0] ?? null,

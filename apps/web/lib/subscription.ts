@@ -1,5 +1,5 @@
 import 'server-only';
-import { getDefaultSeatLimit, resolveEffectivePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
+import { resolveEffectivePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerRlsClient } from './supabase/server';
 
 type SubscriptionPlanConfig = {
@@ -8,7 +8,7 @@ type SubscriptionPlanConfig = {
 };
 
 export const SUBSCRIPTION_PLANS: Record<CanonicalPlanCode, SubscriptionPlanConfig> = {
-    TRIAL: { maxUsers: getDefaultSeatLimit('TRIAL'), label: 'تجربة' },
+    TRIAL: { maxUsers: Infinity, label: 'تجربة' },
     SOLO: { maxUsers: 1, label: 'محامي مستقل' },
     SMALL_OFFICE: { maxUsers: 5, label: 'مكتب صغير' },
     MEDIUM_OFFICE: { maxUsers: 10, label: 'مكتب متوسط' },

@@ -1,4 +1,4 @@
--- Normalize trial subscriptions so they consistently use the TRIAL plan.
+-- Make trial plans use open seats.
 
 insert into public.plans (code, name_ar, price_monthly, currency, features, seat_limit)
 values ('TRIAL', 'تجربة', null, 'SAR', '{}'::jsonb, null)
@@ -9,9 +9,3 @@ set
   currency = excluded.currency,
   features = excluded.features,
   seat_limit = excluded.seat_limit;
-
-update public.subscriptions
-set
-  plan_code = 'TRIAL'
-where status = 'trial'
-  and plan_code is distinct from 'TRIAL';

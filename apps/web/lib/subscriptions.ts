@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getDefaultSeatLimit, isTrialSubscriptionStatus, type CanonicalPlanCode } from '@/lib/billing/plans';
+import { isTrialSubscriptionStatus, type CanonicalPlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser, requireOwner } from '@/lib/org';
 
@@ -36,6 +36,7 @@ const SUBSCRIPTION_SELECT =
   'id, org_id, plan_code, status, seats, current_period_start, current_period_end, cancel_at_period_end, provider, provider_customer_id, provider_subscription_id, created_at';
 
 const DEFAULT_PLAN_CODE: CanonicalPlanCode = 'TRIAL';
+const TRIAL_PLACEHOLDER_SEATS = 1;
 
 function isPlanCodeForeignKeyError(message?: string) {
   const normalized = String(message ?? '').toLowerCase();
@@ -50,7 +51,6 @@ function normalizeSubscriptionSnapshot(subscription: Subscription | null): Subsc
   return {
     ...subscription,
     plan_code: 'TRIAL',
-    seats: getDefaultSeatLimit('TRIAL'),
   };
 }
 
@@ -110,7 +110,7 @@ export async function ensureSubscriptionRowExists(): Promise<Subscription> {
       org_id: orgId,
       plan_code: DEFAULT_PLAN_CODE,
       status: 'trial',
-      seats: getDefaultSeatLimit(DEFAULT_PLAN_CODE),
+      seats: TRIAL_PLACEHOLDER_SEATS,
     })
     .select(SUBSCRIPTION_SELECT)
     .single();

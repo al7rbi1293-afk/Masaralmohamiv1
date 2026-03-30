@@ -20,8 +20,8 @@ const PLAN_CODE_ALIASES: Record<string, CanonicalPlanCode> = {
   ENTERPRISE: 'ENTERPRISE',
 };
 
-const DEFAULT_SEAT_LIMITS: Record<CanonicalPlanCode, number> = {
-  TRIAL: 2,
+const PLAN_SEAT_LIMITS: Record<CanonicalPlanCode, number | null> = {
+  TRIAL: null,
   SOLO: 1,
   SMALL_OFFICE: 5,
   MEDIUM_OFFICE: 10,
@@ -98,8 +98,17 @@ export function resolveEffectivePlanCode(params: {
   return params.hasActiveTrial ? 'TRIAL' : null;
 }
 
+export function getPlanSeatLimit(planCode: unknown) {
+  const normalized = normalizePlanCode(planCode, 'SOLO');
+  return normalized in PLAN_SEAT_LIMITS ? PLAN_SEAT_LIMITS[normalized] : PLAN_SEAT_LIMITS.SOLO;
+}
+
+export function planHasUnlimitedSeats(planCode: unknown) {
+  return getPlanSeatLimit(planCode) === null;
+}
+
 export function getDefaultSeatLimit(planCode: unknown) {
-  return DEFAULT_SEAT_LIMITS[normalizePlanCode(planCode, 'SOLO')] ?? DEFAULT_SEAT_LIMITS.SOLO;
+  return getPlanSeatLimit(planCode) ?? 1;
 }
 
 export function getPlanDisplayLabel(planCode: unknown) {

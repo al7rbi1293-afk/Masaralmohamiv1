@@ -30,6 +30,7 @@ const requestSchema = z.discriminatedUnion('campaign', [
   z.object({
     campaign: z.literal('trial_expired'),
     mode: z.enum(['preview', 'send', 'send_batch']),
+    recipient_kind: z.enum(['all', 'first-time', 'reminder']).default('all'),
     batch_index: z.number().int().min(0).optional(),
     batch_size: z.number().int().min(MIN_BATCH_SIZE).max(MAX_BATCH_SIZE).optional(),
   }),
@@ -112,6 +113,7 @@ type TrialCampaignJob = {
   previouslySentExpired: boolean;
 };
 
+type TrialRecipientKind = 'all' | 'first-time' | 'reminder';
 type AnnouncementAudience = 'users' | 'offices' | 'users_and_offices';
 type AnnouncementSource = AnnouncementAudience;
 
@@ -136,6 +138,8 @@ type TrialCampaignPlan = {
     recipients: number;
     firstTimeCount: number;
     reminderCount: number;
+    selectedKind: TrialRecipientKind;
+    selectedRecipients: number;
     skippedPaidOrgs: number;
   };
   preview: Array<{
@@ -184,7 +188,7 @@ export async function POST(request: Request) {
 
   try {
     if (parsed.data.campaign === 'trial_expired') {
-      const plan = await buildTrialExpiredCampaignPlan(db, featureState);
+      const plan = await buildTrialExpiredCampaignPlan(db, featureState, parsed.data.recipient_kind);
 
       if (parsed.data.mode === 'preview') {
         return NextResponse.json({
@@ -268,6 +272,7 @@ export async function POST(request: Request) {
 async function buildTrialExpiredCampaignPlan(
   db: ReturnType<typeof createSupabaseServerClient>,
   featureState: CampaignFeatureState,
+  recipientKind: TrialRecipientKind,
 ): Promise<TrialCampaignPlan> {
   const now = new Date();
   const nowIso = now.toISOString();
@@ -294,6 +299,8 @@ async function buildTrialExpiredCampaignPlan(
         recipients: 0,
         firstTimeCount: 0,
         reminderCount: 0,
+        selectedKind: recipientKind,
+        selectedRecipients: 0,
         skippedPaidOrgs: 0,
       },
       preview: [],
@@ -366,10 +373,19 @@ async function buildTrialExpiredCampaignPlan(
 
   const reminderCount = jobs.filter((job) => job.previouslySentExpired).length;
   const firstTimeCount = jobs.length - reminderCount;
-  const targetOrgIds = [...new Set(jobs.map((job) => job.orgId))];
+  const filteredJobs = jobs.filter((job) => {
+    if (recipientKind === 'first-time') {
+      return !job.previouslySentExpired;
+    }
+    if (recipientKind === 'reminder') {
+      return job.previouslySentExpired;
+    }
+    return true;
+  });
+  const targetOrgIds = [...new Set(filteredJobs.map((job) => job.orgId))];
 
   return {
-    jobs,
+    jobs: filteredJobs,
     stats: {
       expiredTrialRows: trials.length,
       expiredOrgs: orgIds.length,
@@ -377,9 +393,11 @@ async function buildTrialExpiredCampaignPlan(
       recipients: jobs.length,
       firstTimeCount,
       reminderCount,
+      selectedKind: recipientKind,
+      selectedRecipients: filteredJobs.length,
       skippedPaidOrgs,
     },
-    preview: jobs.slice(0, PREVIEW_LIMIT).map((job) => ({
+    preview: filteredJobs.slice(0, PREVIEW_LIMIT).map((job) => ({
       orgId: job.orgId,
       orgName: job.orgName,
       email: job.email,

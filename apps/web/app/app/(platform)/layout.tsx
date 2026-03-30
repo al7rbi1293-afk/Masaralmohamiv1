@@ -7,6 +7,7 @@ import { Container } from '@/components/ui/container';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { isUserAppAdmin } from '@/lib/admin';
 import {
+  Archive,
   LayoutDashboard,
   Search,
   Calendar,
@@ -49,6 +50,7 @@ const navItemsBase = [
   { href: '/app/tasks', label: 'المهام', icon: CheckSquare },
   { href: '/app/billing/invoices', label: 'الفوترة', icon: Receipt },
   { href: '/app/reports', label: 'التقارير', icon: BarChart3 },
+  { href: '/app/archive', label: 'الأرشيف', icon: Archive },
   { href: '/app/audit', label: 'سجل التدقيق', icon: History },
   { href: '/app/settings', label: 'الإعدادات', icon: Settings },
 ] as const;

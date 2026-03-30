@@ -1,6 +1,6 @@
 import 'server-only';
 
-import type { PaidPlanCode } from '@/lib/billing/plans';
+import { getDefaultSeatLimit, isTrialSubscriptionStatus, type CanonicalPlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { requireOrgIdForUser, requireOwner } from '@/lib/org';
 
@@ -35,7 +35,24 @@ export type Subscription = {
 const SUBSCRIPTION_SELECT =
   'id, org_id, plan_code, status, seats, current_period_start, current_period_end, cancel_at_period_end, provider, provider_customer_id, provider_subscription_id, created_at';
 
-const DEFAULT_PLAN_CODE: PaidPlanCode = 'SOLO';
+const DEFAULT_PLAN_CODE: CanonicalPlanCode = 'TRIAL';
+
+function isPlanCodeForeignKeyError(message?: string) {
+  const normalized = String(message ?? '').toLowerCase();
+  return normalized.includes('foreign key') || normalized.includes('violates foreign key');
+}
+
+function normalizeSubscriptionSnapshot(subscription: Subscription | null): Subscription | null {
+  if (!subscription || !isTrialSubscriptionStatus(subscription.status)) {
+    return subscription;
+  }
+
+  return {
+    ...subscription,
+    plan_code: 'TRIAL',
+    seats: getDefaultSeatLimit('TRIAL'),
+  };
+}
 
 export async function listPlans(): Promise<Plan[]> {
   const supabase = createSupabaseServerRlsClient();
@@ -66,7 +83,7 @@ export async function getOrgSubscription(): Promise<Subscription | null> {
     throw error;
   }
 
-  return (data as Subscription | null) ?? null;
+  return normalizeSubscriptionSnapshot((data as Subscription | null) ?? null);
 }
 
 export async function ensureSubscriptionRowExists(): Promise<Subscription> {
@@ -84,19 +101,32 @@ export async function ensureSubscriptionRowExists(): Promise<Subscription> {
   }
 
   if (existing) {
-    return existing as Subscription;
+    return normalizeSubscriptionSnapshot(existing as Subscription) as Subscription;
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('subscriptions')
     .insert({
       org_id: orgId,
       plan_code: DEFAULT_PLAN_CODE,
       status: 'trial',
-      seats: 1,
+      seats: getDefaultSeatLimit(DEFAULT_PLAN_CODE),
     })
     .select(SUBSCRIPTION_SELECT)
     .single();
+
+  if (error && isPlanCodeForeignKeyError(error.message)) {
+    ({ data, error } = await supabase
+      .from('subscriptions')
+      .insert({
+        org_id: orgId,
+        plan_code: 'SOLO',
+        status: 'trial',
+        seats: 1,
+      })
+      .select(SUBSCRIPTION_SELECT)
+      .single());
+  }
 
   if (error || !data) {
     console.error('Subscription creation failed:', error);
@@ -104,5 +134,5 @@ export async function ensureSubscriptionRowExists(): Promise<Subscription> {
     throw new Error(`تعذر إنشاء سجل الاشتراك. تفاصيل الخطأ: ${error?.message || 'غير معروف'} (Phase 8.0)`);
   }
 
-  return data as Subscription;
+  return normalizeSubscriptionSnapshot(data as Subscription) as Subscription;
 }

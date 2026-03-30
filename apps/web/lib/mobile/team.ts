@@ -3,7 +3,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getDefaultSeatLimit, getPlanDisplayLabel, normalizePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
+import { getDefaultSeatLimit, getPlanDisplayLabel, resolveEffectivePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
 import { getPublicSiteUrl } from '@/lib/env';
 import { hashPassword } from '@/lib/auth-custom';
 import { type MobileAppSessionContext, requireMobileOfficeOwnerContext } from '@/lib/mobile/auth';
@@ -180,25 +180,13 @@ async function getActivePlanCode(context: MobileAppSessionContext): Promise<Cano
       .maybeSingle(),
   ]);
 
-  if (subscriptionRes.data) {
-    const normalized = normalizePlanCode((subscriptionRes.data as { plan_code?: string | null }).plan_code, 'TRIAL');
-    if (normalized !== 'TRIAL') {
-      return normalized;
-    }
-  }
-
-  if (legacyRes.data) {
-    const normalized = normalizePlanCode((legacyRes.data as { plan?: string | null }).plan, 'TRIAL');
-    if (normalized !== 'TRIAL') {
-      return normalized;
-    }
-  }
-
-  if (trialRes.data) {
-    return 'SMALL_OFFICE';
-  }
-
-  return null;
+  return resolveEffectivePlanCode({
+    subscriptionPlan: (subscriptionRes.data as { plan_code?: string | null } | null)?.plan_code,
+    subscriptionStatus: (subscriptionRes.data as { status?: string | null } | null)?.status,
+    legacyPlan: (legacyRes.data as { plan?: string | null } | null)?.plan,
+    legacyStatus: (legacyRes.data as { status?: string | null } | null)?.status,
+    hasActiveTrial: Boolean(trialRes.data),
+  });
 }
 
 async function getSeatSummary(context: MobileAppSessionContext) {

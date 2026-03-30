@@ -43,6 +43,15 @@ type SettingsRouteProps = NativeStackScreenProps<OfficeStackParamList, 'OfficeSe
 type OfficeSubscriptionRequestItem = OfficeSubscriptionOverview['recent_requests'][number];
 const ENABLE_MOBILE_SUBSCRIPTION_REQUESTS = false;
 
+function subscriptionPlanLabel(overview: OfficeSubscriptionOverview | null) {
+  const code = String(overview?.subscription?.plan_code ?? '').trim().toUpperCase();
+  if (code === 'TRIAL') {
+    return 'تجربة';
+  }
+
+  return overview?.current_plan_card?.title || overview?.subscription?.plan_code || 'خطة المكتب';
+}
+
 export function OfficeSettingsHomeScreen({ navigation }: SettingsHubProps) {
   const { session } = useAuth();
   const isOwner = session?.kind === 'office' && session.portal === 'office' && session.role === 'owner';
@@ -263,7 +272,7 @@ export function OfficeSubscriptionSettingsScreen() {
     <Page>
       <HeroCard
         eyebrow="الاشتراك"
-        title={overview?.current_plan_card?.title || 'خطة المكتب'}
+        title={subscriptionPlanLabel(overview)}
         subtitle="عرض حالة الاشتراك الحالية والمقاعد المتاحة في نسخة الجوال."
         aside={<StatusChip label={requestStatusLabel(overview?.subscription?.status)} tone={requestTone(overview?.subscription?.status)} />}
       />
@@ -275,7 +284,7 @@ export function OfficeSubscriptionSettingsScreen() {
           <StatCard label="المستخدم" value={String(overview?.seat_usage.used || 0)} tone="success" />
           <StatCard label="المتاح" value={String(overview?.seat_usage.available || 0)} tone="default" />
         </View>
-        <Text style={styles.cardMeta}>الخطة الحالية: {overview?.current_plan_card?.title || overview?.subscription?.plan_code || '—'}</Text>
+        <Text style={styles.cardMeta}>الخطة الحالية: {subscriptionPlanLabel(overview)}</Text>
         <Text style={styles.cardMeta}>نهاية الفترة: {formatDate(overview?.subscription?.current_period_end || null)}</Text>
       </Card>
 

@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getDefaultSeatLimit, normalizePlanCode } from '@/lib/billing/plans';
+import { getDefaultSeatLimit, isTrialSubscriptionStatus, normalizePlanCode } from '@/lib/billing/plans';
 import { sendAdminBankTransferRequestAlert } from '@/lib/subscription-admin-alert-email';
 import { getPricingPlanCardByCode, SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
 import type { MobileAppSessionContext } from '@/lib/mobile/auth';
@@ -121,9 +121,26 @@ function isMissingRelationError(message?: string) {
   return normalized.includes('could not find the table') || (normalized.includes('relation') && normalized.includes('does not exist'));
 }
 
+function isPlanCodeForeignKeyError(message?: string) {
+  const normalized = String(message ?? '').toLowerCase();
+  return normalized.includes('foreign key') || normalized.includes('violates foreign key');
+}
+
 function isValidDate(value: string | null | undefined) {
   if (!value) return false;
   return !Number.isNaN(new Date(value).getTime());
+}
+
+function normalizeOfficeSubscription(subscription: SubscriptionRow): SubscriptionRow {
+  if (!isTrialSubscriptionStatus(subscription.status)) {
+    return subscription;
+  }
+
+  return {
+    ...subscription,
+    plan_code: 'TRIAL',
+    seats: getDefaultSeatLimit('TRIAL'),
+  };
 }
 
 function toMobileRequest(row: PaymentRequestRow): MobileOfficeSubscriptionRequest {
@@ -194,25 +211,38 @@ async function loadOrCreateSubscription(db: SupabaseClient, orgId: string) {
   }
 
   if (existing) {
-    return existing as SubscriptionRow;
+    return normalizeOfficeSubscription(existing as SubscriptionRow);
   }
 
-  const { data, error } = await db
+  let { data, error } = await db
     .from('subscriptions')
     .insert({
       org_id: orgId,
-      plan_code: 'SOLO',
+      plan_code: 'TRIAL',
       status: 'trial',
-      seats: 1,
+      seats: getDefaultSeatLimit('TRIAL'),
     })
     .select(OFFICE_SUBSCRIPTION_SELECT)
     .single();
+
+  if (error && isPlanCodeForeignKeyError(error.message)) {
+    ({ data, error } = await db
+      .from('subscriptions')
+      .insert({
+        org_id: orgId,
+        plan_code: 'SOLO',
+        status: 'trial',
+        seats: 1,
+      })
+      .select(OFFICE_SUBSCRIPTION_SELECT)
+      .single());
+  }
 
   if (error) {
     throw error;
   }
 
-  return data as SubscriptionRow;
+  return normalizeOfficeSubscription(data as SubscriptionRow);
 }
 
 async function countOrgMembers(db: SupabaseClient, orgId: string) {

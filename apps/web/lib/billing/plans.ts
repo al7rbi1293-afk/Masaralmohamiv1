@@ -36,6 +36,10 @@ const PLAN_DISPLAY_LABELS: Record<CanonicalPlanCode, string> = {
   ENTERPRISE: 'نسخة الشركات (تكاملات ناجز)',
 };
 
+function normalizeSubscriptionStatus(status: unknown) {
+  return String(status ?? '').trim().toLowerCase();
+}
+
 export function normalizePlanCode(rawPlan: unknown, fallback: CanonicalPlanCode = 'TRIAL'): CanonicalPlanCode {
   const normalized = String(rawPlan ?? '').trim().toUpperCase();
   if (!normalized) {
@@ -60,6 +64,38 @@ export function getProductEdition(planCode: unknown): ProductEdition {
 
 export function planSupportsNajizIntegration(planCode: unknown) {
   return getProductEdition(planCode) === 'enterprise';
+}
+
+export function isTrialSubscriptionStatus(status: unknown) {
+  return normalizeSubscriptionStatus(status) === 'trial';
+}
+
+export function resolveEffectivePlanCode(params: {
+  subscriptionPlan?: unknown;
+  subscriptionStatus?: unknown;
+  legacyPlan?: unknown;
+  legacyStatus?: unknown;
+  hasActiveTrial?: boolean;
+}): CanonicalPlanCode | null {
+  if (isTrialSubscriptionStatus(params.subscriptionStatus)) {
+    return 'TRIAL';
+  }
+
+  const normalizedSubscriptionPlan = normalizePlanCode(params.subscriptionPlan, 'TRIAL');
+  if (normalizedSubscriptionPlan !== 'TRIAL') {
+    return normalizedSubscriptionPlan;
+  }
+
+  if (isTrialSubscriptionStatus(params.legacyStatus)) {
+    return 'TRIAL';
+  }
+
+  const normalizedLegacyPlan = normalizePlanCode(params.legacyPlan, 'TRIAL');
+  if (normalizedLegacyPlan !== 'TRIAL') {
+    return normalizedLegacyPlan;
+  }
+
+  return params.hasActiveTrial ? 'TRIAL' : null;
 }
 
 export function getDefaultSeatLimit(planCode: unknown) {

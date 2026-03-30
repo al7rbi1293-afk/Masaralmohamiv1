@@ -25,6 +25,7 @@ insert into public.plans (
         seat_limit
     )
 values ('SOLO', 'فردي', 199, 'SAR', '{}'::jsonb, 1),
+    ('TRIAL', 'تجربة', null, 'SAR', '{}'::jsonb, 2),
     ('TEAM', 'فريق', 499, 'SAR', '{}'::jsonb, 5),
     ('PRO', 'احترافي', null, 'SAR', '{}'::jsonb, null) on conflict (code) do nothing;
 create table if not exists public.subscriptions (

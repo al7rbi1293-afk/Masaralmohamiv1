@@ -1,8 +1,14 @@
 import 'server-only';
-import { normalizePlanCode } from '@/lib/billing/plans';
+import { getDefaultSeatLimit, resolveEffectivePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
 import { createSupabaseServerRlsClient } from './supabase/server';
 
-export const SUBSCRIPTION_PLANS = {
+type SubscriptionPlanConfig = {
+    maxUsers: number;
+    label: string;
+};
+
+export const SUBSCRIPTION_PLANS: Record<CanonicalPlanCode, SubscriptionPlanConfig> = {
+    TRIAL: { maxUsers: getDefaultSeatLimit('TRIAL'), label: 'تجربة' },
     SOLO: { maxUsers: 1, label: 'محامي مستقل' },
     SMALL_OFFICE: { maxUsers: 5, label: 'مكتب صغير' },
     MEDIUM_OFFICE: { maxUsers: 10, label: 'مكتب متوسط' },
@@ -12,48 +18,37 @@ export const SUBSCRIPTION_PLANS = {
 /**
  * Get the active plan for an organization, considering trial or subscription.
  */
-export async function getActivePlan(orgId: string): Promise<keyof typeof SUBSCRIPTION_PLANS | null> {
+export async function getActivePlan(orgId: string): Promise<CanonicalPlanCode | null> {
     const supabase = createSupabaseServerRlsClient();
 
-    // Check paid subscription first
-    const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('plan_code, status')
-        .eq('org_id', orgId)
-        .in('status', ['trial', 'active', 'past_due', 'canceled'])
-        .maybeSingle();
+    const [subscriptionRes, legacyRes, trialRes] = await Promise.all([
+        supabase
+            .from('subscriptions')
+            .select('plan_code, status')
+            .eq('org_id', orgId)
+            .in('status', ['trial', 'active', 'past_due', 'canceled'])
+            .maybeSingle(),
+        supabase
+            .from('org_subscriptions')
+            .select('plan, status')
+            .eq('org_id', orgId)
+            .in('status', ['trial', 'active'])
+            .maybeSingle(),
+        supabase
+            .from('trial_subscriptions')
+            .select('status')
+            .eq('org_id', orgId)
+            .eq('status', 'active')
+            .maybeSingle(),
+    ]);
 
-    const normalizedSubscriptionPlan = normalizeSupportedPlan((sub as { plan_code?: string | null } | null)?.plan_code);
-    if (normalizedSubscriptionPlan) {
-        return normalizedSubscriptionPlan;
-    }
-
-    const { data: legacySub } = await supabase
-        .from('org_subscriptions')
-        .select('plan, status')
-        .eq('org_id', orgId)
-        .in('status', ['trial', 'active'])
-        .maybeSingle();
-
-    const normalizedLegacyPlan = normalizeSupportedPlan((legacySub as { plan?: string | null } | null)?.plan);
-    if (normalizedLegacyPlan) {
-        return normalizedLegacyPlan;
-    }
-
-    // Fallback to check if trial is active
-    const { data: trial } = await supabase
-        .from('trial_subscriptions')
-        .select('status')
-        .eq('org_id', orgId)
-        .eq('status', 'active')
-        .maybeSingle();
-
-    if (trial) {
-        // Trial keeps access on the standard edition only and does not expose enterprise features.
-        return 'SMALL_OFFICE';
-    }
-
-    return null;
+    return resolveEffectivePlanCode({
+        subscriptionPlan: (subscriptionRes.data as { plan_code?: string | null } | null)?.plan_code,
+        subscriptionStatus: (subscriptionRes.data as { status?: string | null } | null)?.status,
+        legacyPlan: (legacyRes.data as { plan?: string | null } | null)?.plan,
+        legacyStatus: (legacyRes.data as { status?: string | null } | null)?.status,
+        hasActiveTrial: Boolean(trialRes.data),
+    });
 }
 
 /**
@@ -76,13 +71,4 @@ export async function canAddMoreMembers(orgId: string): Promise<boolean> {
     if (error) return false;
 
     return (count ?? 0) < limit;
-}
-
-function normalizeSupportedPlan(rawPlan: string | null | undefined): keyof typeof SUBSCRIPTION_PLANS | null {
-    const normalized = normalizePlanCode(rawPlan, 'TRIAL');
-    if (normalized === 'TRIAL' || !(normalized in SUBSCRIPTION_PLANS)) {
-        return null;
-    }
-
-    return normalized as keyof typeof SUBSCRIPTION_PLANS;
 }

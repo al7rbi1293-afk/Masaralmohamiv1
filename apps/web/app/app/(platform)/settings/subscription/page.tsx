@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { FullVersionRequestForm } from '@/components/sections/full-version-request-form';
+import { getPlanDisplayLabel } from '@/lib/billing/plans';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { ensureSubscriptionRowExists } from '@/lib/subscriptions';
 import { getPricingPlanCardByCode, SUBSCRIPTION_PRICING_CARDS } from '@/lib/subscription-pricing';
@@ -34,7 +35,7 @@ function statusLabel(status: string) {
 }
 
 function planLabel(planCode: string) {
-  return getPricingPlanCardByCode(planCode)?.title ?? planCode;
+  return getPricingPlanCardByCode(planCode)?.title ?? getPlanDisplayLabel(planCode);
 }
 
 function formatDate(value: string | null) {

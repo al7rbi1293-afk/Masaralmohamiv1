@@ -115,6 +115,8 @@ export function statusTone(value: string | null | undefined): 'default' | 'succe
 
 export function planLabel(value: string | null | undefined) {
   switch (String(value ?? '').toUpperCase()) {
+    case 'TRIAL':
+      return 'تجربة';
     case 'SOLO':
       return 'المحامي المستقل';
     case 'SMALL_OFFICE':

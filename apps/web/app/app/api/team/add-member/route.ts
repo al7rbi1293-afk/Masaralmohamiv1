@@ -29,14 +29,15 @@ export async function POST(request: NextRequest) {
         const { addMemberDirect } = await import('@/lib/team');
 
         // --- Execute ---
-        await addMemberDirect(body, request);
+        const result = await addMemberDirect(body, request);
 
         logInfo('team_member_added', {
             role: body?.role,
             email: body?.email,
+            emailStatus: result.emailStatus,
         });
 
-        return NextResponse.json({ success: true }, { status: 201 });
+        return NextResponse.json({ success: true, emailStatus: result.emailStatus }, { status: 201 });
     } catch (error: unknown) {
         // Determine the error message, status, and raw info
         let status = 400;

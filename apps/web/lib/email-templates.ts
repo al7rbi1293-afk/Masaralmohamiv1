@@ -391,6 +391,121 @@ export const CLIENT_PORTAL_WELCOME_EMAIL_HTML = (params: {
     `,
   });
 
+export const TEAM_INVITATION_EMAIL_SUBJECT = `مرحباً بك في فريق المكتب | ${EMAIL_BRAND_NAME}`;
+
+function getTeamRoleLabel(role: 'owner' | 'lawyer' | 'assistant') {
+  if (role === 'owner') return 'مالك';
+  if (role === 'assistant') return 'مساعد';
+  return 'محامٍ';
+}
+
+export const TEAM_INVITATION_EMAIL_TEXT = (params: {
+  recipientName?: string | null;
+  recipientEmail: string;
+  orgName: string;
+  role: 'owner' | 'lawyer' | 'assistant';
+  inviteUrl: string;
+  signInUrl: string;
+  forgotPasswordUrl: string;
+  expiresAtLabel: string;
+  invitedByName?: string | null;
+}) =>
+  [
+    `مرحباً ${params.recipientName?.trim() || 'بك'}،`,
+    '',
+    `تمت دعوتك للانضمام إلى فريق ${params.orgName} على منصة ${EMAIL_BRAND_NAME} بدور ${getTeamRoleLabel(params.role)}${params.invitedByName?.trim() ? ` بواسطة ${params.invitedByName.trim()}` : ''}.`,
+    `البريد المدعو: ${params.recipientEmail}`,
+    `صلاحية رابط الدعوة: ${params.expiresAtLabel}`,
+    '',
+    'ابدأ من هنا:',
+    `1. افتح رابط تسجيل الدخول التالي: ${params.signInUrl}`,
+    '2. سجّل الدخول بالبريد المدعو نفسه.',
+    '3. بعد الدخول سيتم فتح صفحة الدعوة وإكمال الانضمام إلى المكتب.',
+    '',
+    `رابط الدعوة المباشر: ${params.inviteUrl}`,
+    `إذا لم تكن تعرف كلمة المرور استخدم: ${params.forgotPasswordUrl}`,
+    '',
+    'إذا لم يكن لديك حساب بعد، سيظهر لك خيار إنشاء حساب بالبريد نفسه بعد فتح رابط تسجيل الدخول.',
+    '',
+    'مع التحية،',
+    EMAIL_BRAND_NAME,
+  ].join('\n');
+
+export const TEAM_INVITATION_EMAIL_HTML = (params: {
+  recipientName?: string | null;
+  recipientEmail: string;
+  orgName: string;
+  role: 'owner' | 'lawyer' | 'assistant';
+  inviteUrl: string;
+  signInUrl: string;
+  forgotPasswordUrl: string;
+  expiresAtLabel: string;
+  invitedByName?: string | null;
+}) =>
+  renderEmailShell({
+    subject: TEAM_INVITATION_EMAIL_SUBJECT,
+    preheader: `تم تجهيز دعوتك للانضمام إلى ${params.orgName} ويمكنك تسجيل الدخول الآن.`,
+    eyebrow: 'دعوة فريق',
+    title: `مرحباً بك في فريق ${params.orgName}`,
+    intro: 'يمكنك الدخول إلى المنصة عبر الرابط أدناه، ثم قبول الدعوة والبدء في العمل خلال دقائق.',
+    bodyHtml: `
+      <p>مرحباً <strong>${escapeHtml(params.recipientName?.trim() || 'بك')}</strong>،</p>
+      <p>
+        تمت دعوتك للانضمام إلى فريق <strong>${escapeHtml(params.orgName)}</strong> على منصة
+        <strong>${EMAIL_BRAND_NAME}</strong> بدور <strong>${escapeHtml(getTeamRoleLabel(params.role))}</strong>
+        ${params.invitedByName?.trim() ? ` بواسطة <strong>${escapeHtml(params.invitedByName.trim())}</strong>` : ''}.
+      </p>
+
+      <div class="panel panel-success">
+        <h2 class="panel-title">ابدأ من هنا</h2>
+        <ol class="steps">
+          <li>افتح رابط تسجيل الدخول من الزر أدناه.</li>
+          <li>سجّل الدخول باستخدام البريد المدعو نفسه.</li>
+          <li>بعد الدخول ستنتقل مباشرة إلى صفحة قبول الدعوة داخل المنصة.</li>
+        </ol>
+        <div class="cta">
+          <a class="btn" href="${escapeHtml(params.signInUrl)}">تسجيل الدخول وقبول الدعوة</a>
+        </div>
+        <div class="link-box">${escapeHtml(params.signInUrl)}</div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">تفاصيل الدعوة</h2>
+        <table class="meta-table">
+          <tr>
+            <td>البريد المدعو</td>
+            <td>${escapeHtml(params.recipientEmail)}</td>
+          </tr>
+          <tr>
+            <td>الدور</td>
+            <td>${escapeHtml(getTeamRoleLabel(params.role))}</td>
+          </tr>
+          <tr>
+            <td>صلاحية الرابط</td>
+            <td>${escapeHtml(params.expiresAtLabel)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="panel panel-muted">
+        <h2 class="panel-title">خيارات إضافية</h2>
+        <p>إذا لم تكن تعرف كلمة المرور الحالية، يمكنك إعادة تعيينها من الرابط التالي:</p>
+        <div class="link-box">${escapeHtml(params.forgotPasswordUrl)}</div>
+        <p style="margin-top:16px;">ويمكنك أيضًا فتح رابط الدعوة المباشر:</p>
+        <div class="link-box">${escapeHtml(params.inviteUrl)}</div>
+      </div>
+
+      <div class="note">
+        إذا لم يكن لديك حساب بعد، سيفتح لك رابط تسجيل الدخول صفحة الدخول نفسها مع خيار إنشاء حساب بالبريد الإلكتروني المدعو.
+      </div>
+    `,
+    footerHtml: `
+      <p style="margin:0 0 6px;">أُرسلت هذه الرسالة بعد إضافتك إلى فريق المكتب على ${EMAIL_BRAND_NAME}.</p>
+      <p style="margin:0 0 6px;">للدعم: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+      <p style="margin:0;">${EMAIL_BRAND_TAGLINE}</p>
+    `,
+  });
+
 export const CLIENT_PORTAL_OTP_EMAIL_SUBJECT = 'رمز التحقق للدخول إلى بوابة العميل | مسار المحامي';
 
 export const CLIENT_PORTAL_OTP_EMAIL_TEXT = (params: {

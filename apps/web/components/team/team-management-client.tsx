@@ -159,20 +159,23 @@ export function TeamManagementClient({
           permissions: addPermissions,
         }),
       });
+      const payload = (await response.json().catch(() => ({}))) as { emailStatus?: string; error?: string; rawError?: string };
       let errorMsg = 'تعذر إضافة العضو.';
       if (!response.ok) {
-        const rawText = await response.text().catch(() => '');
-        try {
-          const json = JSON.parse(rawText);
-          errorMsg = String(json?.error || json?.rawError || errorMsg);
-        } catch {
-          errorMsg = rawText ? rawText.slice(0, 100) : errorMsg; // Show first 100 chars of HTML/text crash
-        }
+        errorMsg = String(payload?.error || payload?.rawError || errorMsg);
         setError(errorMsg);
         return;
       }
 
-      setMessage('تمت إضافة العضو بنجاح.');
+      if (payload.emailStatus === 'sent') {
+        setMessage('تمت إضافة العضو وإرسال رسالة الترحيب له عبر البريد الإلكتروني.');
+      } else if (payload.emailStatus === 'smtp_not_configured') {
+        setMessage('تمت إضافة العضو، لكن لم يُرسل البريد لأن إعدادات SMTP غير مكتملة.');
+      } else if (payload.emailStatus === 'failed') {
+        setMessage('تمت إضافة العضو، لكن تعذر إرسال رسالة الترحيب. يمكن إعادة المحاولة لاحقًا.');
+      } else {
+        setMessage('تمت إضافة العضو بنجاح.');
+      }
       setAddOpen(false);
       router.refresh();
     } catch {

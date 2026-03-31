@@ -1,12 +1,16 @@
 import 'server-only';
 
-import { randomBytes } from 'crypto';
 import { z } from 'zod';
 import { getPublicSiteUrl } from '@/lib/env';
 import { requireOwner, type OrgRole } from '@/lib/org';
 import { logAudit } from '@/lib/audit';
 import { createSupabaseServerClient, createSupabaseServerRlsClient } from '@/lib/supabase/server';
 import { canAddMoreMembers } from '@/lib/subscription';
+import {
+  createOrgInvitationRecord,
+  sendTeamInvitationEmail,
+  type TeamInviteEmailStatus,
+} from '@/lib/team-invitations';
 
 export type TeamRole = OrgRole;
 
@@ -48,7 +52,7 @@ const expiresInSchema = z.enum(['24h', '7d']);
 export async function addMemberDirect(
   input: unknown,
   req?: Request,
-): Promise<void> {
+): Promise<{ emailStatus: TeamInviteEmailStatus | 'failed' }> {
   const { orgId, userId } = await getOwnerContext();
 
   const parsed = addMemberSchema.safeParse(input);
@@ -136,6 +140,33 @@ export async function addMemberDirect(
     },
     req,
   });
+
+  try {
+    const invitation = await createOrgInvitationRecord({
+      db,
+      orgId,
+      email,
+      role: parsed.data.role,
+      invitedBy: userId,
+      expiresAt: expiresAtFrom('7d'),
+    });
+
+    const emailStatus = await sendTeamInvitationEmail({
+      db,
+      orgId,
+      invitedBy: userId,
+      recipientEmail: email,
+      recipientName: parsed.data.fullName,
+      role: parsed.data.role,
+      token: invitation.token,
+      expiresAt: invitation.expires_at,
+    });
+
+    return { emailStatus };
+  } catch (error) {
+    console.error('Failed to send team member welcome invite email:', error);
+    return { emailStatus: 'failed' };
+  }
 }
 
 const createInvitationSchema = z.object({
@@ -215,10 +246,6 @@ function expiresAtFrom(expiresIn: z.infer<typeof expiresInSchema>) {
   const now = Date.now();
   const ms = expiresIn === '24h' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
   return new Date(now + ms);
-}
-
-function generateToken() {
-  return randomBytes(32).toString('base64url');
 }
 
 export async function listMembers(): Promise<TeamMember[]> {
@@ -336,7 +363,7 @@ export async function listInvitations(): Promise<TeamInvitation[]> {
 export async function createInvitation(
   input: unknown,
   req?: Request,
-): Promise<{ inviteUrl: string; invitation: TeamInvitation }> {
+): Promise<{ inviteUrl: string; invitation: TeamInvitation; emailStatus: TeamInviteEmailStatus }> {
   const { orgId, userId } = await getOwnerContext();
 
   const parsed = createInvitationSchema.safeParse(input);
@@ -358,36 +385,17 @@ export async function createInvitation(
   const email = parsed.data.email.toLowerCase();
   const expiresAt = expiresAtFrom(parsed.data.expiresIn);
 
-  let inserted: any = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const token = generateToken();
-    const { data, error } = await supabase
-      .from('org_invitations')
-      .insert({
-        org_id: orgId,
-        email,
-        role: parsed.data.role,
-        token,
-        expires_at: expiresAt.toISOString(),
-        invited_by: userId,
-      })
-      .select('id, email, role, token, expires_at, accepted_at, created_at')
-      .maybeSingle();
-
-    if (!error) {
-      inserted = data;
-      break;
-    }
-
-    const code = (error as any)?.code ? String((error as any).code) : '';
-    const message = String((error as any)?.message ?? '');
-    const isDuplicate = code === '23505' || message.toLowerCase().includes('duplicate');
-    if (!isDuplicate) {
-      throw new TeamHttpError(400, 'تعذر إنشاء الدعوة. حاول مرة أخرى.');
-    }
-  }
-
-  if (!inserted) {
+  let inserted: TeamInvitation | null = null;
+  try {
+    inserted = await createOrgInvitationRecord({
+      db: supabase,
+      orgId,
+      email,
+      role: parsed.data.role,
+      invitedBy: userId,
+      expiresAt,
+    });
+  } catch {
     throw new TeamHttpError(400, 'تعذر إنشاء الدعوة. حاول مرة أخرى.');
   }
 
@@ -396,7 +404,7 @@ export async function createInvitation(
   await logAudit({
     action: 'team.invite_created',
     entityType: 'org_invitation',
-    entityId: String(inserted.id),
+    entityId: inserted.id,
     meta: {
       role: inserted.role,
       expires_at: inserted.expires_at,
@@ -404,17 +412,26 @@ export async function createInvitation(
     req,
   });
 
+  let emailStatus: TeamInviteEmailStatus = 'smtp_not_configured';
+  try {
+    emailStatus = await sendTeamInvitationEmail({
+      db: supabase,
+      orgId,
+      invitedBy: userId,
+      recipientEmail: inserted.email,
+      role: inserted.role,
+      token: inserted.token,
+      expiresAt: inserted.expires_at,
+    });
+  } catch {
+    await supabase.from('org_invitations').delete().eq('id', inserted.id);
+    throw new TeamHttpError(400, 'تم إنشاء الدعوة لكن تعذر إرسال البريد الإلكتروني. حاول مرة أخرى.');
+  }
+
   return {
     inviteUrl,
-    invitation: {
-      id: String(inserted.id),
-      email: String(inserted.email),
-      role: inserted.role as TeamRole,
-      token: String(inserted.token),
-      expires_at: String(inserted.expires_at),
-      accepted_at: inserted.accepted_at ? String(inserted.accepted_at) : null,
-      created_at: String(inserted.created_at),
-    },
+    invitation: inserted,
+    emailStatus,
   };
 }
 

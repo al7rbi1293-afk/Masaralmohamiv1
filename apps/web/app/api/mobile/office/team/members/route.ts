@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    await addMobileTeamMemberDirect(auth.context, body, request);
-    return NextResponse.json({ ok: true }, { status: 201 });
+    const result = await addMobileTeamMemberDirect(auth.context, body, request);
+    return NextResponse.json({ ok: true, emailStatus: result.emailStatus }, { status: 201 });
   } catch (error) {
     if (error instanceof TeamHttpError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

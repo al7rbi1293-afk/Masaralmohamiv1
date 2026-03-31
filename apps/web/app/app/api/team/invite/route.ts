@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
 
     logInfo('team_invite_created', {
       role: result.invitation.role,
+      emailStatus: result.emailStatus,
     });
 
     return NextResponse.json(result, { status: 200 });

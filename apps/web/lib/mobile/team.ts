@@ -1,12 +1,16 @@
 import 'server-only';
 
-import { randomBytes } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getPlanDisplayLabel, getPlanSeatLimit, resolveEffectivePlanCode, type CanonicalPlanCode } from '@/lib/billing/plans';
 import { getPublicSiteUrl } from '@/lib/env';
 import { hashPassword } from '@/lib/auth-custom';
 import { type MobileAppSessionContext, requireMobileOfficeOwnerContext } from '@/lib/mobile/auth';
+import {
+  createOrgInvitationRecord,
+  sendTeamInvitationEmail,
+  type TeamInviteEmailStatus,
+} from '@/lib/team-invitations';
 import { TeamHttpError, type TeamInvitation, type TeamMember, type TeamRole } from '@/lib/team';
 
 type TeamMemberRow = {
@@ -137,10 +141,6 @@ async function countOwners(context: MobileAppSessionContext) {
   }
 
   return count ?? 0;
-}
-
-function generateToken() {
-  return randomBytes(32).toString('base64url');
 }
 
 function expiresAtFrom(expiresIn: z.infer<typeof expiresInSchema>) {
@@ -360,7 +360,7 @@ export async function createMobileTeamInvitation(
   context: MobileAppSessionContext,
   input: unknown,
   req?: Request,
-): Promise<{ inviteUrl: string; invitation: TeamInvitation }> {
+): Promise<{ inviteUrl: string; invitation: TeamInvitation; emailStatus: TeamInviteEmailStatus }> {
   const orgId = context.org?.id;
   if (!orgId) {
     throw new TeamHttpError(403, 'هذا الحساب لا يملك وصولاً إلى المكتب.');
@@ -384,43 +384,16 @@ export async function createMobileTeamInvitation(
   const expiresAt = expiresAtFrom(parsed.data.expiresIn);
 
   let inserted: TeamInvitation | null = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const token = generateToken();
-    const { data, error } = await context.db
-      .from('org_invitations')
-      .insert({
-        org_id: orgId,
-        email,
-        role: parsed.data.role,
-        token,
-        expires_at: expiresAt.toISOString(),
-        invited_by: context.user.id,
-      })
-      .select('id, email, role, token, expires_at, accepted_at, created_at')
-      .maybeSingle();
-
-    if (!error && data) {
-      inserted = {
-        id: String((data as any).id),
-        email: String((data as any).email),
-        role: (data as any).role as TeamRole,
-        token: String((data as any).token),
-        expires_at: String((data as any).expires_at),
-        accepted_at: (data as any).accepted_at ? String((data as any).accepted_at) : null,
-        created_at: String((data as any).created_at),
-      };
-      break;
-    }
-
-    const code = (error as any)?.code ? String((error as any).code) : '';
-    const message = String((error as any)?.message ?? '');
-    const isDuplicate = code === '23505' || message.toLowerCase().includes('duplicate');
-    if (!isDuplicate) {
-      throw new TeamHttpError(400, 'تعذر إنشاء الدعوة. حاول مرة أخرى.');
-    }
-  }
-
-  if (!inserted) {
+  try {
+    inserted = await createOrgInvitationRecord({
+      db: context.db,
+      orgId,
+      email,
+      role: parsed.data.role,
+      invitedBy: context.user.id,
+      expiresAt,
+    });
+  } catch {
     throw new TeamHttpError(400, 'تعذر إنشاء الدعوة. حاول مرة أخرى.');
   }
 
@@ -438,9 +411,26 @@ export async function createMobileTeamInvitation(
     req,
   });
 
+  let emailStatus: TeamInviteEmailStatus = 'smtp_not_configured';
+  try {
+    emailStatus = await sendTeamInvitationEmail({
+      db: context.db,
+      orgId,
+      invitedBy: context.user.id,
+      recipientEmail: inserted.email,
+      role: inserted.role,
+      token: inserted.token,
+      expiresAt: inserted.expires_at,
+    });
+  } catch {
+    await context.db.from('org_invitations').delete().eq('id', inserted.id);
+    throw new TeamHttpError(400, 'تم إنشاء الدعوة لكن تعذر إرسال البريد الإلكتروني. حاول مرة أخرى.');
+  }
+
   return {
     inviteUrl,
     invitation: inserted,
+    emailStatus,
   };
 }
 
@@ -448,7 +438,7 @@ export async function addMobileTeamMemberDirect(
   context: MobileAppSessionContext,
   input: unknown,
   req?: Request,
-): Promise<void> {
+): Promise<{ emailStatus: TeamInviteEmailStatus | 'failed' }> {
   const orgId = context.org?.id;
   if (!orgId) {
     throw new TeamHttpError(403, 'هذا الحساب لا يملك وصولاً إلى المكتب.');
@@ -531,6 +521,33 @@ export async function addMobileTeamMemberDirect(
     },
     req,
   });
+
+  try {
+    const invitation = await createOrgInvitationRecord({
+      db: context.db,
+      orgId,
+      email,
+      role: parsed.data.role,
+      invitedBy: context.user.id,
+      expiresAt: expiresAtFrom('7d'),
+    });
+
+    const emailStatus = await sendTeamInvitationEmail({
+      db: context.db,
+      orgId,
+      invitedBy: context.user.id,
+      recipientEmail: email,
+      recipientName: parsed.data.fullName,
+      role: parsed.data.role,
+      token: invitation.token,
+      expiresAt: invitation.expires_at,
+    });
+
+    return { emailStatus };
+  } catch (error) {
+    console.error('Failed to send mobile team member welcome invite email:', error);
+    return { emailStatus: 'failed' };
+  }
 }
 
 export async function updateMobileTeamMemberProfile(

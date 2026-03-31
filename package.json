@@ -24,7 +24,8 @@
     "test:e2e": "npm run test:e2e --workspace @masar/web",
     "test:rls": "tsx scripts/rls-smoke-test.ts",
     "test:copilot:rls": "tsx scripts/copilot-rls-smoke-test.ts",
-    "migrate:legacy-users": "tsx scripts/migrate-legacy-masar-users.ts"
+    "migrate:legacy-users": "tsx scripts/migrate-legacy-masar-users.ts",
+    "email:team-invites": "tsx scripts/send-team-member-invite-emails.ts"
   },
   "devDependencies": {
     "tsx": "^4.7.0"

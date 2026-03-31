@@ -14,6 +14,9 @@ import {
   LOGIN_OTP_EMAIL_HTML,
   LOGIN_OTP_EMAIL_SUBJECT,
   LOGIN_OTP_EMAIL_TEXT,
+  TEAM_INVITATION_EMAIL_HTML,
+  TEAM_INVITATION_EMAIL_SUBJECT,
+  TEAM_INVITATION_EMAIL_TEXT,
   TRIAL_ENDING_SOON_EMAIL_HTML,
   TRIAL_ENDING_SOON_EMAIL_SUBJECT,
   TRIAL_ENDING_SOON_EMAIL_TEXT,
@@ -137,6 +140,41 @@ test('login otp email uses the shared branded template and text copy', () => {
   assert.match(html, /تحقق ثنائي/);
   assert.match(text, /654321/);
   assert.match(text, /صلاحية الرمز: 10 دقائق/);
+});
+
+test('team invitation email includes sign-in, invite, and password reset links', () => {
+  const html = TEAM_INVITATION_EMAIL_HTML({
+    recipientName: 'سارة أحمد',
+    recipientEmail: 'sara@example.com',
+    orgName: 'مكتب الأفق للمحاماة',
+    role: 'lawyer',
+    inviteUrl: 'https://masar.example.com/invite/token123',
+    signInUrl: 'https://masar.example.com/signin?token=token123&email=sara%40example.com',
+    forgotPasswordUrl: 'https://masar.example.com/forgot-password?email=sara%40example.com',
+    expiresAtLabel: '31 مارس 2026، 11:00 ص',
+    invitedByName: 'عبدالله',
+  });
+  const text = TEAM_INVITATION_EMAIL_TEXT({
+    recipientName: 'سارة أحمد',
+    recipientEmail: 'sara@example.com',
+    orgName: 'مكتب الأفق للمحاماة',
+    role: 'lawyer',
+    inviteUrl: 'https://masar.example.com/invite/token123',
+    signInUrl: 'https://masar.example.com/signin?token=token123&email=sara%40example.com',
+    forgotPasswordUrl: 'https://masar.example.com/forgot-password?email=sara%40example.com',
+    expiresAtLabel: '31 مارس 2026، 11:00 ص',
+    invitedByName: 'عبدالله',
+  });
+
+  assert.match(TEAM_INVITATION_EMAIL_SUBJECT, /فريق المكتب/);
+  assert.match(html, /سارة أحمد/);
+  assert.match(html, /مكتب الأفق للمحاماة/);
+  assert.match(html, /تسجيل الدخول وقبول الدعوة/);
+  assert.match(html, /forgot-password\?email=sara%40example\.com/);
+  assert.match(html, /invite\/token123/);
+  assert.match(text, /sara@example\.com/);
+  assert.match(text, /رابط تسجيل الدخول التالي/);
+  assert.match(text, /إذا لم تكن تعرف كلمة المرور/);
 });
 
 test('trial ending soon email includes office name, urgency, and upgrade link', () => {

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Sans_Arabic, Inter } from 'next/font/google';
-import Script from 'next/script';
 import { Footer } from '@/components/layout/footer';
 import { Navbar } from '@/components/layout/navbar';
 import { ThemeProvider } from '@/components/layout/theme-provider';
@@ -98,47 +97,24 @@ export default function RootLayout({
 
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body className={`${ibmPlexArabic.variable} ${inter.variable} min-h-screen antialiased`}>
-        <Script id="tiktok-pixel-init" strategy="beforeInteractive">
-          {`
-            !function (w, d, t) {
-              w.TiktokAnalyticsObject = t;
-              var ttq = w[t] = w[t] || [];
-              ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie", "holdConsent", "revokeConsent", "grantConsent"];
-              ttq.setAndDefer = function (target, method) {
-                target[method] = function () {
-                  target.push([method].concat(Array.prototype.slice.call(arguments, 0)));
-                };
-              };
-              for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]);
-              ttq.instance = function (id) {
-                var instance = ttq._i[id] || [];
-                for (var n = 0; n < ttq.methods.length; n++) ttq.setAndDefer(instance, ttq.methods[n]);
-                return instance;
-              };
-              ttq.load = function (id, options) {
-                var url = "https://analytics.tiktok.com/i18n/pixel/events.js";
-                var partner = options && options.partner;
-                ttq._i = ttq._i || {};
-                ttq._i[id] = [];
-                ttq._i[id]._u = url;
-                ttq._t = ttq._t || {};
-                ttq._t[id] = +new Date();
-                ttq._o = ttq._o || {};
-                ttq._o[id] = options || {};
-                var script = document.createElement("script");
-                script.type = "text/javascript";
-                script.async = true;
-                script.src = url + "?sdkid=" + id + "&lib=" + t;
-                var firstScript = document.getElementsByTagName("script")[0];
-                firstScript.parentNode.insertBefore(script, firstScript);
-              };
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+!function (w, d, t) {
+  w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(
+var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script")
+;n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
 
-              ttq.load('${tiktokPixelId}');
-              ttq.page();
-            }(window, document, 'ttq');
-          `}
-        </Script>
+
+  ttq.load('${tiktokPixelId}');
+  ttq.page();
+}(window, document, 'ttq');
+            `,
+          }}
+        />
+      </head>
+      <body className={`${ibmPlexArabic.variable} ${inter.variable} min-h-screen antialiased`}>
         <ThemeProvider>
           <a href="#main-content" className="skip-link">
             تجاوز إلى المحتوى

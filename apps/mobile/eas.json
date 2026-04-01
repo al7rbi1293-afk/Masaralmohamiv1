@@ -52,8 +52,16 @@
     }
   },
   "submit": {
-    "production": {},
+    "production": {
+      "ios": {
+        "ascAppId": "6761363445"
+      }
+    },
     "storeAndroid": {},
-    "storeIos": {}
+    "storeIos": {
+      "ios": {
+        "ascAppId": "6761363445"
+      }
+    }
   }
 }

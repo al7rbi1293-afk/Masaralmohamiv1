@@ -8,6 +8,7 @@
 - Expo slug: `masar-al-muhami-mobile`
 - EAS project: `@abdulazizalhazmi/masar-al-muhami-mobile`
 - EAS project ID: `6706a16c-17ff-4819-a95b-d4b2f1ed1205`
+- App Store Connect app ID: `6761363445`
 - iOS bundle identifier: `com.masaralmuhami.mobile`
 - URL scheme: `masar`
 - Current marketing version: `1.0.0`
@@ -86,6 +87,6 @@ https://masaralmohami.com/contact
 
 ## ملاحظات تشغيلية
 
-- تم ضبط `storeIos` داخل `apps/mobile/eas.json` للبناء المتجر.
+- تم ضبط `storeIos` داخل `apps/mobile/eas.json` للبناء المتجر، و`ascAppId` مضاف لملف `submit` لتفادي التوقف التفاعلي عند الرفع.
 - `autoIncrement` مفعل في EAS للإصدارات الإنتاجية.
 - أيقونة التطبيق `1024x1024` وتمت إزالة `alpha` منها لتفادي رفض الرفع.

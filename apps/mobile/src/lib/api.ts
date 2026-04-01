@@ -58,6 +58,18 @@ export type OfficeOtpRequestResponse = {
   error?: string;
 };
 
+export type OfficePasswordSignInAttempt =
+  | {
+      ok: true;
+      data: OfficeSessionResponse;
+    }
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      code?: string;
+    };
+
 export type AuthMessageResponse = {
   ok?: boolean;
   message?: string;
@@ -354,6 +366,52 @@ export async function signInOffice(email: string, password: string) {
     email,
     password,
   });
+}
+
+export async function trySignInOffice(email: string, password: string): Promise<OfficePasswordSignInAttempt> {
+  const response = await fetch(buildUrl('/api/mobile/auth/signin'), {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const raw = await response.text().catch(() => '');
+  let payload = {} as Partial<OfficeSessionResponse> & { error?: string; code?: string };
+
+  if (contentType.includes('application/json') && raw) {
+    try {
+      payload = JSON.parse(raw) as Partial<OfficeSessionResponse> & { error?: string; code?: string };
+    } catch {
+      payload = {} as Partial<OfficeSessionResponse> & { error?: string; code?: string };
+    }
+  }
+
+  if (!response.ok) {
+    const error =
+      payload.error ||
+      (raw.includes('<!DOCTYPE html>') || raw.includes('<html')
+        ? 'الخدمة المطلوبة غير متاحة على هذا الرابط حالياً. حدّث بيئة التطبيق ثم أعد المحاولة.'
+        : `تعذر إكمال الطلب. (${response.status})`);
+
+    return {
+      ok: false,
+      status: response.status,
+      error,
+      code: payload.code,
+    };
+  }
+
+  return {
+    ok: true,
+    data: payload as OfficeSessionResponse,
+  };
 }
 
 export async function requestOfficeOtpAfterPassword(email: string, password: string) {

@@ -18,6 +18,14 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
 
 إذا كان الويب يعمل على دومين الإنتاج، ضع رابط الإنتاج بدل `localhost`.
 
+وللدخول المباشر بدون OTP لحسابات المراجعة فقط، أضف على بيئة الويب/الخادم:
+
+```bash
+MOBILE_PASSWORD_SIGNIN_ALLOWLIST=apple-review@example.com
+```
+
+الحسابات غير الموجودة في هذه القائمة ستبقى على مسار كلمة المرور ثم OTP بشكل تلقائي.
+
 ## التشغيل
 
 من جذر المشروع:
@@ -60,7 +68,7 @@ npm run ios:submit
 
 ## ماذا يستخدم التطبيق؟
 
-- دخول فريق المكتب عبر `POST /api/mobile/auth/signin`
+- دخول فريق المكتب عبر `POST /api/mobile/auth/signin` للحسابات المسموح لها، أو `POST /api/mobile/auth/password-challenge` ثم `POST /api/mobile/auth/verify-otp` لبقية الحسابات
 - بوابة العميل عبر OTP وربط `POST /api/mobile/client-portal/verify-otp`
 - لوحة المكتب عبر `GET /api/mobile/office/bootstrap`
 - القضايا عبر `GET /api/mobile/office/matters`

@@ -98,6 +98,8 @@ type AppUserContext = Omit<MobileAppSessionContext, 'token'>;
 const MOBILE_OTP_LENGTH = 6;
 const MOBILE_OTP_TTL_MINUTES = 10;
 const MOBILE_ACTIVATION_TTL_HOURS = 24;
+const MOBILE_PASSWORD_SIGNIN_OTP_REQUIRED_CODE = 'OTP_REQUIRED';
+const MOBILE_PASSWORD_SIGNIN_OTP_REQUIRED_ERROR = 'هذا الحساب يتطلب رمز تحقق لإكمال تسجيل الدخول.';
 
 function getRequestedOrgId(request?: NextRequest | Request) {
   const value =
@@ -119,6 +121,23 @@ export function getBearerToken(request: NextRequest | Request) {
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+function getMobilePasswordSigninAllowlist() {
+  return new Set(
+    (process.env.MOBILE_PASSWORD_SIGNIN_ALLOWLIST ?? '')
+      .split(/[,\n]/)
+      .map((value) => normalizeEmail(value))
+      .filter(Boolean),
+  );
+}
+
+function canUseDirectMobilePasswordSignin(email: string) {
+  if (process.env.NODE_ENV !== 'production') {
+    return true;
+  }
+
+  return getMobilePasswordSigninAllowlist().has(normalizeEmail(email));
 }
 
 function generateMobileOtpCode() {
@@ -656,6 +675,15 @@ export async function signInAppUserWithPassword(params: {
 }) {
   const db = createSupabaseServerClient();
   const normalizedEmail = params.email.trim().toLowerCase();
+
+  if (!canUseDirectMobilePasswordSignin(normalizedEmail)) {
+    return {
+      ok: false as const,
+      status: 403,
+      error: MOBILE_PASSWORD_SIGNIN_OTP_REQUIRED_ERROR,
+      code: MOBILE_PASSWORD_SIGNIN_OTP_REQUIRED_CODE,
+    };
+  }
 
   const { data: user, error } = await db
     .from('app_users')

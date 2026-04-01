@@ -60,10 +60,17 @@ npm run ios:submit
 ## ملاحظات مقترحة لفريق Apple Review
 
 - التطبيق مرتبط بنفس خدمة الويب الإنتاجية على `https://masaralmohami.com`.
+- يمكن تجهيز حساب مراجعة مخصص يعمل بالبريد الإلكتروني وكلمة المرور فقط بدون OTP، وذلك بإضافة بريده إلى `MOBILE_PASSWORD_SIGNIN_ALLOWLIST` في بيئة الويب/الخادم.
 - حذف الحساب متاح من داخل التطبيق بعد تسجيل الدخول.
 - صفحات الحذف والدعم العامة:
   - `https://masaralmohami.com/account-deletion`
   - `https://masaralmohami.com/contact`
+
+لإعداد حساب المراجعة:
+
+1. أنشئ حساب مكتب/إدارة مخصص للمراجعة بكلمة مرور ثابتة.
+2. أضف بريده الإلكتروني إلى `MOBILE_PASSWORD_SIGNIN_ALLOWLIST` على بيئة الإنتاج.
+3. قدّم إلى Apple البريد الإلكتروني وكلمة المرور فقط؛ الحساب المسموح له لن يُطلب منه OTP داخل التطبيق.
 
 صياغة جاهزة:
 
@@ -71,6 +78,7 @@ npm run ios:submit
 Users can request account deletion directly inside the app after signing in.
 Office users can open the More/Control area and choose the delete-account action.
 Client, partner, and admin users also have the same delete-account request action inside their account screens.
+For App Review, we provided a dedicated account that signs in with email and password only and does not require OTP.
 For review reference, support and deletion details are published at:
 https://masaralmohami.com/account-deletion
 https://masaralmohami.com/contact

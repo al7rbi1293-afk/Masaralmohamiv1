@@ -11,6 +11,7 @@ import {
   requestClientOtp,
   signInOffice,
   startTrialRegistration as startTrialRegistrationApi,
+  trySignInOffice,
   verifyOfficeOtp as verifyOfficeOtpApi,
   verifyClientOtp,
 } from '../lib/api';
@@ -27,6 +28,19 @@ type AuthState = {
     password: string;
     targetPortal?: 'office' | 'partner' | 'admin';
   }) => Promise<void>;
+  startWorkforceSignIn: (params: {
+    email: string;
+    password: string;
+    targetPortal?: 'office' | 'partner' | 'admin' | 'auto';
+  }) => Promise<
+    | {
+        nextStep: 'signed_in';
+      }
+    | {
+        nextStep: 'otp';
+        message: string;
+      }
+  >;
   requestOfficeOtpAfterPassword: (params: { email: string; password: string }) => Promise<string>;
   requestOfficeOtp: (email: string) => Promise<string>;
   signInOfficeWithOtp: (params: {
@@ -180,6 +194,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const nextSession = resolveOfficeSession(payload, targetPortal);
         await saveSession(nextSession);
         setSession(nextSession);
+      },
+      async startWorkforceSignIn({ email, password, targetPortal = 'auto' }) {
+        const directSignIn = await trySignInOffice(email, password);
+
+        if (directSignIn.ok) {
+          const nextSession = resolveOfficeSession(directSignIn.data, targetPortal);
+          await saveSession(nextSession);
+          setSession(nextSession);
+          return { nextStep: 'signed_in' as const };
+        }
+
+        if (directSignIn.code !== 'OTP_REQUIRED') {
+          throw new Error(directSignIn.error);
+        }
+
+        const payload = await requestOfficeOtpAfterPasswordApi(email, password);
+        if (payload.error) {
+          throw new Error(payload.error);
+        }
+
+        return {
+          nextStep: 'otp' as const,
+          message: payload.message || 'تم إرسال رمز التحقق.',
+        };
       },
       async requestOfficeOtpAfterPassword({ email, password }) {
         const payload = await requestOfficeOtpAfterPasswordApi(email, password);

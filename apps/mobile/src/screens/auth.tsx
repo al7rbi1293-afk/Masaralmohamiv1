@@ -53,7 +53,7 @@ export function AuthScreen() {
   const navigation = useNavigation<any>();
   const {
     signInWithPassword,
-    requestOfficeOtpAfterPassword,
+    startWorkforceSignIn,
     signInOfficeWithOtp,
     requestOtp,
     signInClientWithOtp,
@@ -137,12 +137,15 @@ export function AuthScreen() {
     resetMessages();
 
     try {
-      const nextMessage = await requestOfficeOtpAfterPassword({
+      const result = await startWorkforceSignIn({
         email: normalizedEmail,
         password,
       });
-      setMessage(nextMessage);
-      setOtpRequested(true);
+
+      if (result.nextStep === 'otp') {
+        setMessage(result.message);
+        setOtpRequested(true);
+      }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'تعذر بدء التحقق بخطوتين.');
     } finally {

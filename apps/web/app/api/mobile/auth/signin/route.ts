@@ -33,7 +33,13 @@ export async function POST(request: NextRequest) {
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(
+      {
+        error: result.error,
+        ...(result.code ? { code: result.code } : {}),
+      },
+      { status: result.status },
+    );
   }
 
   const { context, token } = result;

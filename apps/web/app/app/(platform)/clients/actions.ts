@@ -284,6 +284,7 @@ export async function archiveClientAction(id: string, redirectTo = '/app/clients
     });
     logInfo('client_archived', { clientId: id });
     revalidatePath('/app/clients');
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة العميل.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -307,6 +308,7 @@ export async function restoreClientAction(id: string, redirectTo = '/app/clients
     });
     logInfo('client_restored', { clientId: id });
     revalidatePath('/app/clients');
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تمت استعادة العميل.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -331,7 +333,8 @@ export async function deleteClientAction(id: string, redirectTo = '/app/clients'
     logInfo('client_deleted', { clientId: id });
     revalidatePath('/app/clients');
     revalidatePath(`/app/clients/${id}`);
-    redirect(withToast(redirectTo, 'success', 'تم حذف العميل بنجاح.'));
+    revalidatePath('/app/archive');
+    redirect(withToast(redirectTo, 'success', 'تم حذف العميل نهائيًا.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
     const message = toUserMessage(error);
@@ -369,8 +372,10 @@ function normalize(data: z.infer<typeof clientSchema>) {
 }
 
 function withToast(path: string, key: 'success' | 'error', message: string) {
-  const [pathname] = path.split('?');
-  return `${pathname}?${key}=${encodeURIComponent(message)}`;
+  const [pathname, query = ''] = path.split('?');
+  const params = new URLSearchParams(query);
+  params.set(key, message);
+  return `${pathname}?${params.toString()}`;
 }
 
 function diffClientFields(before: Awaited<ReturnType<typeof getClientById>>, after: Awaited<ReturnType<typeof updateClient>>): string[] {

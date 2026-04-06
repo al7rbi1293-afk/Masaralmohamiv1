@@ -99,6 +99,7 @@ export async function archiveMatterAction(id: string, redirectTo = '/app/matters
     logInfo('matter_archived', { matterId: id });
     revalidatePath('/app/matters');
     revalidatePath(`/app/matters/${id}`);
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة القضية.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -120,6 +121,7 @@ export async function restoreMatterAction(id: string, redirectTo = '/app/matters
     logInfo('matter_restored', { matterId: id });
     revalidatePath('/app/matters');
     revalidatePath(`/app/matters/${id}`);
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تمت استعادة القضية.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -141,6 +143,7 @@ export async function deleteMatterAction(id: string, redirectTo = '/app/matters'
     logInfo('matter_deleted', { matterId: id });
     revalidatePath('/app/matters');
     revalidatePath(`/app/matters/${id}`);
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تم حذف القضية نهائيًا.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -290,8 +293,10 @@ function toUserMessage(error: unknown) {
 }
 
 function withToast(path: string, key: 'success' | 'error', message: string) {
-  const [pathname] = path.split('?');
-  return `${pathname}?${key}=${encodeURIComponent(message)}`;
+  const [pathname, query = ''] = path.split('?');
+  const params = new URLSearchParams(query);
+  params.set(key, message);
+  return `${pathname}?${params.toString()}`;
 }
 
 function toEventUserMessage(error: unknown) {

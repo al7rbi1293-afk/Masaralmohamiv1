@@ -188,6 +188,7 @@ async function executeListInvoicesQuery(params: {
   status: InvoiceStatus | 'all';
   clientId?: string;
   archived: InvoiceArchiveFilter;
+  q: string;
   select: string;
   includeArchiveFilter: boolean;
 }) {
@@ -202,6 +203,9 @@ async function executeListInvoicesQuery(params: {
   if (params.clientId) query = query.eq('client_id', params.clientId);
   if (params.includeArchiveFilter && params.archived !== 'all') {
     query = query.eq('is_archived', params.archived === 'archived');
+  }
+  if (params.q) {
+    query = query.ilike('number', `%${params.q}%`);
   }
 
   return query;
@@ -416,6 +420,7 @@ export async function updateQuote(id: string, payload: UpdateQuotePayload): Prom
 }
 
 export type ListInvoicesParams = {
+  q?: string;
   status?: InvoiceStatus | 'all';
   clientId?: string;
   archived?: InvoiceArchiveFilter;
@@ -432,6 +437,7 @@ export async function listInvoices(params: ListInvoicesParams = {}): Promise<Pag
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
+  const q = cleanBillingQuery(params.q);
   const status = params.status ?? 'all';
   const clientId = params.clientId?.trim();
   const archived = params.archived ?? 'active';
@@ -444,6 +450,7 @@ export async function listInvoices(params: ListInvoicesParams = {}): Promise<Pag
     status,
     clientId,
     archived,
+    q,
     select: INVOICE_SELECT,
     includeArchiveFilter: true,
   });
@@ -466,6 +473,7 @@ export async function listInvoices(params: ListInvoicesParams = {}): Promise<Pag
       status,
       clientId,
       archived,
+      q,
       select: INVOICE_SELECT_LEGACY,
       includeArchiveFilter: false,
     }));
@@ -807,6 +815,11 @@ function computeInvoiceStatus(total: number, paidAmount: number): InvoiceStatus 
 function normalizeTaxNumber(value: string | null | undefined) {
   const raw = String(value ?? '').trim();
   return raw || null;
+}
+
+function cleanBillingQuery(value?: string) {
+  if (!value) return '';
+  return value.replaceAll(',', ' ').trim().slice(0, 120);
 }
 
 async function generateNextNumber(params: {

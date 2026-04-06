@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { removeDocumentStorageObjects } from '@/lib/entity-admin';
 import { requireOrgIdForUser } from '@/lib/org';
 import { getCurrentAuthUser } from '@/lib/supabase/auth-session';
 import { createSupabaseServerRlsClient } from '@/lib/supabase/server';
@@ -246,6 +247,45 @@ export async function setTemplateStatus(id: string, status: TemplateStatus): Pro
 
   if (!data) {
     throw new Error('not_found');
+  }
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const orgId = await requireOrgIdForUser();
+  const supabase = createSupabaseServerRlsClient();
+
+  const { data: versions, error: versionsError } = await supabase
+    .from('template_versions')
+    .select('storage_path')
+    .eq('org_id', orgId)
+    .eq('template_id', id);
+
+  if (versionsError) {
+    throw versionsError;
+  }
+
+  const { data, error } = await supabase
+    .from('templates')
+    .delete()
+    .eq('org_id', orgId)
+    .eq('id', id)
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error('not_found');
+  }
+
+  const storagePaths = (versions ?? [])
+    .map((row) => String((row as { storage_path?: string | null }).storage_path ?? '').trim())
+    .filter(Boolean);
+
+  if (storagePaths.length) {
+    await removeDocumentStorageObjects(storagePaths);
   }
 }
 

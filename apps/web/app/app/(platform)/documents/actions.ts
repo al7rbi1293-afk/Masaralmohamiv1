@@ -72,6 +72,7 @@ function revalidateDocumentPaths(id: string, redirectTo: string) {
   revalidatePath('/app/documents');
   revalidatePath(`/app/documents/${id}`);
   revalidatePath('/app/matters');
+  revalidatePath('/app/archive');
   const [redirectPath] = redirectTo.split('?');
   if (redirectPath.startsWith('/app/matters/')) {
     revalidatePath(redirectPath);
@@ -79,6 +80,8 @@ function revalidateDocumentPaths(id: string, redirectTo: string) {
 }
 
 function withToast(path: string, key: 'success' | 'error', message: string) {
-  const [pathname] = path.split('?');
-  return `${pathname}?${key}=${encodeURIComponent(message)}`;
+  const [pathname, query = ''] = path.split('?');
+  const params = new URLSearchParams(query);
+  params.set(key, message);
+  return `${pathname}?${params.toString()}`;
 }

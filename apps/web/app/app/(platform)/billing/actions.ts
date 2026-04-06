@@ -248,6 +248,7 @@ export async function archiveInvoiceAction(id: string, redirectTo = '/app/billin
     logInfo('invoice_archived', { invoiceId: id });
     revalidatePath('/app/billing/invoices');
     revalidatePath(`/app/billing/invoices/${id}`);
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تمت أرشفة الفاتورة.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -269,6 +270,7 @@ export async function restoreInvoiceAction(id: string, redirectTo = '/app/billin
     logInfo('invoice_restored', { invoiceId: id });
     revalidatePath('/app/billing/invoices');
     revalidatePath(`/app/billing/invoices/${id}`);
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تمت استعادة الفاتورة.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -290,6 +292,7 @@ export async function deleteInvoiceAction(id: string, redirectTo = '/app/billing
     logInfo('invoice_deleted', { invoiceId: id });
     revalidatePath('/app/billing/invoices');
     revalidatePath(`/app/billing/invoices/${id}`);
+    revalidatePath('/app/archive');
     redirect(withToast(redirectTo, 'success', 'تم حذف الفاتورة نهائيًا.'));
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -352,8 +355,10 @@ function normalizeDateTimeIso(value?: string) {
 }
 
 function withToast(path: string, key: 'success' | 'error', message: string) {
-  const [pathname] = path.split('?');
-  return `${pathname}?${key}=${encodeURIComponent(message)}`;
+  const [pathname, query = ''] = path.split('?');
+  const params = new URLSearchParams(query);
+  params.set(key, message);
+  return `${pathname}?${params.toString()}`;
 }
 
 function diffInvoiceFields(
